@@ -2,6 +2,7 @@
 - [x] Login *
 - [x] Disconnect *
 - [ ] Send Validation Code
+- [ ] Valid Validation Code
 - [ ] Change e-mail
 - [ ] Change password
 
