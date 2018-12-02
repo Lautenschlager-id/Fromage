@@ -43,7 +43,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the answer was posted or not |
->| `string` | if #1, `post's url`, else `Result string` |
+>| `string` | if #1, `post's url`, else `Result string` or `Error message` |
 >
 
 >### self:answerPoll ( option, location, pollId )
@@ -76,7 +76,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the post was created or not |
->| `string` | if #1, `post's url`, else `Result string` |
+>| `string` | if #1, `post's url`, else `Result string` or `Error message` |
 >
 
 >### self:connect ( userName, userPassword )
@@ -111,7 +111,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the poll was created or not |
->| `string` | if #1, `poll's url`, else `Result string` |
+>| `string` | if #1, `poll's url`, else `Result string` or `Error message` |
 >
 
 >### self:createPrivateDiscussion ( destinataries, subject, message )
@@ -128,7 +128,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the private discussion was created or not |
->| `string` | if #1, `private discussion's url`, else `Result string` |
+>| `string` | if #1, `private discussion's url`, else `Result string` or `Error message` |
 >
 
 >### self:createPrivateMessage ( destinatary, subject, message )
@@ -145,7 +145,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the private message was created or not |
->| `string` | if #1, `private message's url`, else `Result string` |
+>| `string` | if #1, `private message's url`, else `Result string` or `Error message` |
 >
 
 >### self:createPrivatePoll ( destinataries, subject, message, pollResponses, settings )
@@ -164,7 +164,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the private poll was created or not |
->| `string` | if #1, `private poll's url`, else `Result string` |
+>| `string` | if #1, `private poll's url`, else `Result string` or `Error message` |
 >
 
 >### self:createTopic ( title, message, location )
@@ -181,7 +181,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the topic was created or not |
->| `string` | if #1, `topic's url`, else `Result string` |
+>| `string` | if #1, `topic's url`, else `Result string` or `Error message` |
 >
 
 >### self:disconnect (  )
@@ -193,4 +193,61 @@
 >| :-: | - |
 >| `boolean` | Whether the account disconnected or not |
 >| `string` | Result string |
+>
+
+>### self:requestValidationCode (  )
+>Sends a validation code to the Account's e-mail.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the validation code was sent or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+>### self:sendValidationCode ( code )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| code | `string` | ✔ | The validation code. |
+>
+>Validates the validation code.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the validation code was sent to be validated or not |
+>| `string` | `Result string` (Empty for success) or `Error message` |
+>
+
+>### self:setEmail ( email )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| email | `string` | ✔ | The e-mail |
+>
+>Sets the new Account's e-mail.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the validation code was sent or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+>### self:setPassword ( password, disconnect )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| password | `string` | ✔ | The new password |
+>| disconnect | `boolean` | ✕ | Whether the account should be disconnect from all the dispositives or not. (default = false) |
+>
+>Sets the new Account's password.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the new password was set or not |
+>| `string` | `Result string` or `Error message` |
 >
