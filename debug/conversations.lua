@@ -1,5 +1,5 @@
 coroutine.wrap(function()
-	local forum = require("a801api")
+	local forum = require("a801api")()
 
 	local account = { "Test#0000", "12345" }
 	

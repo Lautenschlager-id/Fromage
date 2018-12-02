@@ -1,34 +1,39 @@
 ## Settings
-- [x] Login *
-- [x] Disconnect *
-- [ ] Get Validation Code
+- [x] Login
+- [x] Disconnect
+- [ ] Send Validation Code
+- [ ] Valid Validation Code
 - [ ] Change e-mail
 - [ ] Change password
-- [ ] Change nickname
 
 ## Inbox
-- [x] New Private Message *
-- [x] New Private Discussion *
-- [x] New Private Poll *
+- [x] New Private Message
+- [x] New Private Discussion
+- [x] New Private Poll
 - [ ] Archive Private Content
 - [ ] Delete Private Content
 - [ ] Delete all Private Content
-- [x] Answer Private Message *
-- [x] Answer Private Discussion *
-- [x] Answer Private Poll *
+- [x] Answer Private Message
+- [x] Answer Private Discussion
+- [x] Answer Private Poll
 - [ ] Close Private Discussion
+- [ ] Close Private Poll
 - [ ] Reopen Private Discussion
+- [ ] Reopen Private Poll
 - [ ] Leave Private Discussion
+- [ ] Leave Private Poll
+- [ ] Exclude guest from Discussion
+- [ ] Exclude guest from Poll
 
 ## Forum
 - [ ] Get message
 - [ ] Get topic messages (by page?)
 - [ ] Get topic
 - [ ] Get section topics
-- [ ] Answer topic
-- [ ] Create topic
-- [ ] Create poll
-- [ ] Vote in a poll
+- [x] Answer topic
+- [x] Create topic
+- [x] Create poll
+- [x] Vote in a poll
 - [ ] Edit message
 - [ ] Edit topic title
 - [ ] Moderate message
@@ -40,6 +45,10 @@
 - [ ] Restrict topic content
 - [ ] Unrestrict topic content
 - [ ] Message history logs
+- [ ] Like post
+- [ ] Create section
+- [ ] Delete section
+- [ ] Edit section
 
 ## Report
 - [ ] Report Message
@@ -63,8 +72,12 @@
 - [ ] Get tribe profile
 - [ ] Get tribe members
 - [ ] Get tribe history
-- [ ] Create section
-- [ ] Edit section
+- [ ] Report tribe
+- [ ] Change logo
+- [ ] Remove logo
+- [ ] Edit profile
+- [ ] Edit greeting message
+- [ ] Edit Parameters
 
 ## Search
 - [ ] Search
