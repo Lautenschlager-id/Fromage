@@ -1,21 +1,24 @@
 ## Settings
-- [x] Login
-- [x] Disconnect
+- [x] Login *
+- [x] Disconnect *
 - [ ] Get Validation Code
 - [ ] Change e-mail
 - [ ] Change password
 - [ ] Change nickname
 
 ## Inbox
-- [ ] New Private Message
-- [ ] New Private Discussion
-- [ ] New Private Poll
+- [x] New Private Message *
+- [x] New Private Discussion *
+- [x] New Private Poll *
 - [ ] Archive Private Content
 - [ ] Delete Private Content
 - [ ] Delete all Private Content
-- [ ] Answer Private Message
-- [ ] Answer Private Discussion
-- [ ] Answer Private Poll
+- [x] Answer Private Message *
+- [x] Answer Private Discussion *
+- [x] Answer Private Poll *
+- [ ] Close Private Discussion
+- [ ] Reopen Private Discussion
+- [ ] Leave Private Discussion
 
 ## Forum
 - [ ] Get message
