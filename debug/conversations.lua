@@ -16,20 +16,20 @@ coroutine.wrap(function()
 		local link, err = forum.fragmentUrl(data)
 		if err then
 			return print("Could not fragment " .. data)
-		else
-			success, data = forum:answerConversation(link.co, "Hiiiii")
-			if not success then
-				print("Can not answer conversation.", data)
-			else
-				print("Conversation answered")
-
-				print(forum:createPrivateDiscussion({ "Test2#0000", "Test3#0000" }, "Api disc", "Testing again."))
-				print(forum:createPrivatePoll({ "Test2#0000", "Test3#0000" }, "Api poll", "Vote please!", { "Yes", "No" }, {
-					public = true,
-					multiple = false
-				}))
-			end
 		end
+		success, data = forum:answerConversation(link.co, "Hiiiii")
+		if not success then
+			print("Can not answer conversation.", data)
+		else
+			print("Conversation answered")
+
+			print(forum:createPrivateDiscussion({ "Test2#0000", "Test3#0000" }, "Api disc", "Testing again."))
+			print(forum:createPrivatePoll({ "Test2#0000", "Test3#0000" }, "Api poll", "Vote please!", { "Yes", "No" }, {
+				public = true,
+				multiple = false
+			}))
+		end
+		
 	end
 
 	forum:disconnect()

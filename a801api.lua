@@ -22,6 +22,7 @@ local forumUri = {
 		- message -> m
 		- create -> c
 		- answer -> a
+		- set -> s
 	]]
 	index = "index",
 	connection = "identification",
@@ -37,7 +38,12 @@ local forumUri = {
 	nTopic = "new-topic",
 	nPoll = "new-forum-poll",
 	aForumPoll = "answer-forum-poll",
-	apPoll = "answer-conversation-poll"
+	apPoll = "answer-conversation-poll",
+	getCert = "get-certification",
+	acc = "account",
+	sCert = "set-certification",
+	sEmail = "set-email",
+	sPw = "set-password"
 }
 
 local htmlChunk = {
@@ -56,7 +62,8 @@ local enumError = {
 	no_url_location_private = "The fields %s are needed if the object is private.",
 	not_poll = "Invalid topic. Poll not detected.",
 	internal = "Internal error.",
-	poll_option_not_found = "Invalid poll option."
+	poll_option_not_found = "Invalid poll option.",
+	not_verified = "This instance has not a certificate yet. Valid the account first."
 }
 
 local separator = {
@@ -168,14 +175,15 @@ end
 
 table.createSet = function(tbl, index)
 	local out = { }
+
+	local j = true
 	for k, v in next, tbl do
-		local i, j
+		local i
 		if index then
 			i = v[index]
 			j = v
 		else
 			i = v
-			j = true
 		end
 
 		out[i] = j
@@ -193,7 +201,9 @@ return function()
 		userName = '',
 		cookieState = cookieState.login,
 		-- Account cookies
-		cookies = { }
+		cookies = { },
+		-- Whether the account has validated its account with a code
+		hasCertificate = false
 	}
 	-- External
 	local self = { }
@@ -379,11 +389,9 @@ return function()
 				this.isConnected = true
 				this.userName = userName
 				this.cookieState = cookieState.afterLogin
-				return true, data
 			end
 		end
-
-		return false, data
+		return success, data
 	end
 
 	--[[@
@@ -396,16 +404,14 @@ return function()
 			return false, enumError.not_connected
 		end
 
-		local success, data = this:performAction(forumUri.logout)
+		local success, data = this:performAction(forumUri.logout, nil, forumUri.acc)
 		if string.sub(body, 3, 13) == "redirection" then
 			this.isConnected = false
 			this.userName = ''
 			this.cookieState = cookieState.login
 			this.cookies = { }
-			return true, data
-		else
-			return false, data
 		end
+		return success, data
 	end
 
 	--[[@
@@ -414,7 +420,7 @@ return function()
 		@param subject<string> The subject of the private message
 		@param message<string> The content of the private message
 		@returns boolean Whether the private message was created or not
-		@returns string if #1, `private message's url`, else `Result string`
+		@returns string if #1, `private message's url`, else `Result string` or `Error message`
 	]]
 	self.createPrivateMessage = function(self, destinatary, subject, message)
 		assertion("createPrivateMessage", "string", 1, destinatary)
@@ -440,7 +446,7 @@ return function()
 		@param subject<string> The subject of the private discussion
 		@param message<string> The content of the private discussion
 		@returns boolean Whether the private discussion was created or not
-		@returns string if #1, `private discussion's url`, else `Result string`
+		@returns string if #1, `private discussion's url`, else `Result string` or `Error message`
 	]]
 	self.createPrivateDiscussion = function(self, destinataries, subject, message)
 		assertion("createPrivateDiscussion", "table", 1, destinataries)
@@ -468,7 +474,7 @@ return function()
 		@param pollResponses<table> The poll response options
 		@param settings?<table> The poll settings. The available indexes are: `multiple` and `public`.
 		@returns boolean Whether the private poll was created or not
-		@returns string if #1, `private poll's url`, else `Result string`
+		@returns string if #1, `private poll's url`, else `Result string` or `Error message`
 	]]
 	self.createPrivatePoll = function(self, destinataries, subject, message, pollResponses, settings)
 		assertion("createPrivatePoll", "table", 1, destinataries)
@@ -510,7 +516,7 @@ return function()
 		@param conversationId<string,int> The conversation id
 		@param answer<string> The answer
 		@returns boolean Whether the answer was posted or not
-		@returns string if #1, `post's url`, else `Result string`
+		@returns string if #1, `post's url`, else `Result string` or `Error message`
 	]]
 	self.answerConversation = function(self, conversationId, answer)
 		if tonumber(conversationId) then
@@ -537,7 +543,7 @@ return function()
 		@param message<string> The initial message of the topic
 		@param location<table> The location where the topic should be created. Fields 'f' and 's' are needed.
 		@returns boolean Whether the topic was created or not
-		@returns string if #1, `topic's url`, else `Result string`
+		@returns string if #1, `topic's url`, else `Result string` or `Error message`
 	]]
 	self.createTopic = function(self, title, message, location)
 		assertion("createTopic", "string", 1, title)
@@ -570,7 +576,7 @@ return function()
 		@param location<table> The location where the topic should be created. Fields 'f' and 's' are needed.
 		@param settings?<table> The poll settings. The available indexes are: `multiple` and `public`.
 		@returns boolean Whether the poll was created or not
-		@returns string if #1, `poll's url`, else `Result string`
+		@returns string if #1, `poll's url`, else `Result string` or `Error message`
 	]]
 	self.createPoll = function(self, title, message, pollResponses, location, settings)
 		assertion("createPoll", "string", 1, title)
@@ -608,7 +614,7 @@ return function()
 			end
 		end
 
-		local success, data = this:performAction(forumUri.cTopic, postData, fforumUri.nPoll .. "?f=" .. location.f .. "&s=" .. location.s)
+		local success, data = this:performAction(forumUri.cTopic, postData, forumUri.nPoll .. "?f=" .. location.f .. "&s=" .. location.s)
 		return returnRedirection(success, data)
 	end
 
@@ -617,7 +623,7 @@ return function()
 		@param message<string> The answer
 		@param location<table> The location where the answer should be posted. Fields 'f' and 't' are needed.
 		@returns boolean Whether the post was created or not
-		@returns string if #1, `post's url`, else `Result string`
+		@returns string if #1, `post's url`, else `Result string` or `Error message`
 	]]
 	self.answerTopic = function(self, message, location)
 		assertion("answerTopic", "string", 1, message)
@@ -721,6 +727,92 @@ return function()
 
 		local success, data = this:performAction(forumUri[(isPrivatePoll and "apPoll" or "aForumPoll")], postData, url)
 		return returnRedirection(success, data)
+	end
+
+	--[[@
+		@desc Sends a validation code to the Account's e-mail.
+		@returns boolean Whether the validation code was sent or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.requestValidationCode = function(self)
+		if not this.isConnected then
+			return false, enumError.not_connected
+		end
+
+		return this:performAction(forumUri.getCert, nil, forumUri.acc)
+	end
+
+	--[[@
+		@desc Validates the validation code.
+		@param code<string> The validation code.
+		@returns boolean Whether the validation code was sent to be validated or not
+		@returns string `Result string` (Empty for success) or `Error message`
+	]]
+	self.sendValidationCode = function(self, code)
+		assertion("validateValidationCode", "string", 1, code)
+
+		if not this.isConnected then
+			return false, enumError.not_connected
+		end
+
+		local success, data = this:performAction(forumUri.sCert, {
+			{ "code", code }
+		}, forumUri.acc)
+		if success then
+			this.hasCertificate = true
+		end
+
+		return success, data
+	end
+
+	--[[@
+		@desc Sets the new Account's e-mail.
+		@param email<string> The e-mail
+		@returns boolean Whether the validation code was sent or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.setEmail = function(self, email)
+		assertion("setEmail", "string", 1, email)
+
+		if not this.isConnected then
+			return false, enumError.not_connected
+		end
+
+		if not this.hasCertificate then
+			return false, enumError.not_verified
+		end
+
+		return this:performAction(forumUri.sEmail, {
+			{ "mail", email }
+		}, forumUri.acc)
+	end
+
+	--[[@
+		@desc Sets the new Account's password.
+		@param password<string> The new password
+		@param disconnect?<boolean> Whether the account should be disconnect from all the dispositives or not. (default = false)
+		@returns boolean Whether the new password was set or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.setPassword = function(self, password, disconnect)
+		assertion("setPassword", "string", 1, password)
+
+		if not this.isConnected then
+			return false, enumError.not_connected
+		end
+
+		if not this.hasCertificate then
+			return false, enumError.not_verified
+		end
+
+		local postData = {
+			{ "mdp3", getPasswordHash(password) }
+		}
+		if disconnect then
+			postData[2] = { "deco", "on" }
+		end
+
+		return this:performAction(forumUri.sPw, postData, forumUri.acc)
 	end
 
 	return self

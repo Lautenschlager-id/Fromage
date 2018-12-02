@@ -1,10 +1,10 @@
 ## Settings
-- [x] Login
+- [x] [Login](docs/a801api.md#selfconnect--userName-userPassword-)
 - [x] Disconnect
-- [ ] Send Validation Code
-- [ ] Valid Validation Code
-- [ ] Change e-mail
-- [ ] Change password
+- [x] Send Validation Code
+- [x] Valid Validation Code
+- [x] Add/change e-mail
+- [x] Change password
 
 ## Inbox
 - [x] New Private Message
