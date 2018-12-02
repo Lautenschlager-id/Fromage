@@ -1,10 +1,9 @@
 ## Settings
 - [x] Login *
 - [x] Disconnect *
-- [ ] Get Validation Code
+- [ ] Send Validation Code
 - [ ] Change e-mail
 - [ ] Change password
-- [ ] Change nickname
 
 ## Inbox
 - [x] New Private Message *
@@ -71,6 +70,12 @@
 - [ ] Get tribe history
 - [ ] Create section
 - [ ] Edit section
+- [ ] Report tribe
+- [ ] Change logo
+- [ ] Remove logo
+- [ ] Edit profile
+- [ ] Edit greeting message
+- [ ] Edit Parameters
 
 ## Search
 - [ ] Search
