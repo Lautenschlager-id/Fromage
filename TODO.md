@@ -17,8 +17,13 @@
 - [x] Answer Private Discussion *
 - [x] Answer Private Poll *
 - [ ] Close Private Discussion
+- [ ] Close Private Poll
 - [ ] Reopen Private Discussion
+- [ ] Reopen Private Poll
 - [ ] Leave Private Discussion
+- [ ] Leave Private Poll
+- [ ] Exclude guest from Discussion
+- [ ] Exclude guest from Poll
 
 ## Forum
 - [ ] Get message
@@ -40,6 +45,7 @@
 - [ ] Restrict topic content
 - [ ] Unrestrict topic content
 - [ ] Message history logs
+- [ ] Like post
 
 ## Report
 - [ ] Report Message
