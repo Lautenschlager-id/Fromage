@@ -88,7 +88,7 @@
 >| pollSubject | `string` | ✔ | The subject of the private poll |
 >| message | `string` | ✔ | The content of the private poll |
 >| pollResponses | `table` | ✔ | The poll response options |
->| settings | `table?` | ✔ | The poll settings. The available indexes are: `multiple` and `public`. |
+>| settings | `table` | ✕ | The poll settings. The available indexes are: `multiple` and `public`. |
 >
 >Creates a new private poll.
 >
