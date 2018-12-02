@@ -1,6 +1,6 @@
 ## Settings
-- [ ] Login
-- [ ] Disconnect
+- [x] Login
+- [x] Disconnect
 - [ ] Get Validation Code
 - [ ] Change e-mail
 - [ ] Change password
@@ -26,6 +26,17 @@
 - [ ] Create topic
 - [ ] Create poll
 - [ ] Vote in a poll
+- [ ] Edit message
+- [ ] Edit topic title
+- [ ] Moderate message
+- [ ] Move topic
+- [ ] Postit topic
+- [ ] Close topic
+- [ ] Delete topic
+- [ ] Undelete topic
+- [ ] Restrict topic content
+- [ ] Unrestrict topic content
+- [ ] Message history logs
 
 ## Report
 - [ ] Report Message
@@ -45,6 +56,13 @@
 - [ ] Post image
 - [ ] Delete image
 
+## Tribe
+- [ ] Get tribe profile
+- [ ] Get tribe members
+- [ ] Get tribe history
+- [ ] Create section
+- [ ] Edit section
+
 ## Search
 - [ ] Search
 
@@ -62,6 +80,3 @@
 - [ ] Unfavorite topic
 - [ ] Get favorite topics
 - [ ] Get favorite tribes
-
-
-
