@@ -33,7 +33,7 @@
 >### self:answerConversation ( conversationId, answer )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| conversationId | `string`, `int` | ✔ | The conversation id |
+>| conversationId | `int`, `string` | ✔ | The conversation id |
 >| answer | `string` | ✔ | The answer |
 >
 >Answers a conversation.
@@ -67,7 +67,7 @@
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| message | `string` | ✔ | The answer |
->| location | `table` | ✔ | The location where the answer should be posted. Fields 'f' and 't' are needed. |
+>| location | `table` | ✔ | The location where the message. Fields 'f' and 't' are needed. |
 >
 >Answers a topic.
 >
@@ -77,6 +77,22 @@
 >| :-: | - |
 >| `boolean` | Whether the post was created or not |
 >| `string` | if #1, `post's url`, else `Result string` or `Error message` |
+>
+
+>### self:changeConversationState ( conversationState, conversationId )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| conversationState | `string`, `int` | ✔ | An enum from `enums.conversationState` (index or value) |
+>| conversationId | `int`, `string` | ✔ | The conversation id |
+>
+>Changes the conversation state (opened, closed).
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the conversation state was changed or not |
+>| `string` | if #1, `conversation's url`, else `Result string` or `Error message` |
 >
 
 >### self:connect ( userName, userPassword )
@@ -93,6 +109,22 @@
 >| :-: | - |
 >| `boolean` | Whether the account connected or not |
 >| `string` | Result string |
+>
+
+>### self:conversationInvite ( conversationId, userName )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| conversationId | `int`, `string` | ✔ | The conversation id |
+>| userName | `string` | ✔ | The username to be invited |
+>
+>Invites an user to a private conversation.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the username was added in the conversation or not |
+>| `string` | if #1, `conversation's url`, else `Result string` or `Error message` |
 >
 
 >### self:createPoll ( title, message, pollResponses, location, settings )
@@ -193,6 +225,105 @@
 >| :-: | - |
 >| `boolean` | Whether the account disconnected or not |
 >| `string` | Result string |
+>
+
+>### self:editTopicAnswer ( messageId, message, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| messageId | `int`, `string` | ✔ | The message id. Use `string` if it's the post number. |
+>| message | `string` | ✔ | The new message |
+>| location | `table` | ✔ | The location where the message should be edited. Fields 'f' and 't' are needed. |
+>
+>Edits a message content.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the message content was edited or not |
+>| `string` | if #1, `post's url`, else `Result string` or `Error message` |
+>
+
+>### self:kickConversationMember ( conversationId, userId )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| conversationId | `int`, `string` | ✔ | The conversation id |
+>| userId | `int`, `string` | ✔ | The user id or nickname |
+>
+>Excludes a user from a conversation.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the user was excluded from the conversation or not |
+>| `string` | if #1, `conversation's url`, else `Result string` or `Error message` |
+>
+
+>### self:leaveConversation ( conversationId )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| conversationId | `int`, `string` | ✔ | The conversation id |
+>
+>Leaves a private conversation.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the account left the conversation or not |
+>| `string` | if #1, `conversation's url`, else `Result string` or `Error message` |
+>
+
+>### self:likeMessage ( messageId, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| messageId | `int`, `string` | ✔ | The message id. Use `string` if it's the post number. |
+>| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
+>
+>Likes a message.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the like was recorded or not |
+>| `string` | if #1, `post's url`, else `Result string` or `Error message` |
+>
+
+>### self:movePrivateConversation ( privLocation, conversationId )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| privLocation | `string`, `int` | ✔ | An enum from `enums.privLocation` (index or value) |
+>| conversationId | `int`, `table` | ✕ | The id or ids of the conversation(s) to be moved |
+>
+>Moves private conversations to the inbox or bin.
+>To empty trash, `@conversationId` must be `nil` and `@location` must be `bin`
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the conversation was moved or not |
+>| `string` | if #1, `location's url`, else `Result string` or `Error message` |
+>
+
+>### self:reportElement ( element, elementId, reason, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| element | `string`, `int` | ✔ | An enum from `enums.element` (index or value) |
+>| elementId | `int`, `string` | ✔ | The element id. |
+>| reason | `string` | ✔ | The report reason. |
+>| location | `table` | ✕ | The location of the report. If it's a forum message the field 'f' is needed, if it's a private message the field 'co' is needed. |
+>
+>Reports an element. (e.g: message, profile)
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the report was recorded or not |
+>| `string` | `Result string` or `Error message` |
 >
 
 >### self:requestValidationCode (  )

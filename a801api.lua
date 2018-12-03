@@ -624,7 +624,7 @@ return function()
 
 	--[[@
 		@desc Changes the conversation state (opened, closed).
-		@param conversationId<int,string> The conversation id
+		@param conversationState<string,int> An enum from `enums.conversationState` (index or value)
 		@param conversationId<int,string> The conversation id
 		@returns boolean Whether the conversation state was changed or not
 		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
@@ -902,18 +902,26 @@ return function()
 	end
 
 	--[[@
-		@desc
-		@param element<string,int>
-		@param elementId<int,string>
-		@param reason<string>
-		@param location?<table>
-		@returns
+		@desc Reports an element. (e.g: message, profile)
+		@param element<string,int> An enum from `enums.element` (index or value)
+		@param elementId<int,string> The element id.
+		@param reason<string> The report reason.
+		@param location?<table> The location of the report. If it's a forum message the field 'f' is needed, if it's a private message the field 'co' is needed.
+		@returns boolean Whether the report was recorded or not
+		@returns string `Result string` or `Error message`
 	]]
 	self.reportElement = function(self, element, elementId, reason, location)
 		assertion("reportElement", { "string", "number" }, 1, element)
 		assertion("reportElement", { "number", "string" }, 2, elementId)
 		assertion("reportElement", "string", 3, reason)
 		assertion("reportElement", { "table", "nil" }, 4, location)
+
+		if type(element) == "string" then
+			if not enums.element[element] then
+				return false, errorString.invalid_enum
+			end
+			element = enums.element[element]
+		end
 
 		if not this.isConnected then
 			return false, errorString.not_connected

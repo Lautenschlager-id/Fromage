@@ -10,20 +10,16 @@
 - [x] [New Private Message](docs/a801api.md#selfcreatePrivateMessage--destinatary-subject-message-)
 - [x] [New Private Discussion](docs/a801api.md#selfcreatePrivateDiscussion--destinataries-subject-message-)
 - [x] [New Private Poll](docs/a801api.md#selfcreatePrivatePoll--destinataries-subject-message-pollResponses-settings-)
-- [ ] Archive Private Content
-- [ ] Delete Private Content
-- [ ] Delete all Private Content
-- [x] [Answer Private Message](docs/a801api.md#selfanswerConversation--conversationId-answer-)
-- [x] [Answer Private Discussion](docs/a801api.md#selfanswerConversation--conversationId-answer-)
-- [x] [Answer Private Poll](docs/a801api.md#selfanswerConversation--conversationId-answer-)
-- [ ] Close Private Discussion
-- [ ] Close Private Poll
-- [ ] Reopen Private Discussion
-- [ ] Reopen Private Poll
-- [ ] Leave Private Discussion
-- [ ] Leave Private Poll
-- [ ] Exclude guest from Discussion
-- [ ] Exclude guest from Poll
+- [x] [Archive Private Content](docs/a801api.md#selfmovePrivateConversation--privLocation-conversationId-)
+- [x] [Restore Private Content](docs/a801api.md#selfmovePrivateConversation--privLocation-conversationId-)
+- [x] [Delete Private Content](docs/a801api.md#selfmovePrivateConversation--privLocation-conversationId-)
+- [x] [Delete all Archived Content](docs/a801api.md#selfmovePrivateConversation--privLocation-conversationId-)
+- [x] [Answer Private Conversation](docs/a801api.md#selfanswerConversation--conversationId-answer-)
+- [x] [Close Private Conversation](docs/a801api.md#selfchangeConversationState--conversationState-conversationId-)
+- [x] [Reopen Private Conversation](docs/a801api.md#selfchangeConversationState--conversationState-conversationId-)
+- [x] [Invite guest to a Conversation](docs/a801api.md#selfconversationInvite--conversationId-userName-)
+- [x] [Leave Private Conversation](docs/a801api.md#selfleaveConversation--conversationId-)
+- [x] [Exclude guest from Conversation](docs/a801api.md#selfkickConversationMember--conversationId-userId-)
 
 ## Forum
 - [ ] Get message
@@ -34,7 +30,7 @@
 - [x] [Create topic](docs/a801api.md#selfcreateTopic--title-message-location-)
 - [x] [Create poll](docs/a801api.md#selfcreatePoll--title-message-pollResponses-location-settings-)
 - [x] [Vote in a poll](docs/a801api.md#selfanswerPoll--option-location-pollId-)
-- [ ] Edit message
+- [x] [Edit message](docs/a801api.md#selfeditTopicAnswer--messageId-message-location-)
 - [ ] Edit topic title
 - [ ] Moderate message
 - [ ] Move topic
@@ -45,22 +41,25 @@
 - [ ] Restrict topic content
 - [ ] Unrestrict topic content
 - [ ] Message history logs
-- [ ] Like post
+- [x] [Like post](docs/a801api.md#selflikeMessage--messageId-location-)
 - [ ] Create section
 - [ ] Delete section
 - [ ] Edit section
 
 ## Report
-- [ ] Report Message
-- [ ] Report Topic
-- [ ] Report Profile
-- [ ] Report Tribe
+- [x] (Report Message)[reportElement]
+- [x] (Report Profile)[reportElement]
+- [x] (Report Tribe)[reportElement]
+- [x] (Report Private Message)[reportElement]
+- [x] (Report Poll)[reportElement]
+
 
 ## Profile
 - [ ] Change avatar
 - [ ] Remove avatar
 - [ ] Display online status
 - [ ] Edit Profile
+- [ ] Get player Profile
 	
 ## Micepix
 - [ ] Get micepix images (self) (by page?!)
@@ -96,3 +95,4 @@
 - [ ] Unfavorite topic
 - [ ] Get favorite topics
 - [ ] Get favorite tribes
+- [ ] List staff
