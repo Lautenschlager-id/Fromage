@@ -1213,7 +1213,7 @@ return function()
 		@desc The available parameters are:
 		@desc boolean `online` -> Whether the account should display if it's online or not
 		@param parameters<table> The parameters.
-		@returns Whether the new parameter settings were set or not
+		@returns boolean Whether the new parameter settings were set or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.updateParameters = function(self, parameters)
@@ -1237,7 +1237,7 @@ return function()
 	--[[@
 		@desc Deletes an image from the account's micepix.
 		@param imageId<string> The image id
-		@returns Whether the image was deleted or not
+		@returns boolean Whether the image was deleted or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.deleteMicepixImage = function(self, imageId)
@@ -1262,7 +1262,7 @@ return function()
 		@desc string | int `gender` -> account's gender. An enum from `enums.gender` (index or value)
 		@desc string `presentation` -> Profile's presentation
 		@param data<table> The data
-		@returns Whether the profile was updated or not
+		@returns boolean Whether the profile was updated or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.updateProfile = function(self, data)
@@ -1342,7 +1342,7 @@ return function()
 		@desc string | int `recruitment` -> Account's tribe recruitment state. An enum from `enums.recruitmentState` (index or value)
 		@desc string `presentation` -> Account's tribe profile's presentation
 		@param data<table> The data
-		@returns Whether the tribe's profile was updated or not
+		@returns boolean Whether the tribe's profile was updated or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.updateTribeProfile = function(self, data)
@@ -1389,7 +1389,7 @@ return function()
 	--[[@
 		@desc Updates the account's tribe greeting message.
 		@param message<string> The new message
-		@returns Whether the tribe's greeting message was updated or not
+		@returns boolean Whether the tribe's greeting message was updated or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.updateTribeGreetingMessage = function(self, message)
@@ -1415,7 +1415,7 @@ return function()
 		@desc boolean `logs` -> Whether the tribe's profile should display the history logs or not
 		@desc boolean `leader` -> Whether the tribe's profile should display the tribe leaders message or not
 		@param parameters<table> The parameters.
-		@returns Whether the new tribe parameter settings were set or not
+		@returns boolean Whether the new tribe parameter settings were set or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.updateTribeParameters = function(self, parameters)
@@ -1448,7 +1448,7 @@ return function()
 	--[[@
 		@desc Adds a user as friend.
 		@param userName<string> The user to be added
-		@returns Whether the user was added or not
+		@returns boolean Whether the user was added or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.addFriend = function(self, userName)
@@ -1467,7 +1467,7 @@ return function()
 	--[[@
 		@desc Adds a user in the blacklist.
 		@param userName<string> The user to be blacklisted
-		@returns Whether the user was blacklisted or not
+		@returns boolean Whether the user was blacklisted or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.blacklistUser = function(self, userName)

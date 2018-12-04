@@ -41,7 +41,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `Whether` | the user was added or not |
+>| `boolean` | Whether the user was added or not |
 >| `string` | `Result string` or `Error message` |
 >
 
@@ -105,7 +105,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `Whether` | the user was blacklisted or not |
+>| `boolean` | Whether the user was blacklisted or not |
 >| `string` | `Result string` or `Error message` |
 >
 
@@ -257,7 +257,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `Whether` | the image was deleted or not |
+>| `boolean` | Whether the image was deleted or not |
 >| `string` | `Result string` or `Error message` |
 >
 
@@ -495,7 +495,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `Whether` | the new parameter settings were set or not |
+>| `boolean` | Whether the new parameter settings were set or not |
 >| `string` | `Result string` or `Error message` |
 >
 
@@ -516,7 +516,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `Whether` | the profile was updated or not |
+>| `boolean` | Whether the profile was updated or not |
 >| `string` | `Result string` or `Error message` |
 >
 
@@ -531,7 +531,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `Whether` | the tribe's greeting message was updated or not |
+>| `boolean` | Whether the tribe's greeting message was updated or not |
 >| `string` | `Result string` or `Error message` |
 >
 
@@ -551,7 +551,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `Whether` | the new tribe parameter settings were set or not |
+>| `boolean` | Whether the new tribe parameter settings were set or not |
 >| `string` | `Result string` or `Error message` |
 >
 
@@ -570,6 +570,6 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `Whether` | the tribe's profile was updated or not |
+>| `boolean` | Whether the tribe's profile was updated or not |
 >| `string` | `Result string` or `Error message` |
 >
