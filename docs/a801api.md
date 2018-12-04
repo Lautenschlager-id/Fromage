@@ -30,6 +30,21 @@
 >
 
 ## Methods
+>### self:addFriend ( userName )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| userName | `string` | ✔ | The user to be added |
+>
+>Adds a user as friend.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `Whether` | the user was added or not |
+>| `string` | `Result string` or `Error message` |
+>
+
 >### self:answerConversation ( conversationId, answer )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -79,6 +94,21 @@
 >| `string` | if #1, `post's url`, else `Result string` or `Error message` |
 >
 
+>### self:blacklistUser ( userName )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| userName | `string` | ✔ | The user to be blacklisted |
+>
+>Adds a user in the blacklist.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `Whether` | the user was blacklisted or not |
+>| `string` | `Result string` or `Error message` |
+>
+
 >### self:changeConversationState ( conversationState, conversationId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -98,8 +128,8 @@
 >### self:connect ( userName, userPassword )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| userName | `string` | ✔ | Account's user name |
->| userPassword | `string` | ✔ | Account's password |
+>| userName | `string` | ✔ | account's user name |
+>| userPassword | `string` | ✔ | account's password |
 >
 >Connects to an account on Atelier801's forums.
 >
@@ -216,6 +246,21 @@
 >| `string` | if #1, `topic's url`, else `Result string` or `Error message` |
 >
 
+>### self:deleteMicepixImage ( imageId )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| imageId | `string` | ✔ | The image id |
+>
+>Deletes an image from the account's micepix.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `Whether` | the image was deleted or not |
+>| `string` | `Result string` or `Error message` |
+>
+
 >### self:disconnect (  )
 >Disconnects from an account on Atelier801's forums.
 >
@@ -242,6 +287,23 @@
 >| :-: | - |
 >| `boolean` | Whether the message content was edited or not |
 >| `string` | if #1, `post's url`, else `Result string` or `Error message` |
+>
+
+>### self:favoriteElement ( element, elementId, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| element | `string`, `int` | ✔ | An enum from `enums.element` (index or value) |
+>| elementId | `int`, `string` | ✔ | The element id. |
+>| location | `table` | ✕ | The location of the report. If it's a forum topic the fields 'f' and 't' are needed. |
+>
+>Favorites an element. (e.g: topic, tribe)
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the element was favorited or not |
+>| `string` | `Result string` or `Error message` |
 >
 
 >### self:kickConversationMember ( conversationId, userId )
@@ -308,6 +370,28 @@
 >| `string` | if #1, `location's url`, else `Result string` or `Error message` |
 >
 
+>### self:removeAvatar (  )
+>Removes the account's avatar.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the avatar was removed or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+>### self:removeTribeLogo (  )
+>Removes the logo of the account's tribe.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the logo was removed or not |
+>| `string` | `Result string` or `Error message` |
+>
+
 >### self:reportElement ( element, elementId, reason, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -327,7 +411,7 @@
 >
 
 >### self:requestValidationCode (  )
->Sends a validation code to the Account's e-mail.
+>Sends a validation code to the account's e-mail.
 >
 >**Returns**
 >
@@ -357,7 +441,7 @@
 >| :-: | :-: | :-: | - |
 >| email | `string` | ✔ | The e-mail |
 >
->Sets the new Account's e-mail.
+>Sets the new account's e-mail.
 >
 >**Returns**
 >
@@ -373,12 +457,119 @@
 >| password | `string` | ✔ | The new password |
 >| disconnect | `boolean` | ✕ | Whether the account should be disconnect from all the dispositives or not. (default = false) |
 >
->Sets the new Account's password.
+>Sets the new account's password.
 >
 >**Returns**
 >
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the new password was set or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+>### self:unfavoriteElement ( favoriteId )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| favoriteId | `int`, `string` | ✔ | The element favorite-id. |
+>
+>Unfavorites an element.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the element was unfavorited or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+>### self:updateParameters ( parameters )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| parameters | `table` | ✔ | The parameters. |
+>
+>Updates the account parameters.
+>The available parameters are:
+>boolean `online` -> Whether the account should display if it's online or not
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `Whether` | the new parameter settings were set or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+>### self:updateProfile ( data )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| data | `table` | ✔ | The data |
+>
+>Updates the account's profile.
+>The available data are:
+>string | int `community` -> Account's community. An enum from `enums.community` (index or value)
+>string `birthday` -> The birthday date (dd/mm/yyyy)
+>string `location` -> The location
+>string | int `gender` -> account's gender. An enum from `enums.gender` (index or value)
+>string `presentation` -> Profile's presentation
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `Whether` | the profile was updated or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+>### self:updateTribeGreetingMessage ( message )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| message | `string` | ✔ | The new message |
+>
+>Updates the account's tribe greeting message.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `Whether` | the tribe's greeting message was updated or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+>### self:updateTribeParameters ( parameters )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| parameters | `table` | ✔ | The parameters. |
+>
+>Updates the account's tribe's parameters.
+>The available parameters are:
+>boolean `greeting_message` -> Whether the tribe's profile should display the tribe's greeting message or not
+>boolean `ranks` -> Whether the tribe's profile should display the tribe ranks or not
+>boolean `logs` -> Whether the tribe's profile should display the history logs or not
+>boolean `leader` -> Whether the tribe's profile should display the tribe leaders message or not
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `Whether` | the new tribe parameter settings were set or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+>### self:updateTribeProfile ( data )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| data | `table` | ✔ | The data |
+>
+>Updates the account's tribe profile.
+>The available data are:
+>string | int `community` -> Account's tribe community. An enum from `enums.community` (index or value)
+>string | int `recruitment` -> Account's tribe recruitment state. An enum from `enums.recruitmentState` (index or value)
+>string `presentation` -> Account's tribe profile's presentation
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `Whether` | the tribe's profile was updated or not |
 >| `string` | `Result string` or `Error message` |
 >

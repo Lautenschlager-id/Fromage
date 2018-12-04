@@ -47,52 +47,51 @@
 - [ ] Edit section
 
 ## Report
-- [x] (Report Message)[reportElement]
-- [x] (Report Profile)[reportElement]
-- [x] (Report Tribe)[reportElement]
-- [x] (Report Private Message)[reportElement]
-- [x] (Report Poll)[reportElement]
+- [x] [Report Message](docs/a801api.md#selfreportElement--element-elementId-reason-location-)
+- [x] [Report Profile](docs/a801api.md#selfreportElement--element-elementId-reason-location-)
+- [x] [Report Tribe](docs/a801api.md#selfreportElement--element-elementId-reason-location-)
+- [x] [Report Private Message](docs/a801api.md#selfreportElement--element-elementId-reason-location-)
+- [x] [Report Poll](docs/a801api.md#selfreportElement--element-elementId-reason-location-)
 
 
 ## Profile
 - [ ] Change avatar
-- [ ] Remove avatar
-- [ ] Display online status
-- [ ] Edit Profile
+- [x] [Remove avatar](docs/a801api.md#selfremoveAvatar---)
+- [x] [Display online status](docs/a801api.md#selfupdateParameters--parameters-)
+- [x] [Edit Profile](docs/a801api.md#selfupdateProfile--data-)
 - [ ] Get player Profile
-	
+
 ## Micepix
 - [ ] Get micepix images (self) (by page?!)
 - [ ] Get last micepix images hosted by users
 - [ ] Post image
-- [ ] Delete image
+- [x] [Delete image](docs/a801api.md#selfdeleteMicepixImage--imageId-)
 
 ## Tribe
 - [ ] Get tribe profile
 - [ ] Get tribe members
 - [ ] Get tribe history
-- [ ] Report tribe
 - [ ] Change logo
-- [ ] Remove logo
-- [ ] Edit profile
-- [ ] Edit greeting message
-- [ ] Edit Parameters
+- [x] [Remove logo](docs/a801api.md#selfremoveTribeLogo---)
+- [x] [Edit profile](docs/a801api.md#selfupdateTribeProfile--data-)
+- [x] [Edit greeting message](docs/a801api.md#selfupdateTribeGreetingMessage--message-)
+- [x] [Edit Parameters](docs/a801api.md#selfupdateTribeParameters--parameters-)
 
 ## Search
 - [ ] Search
 
 ## Misc
-- [ ] See friendlist
-- [ ] See blacklist
-- [ ] Add user as friend
-- [ ] Add user in the blacklist
+- [ ] Get friendlist
+- [ ] Get blacklist
+- [x] [Add user as friend](docs/a801api.md#selfaddFriend--userName-)
+- [x] [Add user in the blacklist](docs/a801api.md#selfblacklistUser--userName-)
 - [ ] Get user last posts
 - [ ] Get user created topics
 - [ ] Get dev-tracker messages
-- [ ] Favorite topic
-- [ ] Unfavorite topic
-- [ ] Favorite tribe
-- [ ] Unfavorite topic
+- [x] [Favorite topic](docs/a801api.md#selffavoriteElement--element-elementId-location-)
+- [x] [Unfavorite topic](docs/a801api.md#selfunfavoriteElement--favoriteId-)
+- [x] [Favorite tribe](docs/a801api.md#selffavoriteElement--element-elementId-location-)
+- [x] [Unfavorite topic](docs/a801api.md#selfunfavoriteElement--favoriteId-)
 - [ ] Get favorite topics
 - [ ] Get favorite tribes
 - [ ] List staff

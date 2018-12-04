@@ -24,6 +24,7 @@ local forumUri = {
 		- create -> c
 		- answer -> a
 		- set -> s
+		- update - u
 	]]
 	index = "index",
 	connection = "identification",
@@ -59,7 +60,22 @@ local forumUri = {
 	like = "like-message",
 	report = "report-element",
 	userImg = "view-user-image",
-	tribe = "tribe"
+	tribe = "tribe",
+	remAvatar = "remove-profile-avatar",
+	uParam = "update-user-parameters",
+	remImg = "remove-user-image",
+	remLogo = "remove-tribe-logo",
+	uTribe = "update-tribe",
+	uTribeMsg = "update-tribe-greeting-message",
+	uTribeParam = "update-tribe-parameters",
+	addFriend = "add-friend",
+	friends = "friends",
+	ignoreUser = "add-ignored",
+	blacklist = "blacklist",
+	unfav = "remove-favourite",
+	favTopics = "favorite-topics",
+	fav = "add-favourite",
+	favTribes = "favorite-tribes"
 }
 
 local htmlChunk = {
@@ -84,7 +100,9 @@ local errorString = {
 	enum_out_of_range = "Enum value out of range.",
 	invalid_enum = "Invalid enum.",
 	poll_id = "A poll id can not be a string.",
-	image_id = "An image id can not be a number."
+	image_id = "An image id can not be a number.",
+	invalid_date = "Invalid date format. Expected: dd/mm/yyyy",
+	unaivalable_enum = "This function does not accept this enum."
 }
 
 local separator = {
@@ -180,6 +198,21 @@ local returnRedirection = function(success, data)
 	return false, data
 end
 
+local isValidDate = function(date)
+	local day, month, year = string.match(date, "^(%d+)/(%d+)/(%d+)$")
+
+	if not year then
+		day, month = string.match(date, "^(%d+)/(%d+)$")
+	end
+
+	if not day then
+		return false
+	end
+
+	local nDay, nMonth = tonumber(day), tonumber(month)
+	return (nDay > 0 and nDay < 32 and nMonth > 0 and nMonth < 13), string.format("%02d/%02d" .. (year and "/%04d" or ""), nDay, nMonth, tonumber(year))
+end
+
 table.search = function(tbl, value, index)
 	local found = false
 	for k, v in next, tbl do
@@ -221,7 +254,7 @@ return function()
 		-- The nickname of the account, if it's connected.
 		userName = '',
 		cookieState = cookieState.login,
-		-- Account cookies
+		-- account cookies
 		cookies = { },
 		-- Whether the account has validated its account with a code
 		hasCertificate = false
@@ -405,8 +438,8 @@ return function()
 	--[[ Functions ]]--
 	--[[@
 		@desc Connects to an account on Atelier801's forums.
-		@param userName<string> Account's user name
-		@param userPassword<string> Account's password
+		@param userName<string> account's user name
+		@param userPassword<string> account's password
 		@returns boolean Whether the account connected or not
 		@returns string Result string
 	]]
@@ -593,7 +626,7 @@ return function()
 			end
 			privLocation = enums.privLocation[privLocation]
 		else
-			if privLocation < enums.privLocation.inbox or privLocation > enums.privLocation.bin then
+			if not table.search(enums.privLocation, privLocation) then
 				return false, errorString.enum_out_of_range
 			end
 		end
@@ -639,7 +672,7 @@ return function()
 			end
 			conversationState = enums.conversationState[conversationState]
 		else
-			if conversationState < enums.conversationState.opened or conversationState > enums.conversationState.closed then
+			if not table.search(enums.conversationState, conversationState) then
 				return false, errorString.enum_out_of_range
 			end
 		end
@@ -921,6 +954,10 @@ return function()
 				return false, errorString.invalid_enum
 			end
 			element = enums.element[element]
+		else
+			if not table.search(enums.element, element) then
+				return false, errorString.enum_out_of_range
+			end
 		end
 
 		if not this.isConnected then
@@ -946,7 +983,7 @@ return function()
 			if type(elementId) == "string" then
 				elementId = this:getPlayerId(elementId)
 			end
-			link = forumUri.profile .. "?pr=" .. elementId -- (Can be the ID too)
+			link = forumUri.profile .. "?tr=" .. elementId -- (Can be the ID too)
 		elseif element == enums.element.private_message then
 			-- Private Message, Message ID
 			if not location.co then
@@ -972,7 +1009,7 @@ return function()
 			end
 			link = forumUri.userImg .. "?im=" .. elementId
 		else
-			return false, errorString.enum_out_of_range 
+			return false, errorString.unaivalable_enum 
 		end
 
 		location.f = (location.f or 0)
@@ -1069,7 +1106,7 @@ return function()
 	end
 
 	--[[@
-		@desc Sends a validation code to the Account's e-mail.
+		@desc Sends a validation code to the account's e-mail.
 		@returns boolean Whether the validation code was sent or not
 		@returns string `Result string` or `Error message`
 	]]
@@ -1105,7 +1142,7 @@ return function()
 	end
 
 	--[[@
-		@desc Sets the new Account's e-mail.
+		@desc Sets the new account's e-mail.
 		@param email<string> The e-mail
 		@returns boolean Whether the validation code was sent or not
 		@returns string `Result string` or `Error message`
@@ -1127,7 +1164,7 @@ return function()
 	end
 
 	--[[@
-		@desc Sets the new Account's password.
+		@desc Sets the new account's password.
 		@param password<string> The new password
 		@param disconnect?<boolean> Whether the account should be disconnect from all the dispositives or not. (default = false)
 		@returns boolean Whether the new password was set or not
@@ -1152,6 +1189,371 @@ return function()
 		end
 
 		return this:performAction(forumUri.sPw, postData, forumUri.acc)
+	end
+
+	--[[@
+		@desc Removes the account's avatar.
+		@returns boolean Whether the avatar was removed or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.removeAvatar = function(self)
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local id = this:getPlayerId(this.userName)
+		local postData = {
+			{ "pr", id }
+		}
+		return this:performAction(forumUri.remAvatar, postData, forumUri.profile .. "?tr=" .. id)
+	end
+
+	--[[@
+		@desc Updates the account parameters.
+		@desc The available parameters are:
+		@desc boolean `online` -> Whether the account should display if it's online or not
+		@param parameters<table> The parameters.
+		@returns Whether the new parameter settings were set or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.updateParameters = function(self, parameters)
+		assertion("updateParameters", "table", 1, parameters)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local id = this:getPlayerId(this.userName)
+		local postData = {
+			{ "pr", id }
+		}
+		if type(parameters.online) == "boolean" and parameters.online then
+			postData[#postData + 1] = { "afficher_en_ligne", "on" }
+		end
+
+		return this:performAction(forumUri.uParam, postData, forumUri.profile .. "?tr=" .. id)
+	end
+
+	--[[@
+		@desc Deletes an image from the account's micepix.
+		@param imageId<string> The image id
+		@returns Whether the image was deleted or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.deleteMicepixImage = function(self, imageId)
+		assertion("deleteMicepixImage", "string", 1, imageId)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "im", imageId }
+		}
+		return this:performAction(forumUri.remImg, postData, forumUri.userImg .. "?im=" .. imageId)
+	end
+
+	--[[@
+		@desc Updates the account's profile.
+		@desc The available data are:
+		@desc string | int `community` -> Account's community. An enum from `enums.community` (index or value)
+		@desc string `birthday` -> The birthday date (dd/mm/yyyy)
+		@desc string `location` -> The location
+		@desc string | int `gender` -> account's gender. An enum from `enums.gender` (index or value)
+		@desc string `presentation` -> Profile's presentation
+		@param data<table> The data
+		@returns Whether the profile was updated or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.updateProfile = function(self, data)
+		assertion("updateProfile", "table", 1, data)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local id = this:getPlayerId(this.userName)
+		local postData = {
+			{ "pr", id }
+		}
+
+		if data.community then
+			if type(data.community) == "string" then
+				-- Check if community is valid first
+			end
+			postData[#postData + 1] = { "communaute", data.community }
+		else
+			postData[#postData + 1] = { "communaute", 1 } -- xx
+		end
+		if data.birthday then
+			if not isValidDate(data.birthday) then
+				return false, errorString.invalid_date .. " (birthday)"
+			end
+			postData[#postData + 1] = { "b_anniversaire", "on" }
+			postData[#postData + 1] = { "anniversaire", data.birthday }
+		end
+		if data.location then
+			postData[#postData + 1] = { "b_localisation", "on" }
+			postData[#postData + 1] = { "localisation", data.location }
+		end
+		if data.gender then
+			if type(data.gender) == "string" then
+				if not enums.gender[data.gender] then
+					return false, errorString.invalid_enum .. " (gender)"
+				end
+				data.gender = enums.gender[data.gender]
+			else
+				if not table.search(enums.gender, data.gender) then
+					return false, errorString.enum_out_of_range .. " (gender)"
+				end
+			end
+			postData[#postData + 1] = { "b_genre", "on" }
+			postData[#postData + 1] = { "genre", data.gender }
+		end
+		if data.presentation then
+			postData[#postData + 1] = { "b_presentation", "on" }
+			postData[#postData + 1] = { "presentation", data.presentation }
+		end
+
+		return this:performAction(forumUri.remImg, postData, forumUri.tribe .. "?tr=" .. id)
+	end
+
+	--[[@
+		@desc Removes the logo of the account's tribe.
+		@returns boolean Whether the logo was removed or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.removeTribeLogo = function(self)
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local id = 0 -- Get tribe id using this.userName... (check if has tribe)
+		local postData = {
+			{ "tr", id }
+		}
+		return this:performAction(forumUri.remLogo, postData, forumUri.tribe .. "?tr=" .. id)
+	end
+
+	--[[@
+		@desc Updates the account's tribe profile.
+		@desc The available data are:
+		@desc string | int `community` -> Account's tribe community. An enum from `enums.community` (index or value)
+		@desc string | int `recruitment` -> Account's tribe recruitment state. An enum from `enums.recruitmentState` (index or value)
+		@desc string `presentation` -> Account's tribe profile's presentation
+		@param data<table> The data
+		@returns Whether the tribe's profile was updated or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.updateTribeProfile = function(self, data)
+		assertion("updateTribeProfile", "table", 1, data)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local id = 0 -- Get tribe id using this.userName...
+		local postData = {
+			{ "tr", id }
+		}
+
+		if data.community then
+			if type(data.community) == "string" then
+				-- Check if community is valid first
+			end
+			postData[#postData + 1] = { "communaute", data.community }
+		else
+			postData[#postData + 1] = { "communaute", 1 } -- xx
+		end
+		if data.recruitment then
+			if type(data.recruitment) == "string" then
+				if not enums.recruitmentState[data.recruitment] then
+					return false, errorString.invalid_enum .. " (recruitment)"
+				end
+				data.recruitment = enums.recruitmentState[data.recruitment]
+			else
+				if not table.search(enums.recruitmentState, data.recruitment) then
+					return false, errorString.enum_out_of_range .. " (recruitment)"
+				end
+			end
+			postData[#postData + 1] = { "recrutement", data.recruitment }
+		end
+		if data.presentation then
+			postData[#postData + 1] = { "b_presentation", "on" }
+			postData[#postData + 1] = { "presentation", data.presentation }
+		end
+
+		return this:performAction(forumUri.uTribe, postData, forumUri.tribe .. "?tr=" .. id)
+	end
+
+	--[[@
+		@desc Updates the account's tribe greeting message.
+		@param message<string> The new message
+		@returns Whether the tribe's greeting message was updated or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.updateTribeGreetingMessage = function(self, message)
+		assertion("updateTribeGreetingMessage", "string", 1, message)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local id = 0 -- Get tribe id using this.userName...
+		local postData = {
+			{ "tr", id },
+			{ "message_jour", message }
+		}
+		return this:performAction(forumUri.uTribeMsg, postData, forumUri.tribe .. "?tr=" .. id)
+	end
+
+	--[[@
+		@desc Updates the account's tribe's parameters.
+		@desc The available parameters are:
+		@desc boolean `greeting_message` -> Whether the tribe's profile should display the tribe's greeting message or not
+		@desc boolean `ranks` -> Whether the tribe's profile should display the tribe ranks or not
+		@desc boolean `logs` -> Whether the tribe's profile should display the history logs or not
+		@desc boolean `leader` -> Whether the tribe's profile should display the tribe leaders message or not
+		@param parameters<table> The parameters.
+		@returns Whether the new tribe parameter settings were set or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.updateTribeParameters = function(self, parameters)
+		assertion("updateTribeParameters", "table", 1, parameters)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local id = 0 -- Get tribe id using this.userName...
+		local postData = {
+			{ "tr", id }
+		}
+		if type(parameters.greeting_message) == "boolean" and parameters.greeting_message then
+			postData[#postData + 1] = { "message_jour_public", "on" }
+		end
+		if type(parameters.ranks) == "boolean" and parameters.ranks then
+			postData[#postData + 1] = { "rangs_publics", "on" }
+		end
+		if type(parameters.logs) == "boolean" and parameters.logs then
+			postData[#postData + 1] = { "historique_public", "on" }
+		end
+		if type(parameters.leader) == "boolean" and parameters.leader then
+			postData[#postData + 1] = { "chefs_publics", "on" }
+		end
+
+		return this:performAction(forumUri.uTribeParam, postData, forumUri.profile .. "?tr=" .. id)
+	end
+
+	--[[@
+		@desc Adds a user as friend.
+		@param userName<string> The user to be added
+		@returns Whether the user was added or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.addFriend = function(self, userName)
+		assertion("addFriend", "string", 1, userName)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "nom", userName }
+		}
+		return this:performAction(forumUri.addFriend, postData, forumUri.friends .. "?pr=" .. this:getPlayerId(this.userName))
+	end
+
+	--[[@
+		@desc Adds a user in the blacklist.
+		@param userName<string> The user to be blacklisted
+		@returns Whether the user was blacklisted or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.blacklistUser = function(self, userName)
+		assertion("blacklistUser", "string", 1, userName)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "nom", userName }
+		}
+		return this:performAction(forumUri.ignoreUser, postData, forumUri.blacklist .. "?pr=" .. this:getPlayerId(this.userName))
+	end
+
+	--[[@
+		@desc Favorites an element. (e.g: topic, tribe)
+		@param element<string,int> An enum from `enums.element` (index or value)
+		@param elementId<int,string> The element id.
+		@param location?<table> The location of the report. If it's a forum topic the fields 'f' and 't' are needed.
+		@returns boolean Whether the element was favorited or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.favoriteElement = function(self, element, elementId, location)
+		assertion("favoriteElement", { "string", "number" }, 1, element)
+		assertion("favoriteElement", { "number", "string" }, 2, elementId)
+		assertion("favoriteElement", "table", 3, location)
+
+		if type(element) == "string" then
+			if not enums.element[element] then
+				return false, errorString.invalid_enum
+			end
+			element = enums.element[element]
+		else
+			if not table.search(enums.element, element) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local link
+		if element == enums.element.topic then
+			-- Topic ID
+			if not location.f or not location.t then
+				return false, string.format(errorString.no_url_location, "'f', 't'")
+			end
+			if type(elementId) == "string" then
+				elementId = this:getMessageId(elementId, location)
+			end
+			link = forumUri.topic .. forumUri.favTopics
+		elseif element == enums.element.tribe then
+			-- Tribe ID
+			link = forumUri.tribe .. forumUri.favTribes
+		else
+			return false, errorString.unaivalable_enum
+		end
+
+		location.f = (location.f or 0)
+		local postData = {
+			{ 'f', location.f },
+			{ "te", element },
+			{ "ie", elementId }
+		}
+		return this:performAction(forumUri.fav, postData, link)
+	end
+
+	--[[@
+		@desc Unfavorites an element.
+		@param favoriteId<int,string> The element favorite-id.
+		@returns boolean Whether the element was unfavorited or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.unfavoriteElement = function(self, favoriteId)
+		assertion("unfavoriteElement", { "number", "string" }, 1, favoriteId)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "fa", favoriteId }
+		}
+		return this:performAction(forumUri.unfav, postData, forumLink .. forumUri.favTopics)
 	end
 
 	return self
