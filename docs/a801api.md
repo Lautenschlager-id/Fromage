@@ -64,7 +64,7 @@
 >### self:answerPoll ( option, location, pollId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| option | `int`, `table`, `string` | ✔ | The poll option to be selected. You can insert its ID or its text (highly recommended). For multiple options polls, use a table with `numbers` or `strings`. |
+>| option | `int`, `table`, `string` | ✔ | The poll option to be selected. You can insert its ID or its text (highly recommended). For multiple options polls, use a table with `ints` or `strings`. |
 >| location | `table` | ✔ | The location where the poll answer should be recorded. Fields 'f' and 't' are needed for forum poll, 'co' for private poll. |
 >| pollId | `int` | ✕ | The poll id. It's obtained automatically if no value is given. |
 >
@@ -82,7 +82,7 @@
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| message | `string` | ✔ | The answer |
->| location | `table` | ✔ | The location where the message. Fields 'f' and 't' are needed. |
+>| location | `table` | ✔ | The location where the message is. Fields 'f' and 't' are needed. |
 >
 >Answers a topic.
 >
@@ -112,7 +112,7 @@
 >### self:changeConversationState ( conversationState, conversationId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| conversationState | `string`, `int` | ✔ | An enum from `enums.conversationState` (index or value) |
+>| conversationState | `string`, `int` | ✔ | The conversation state. An enum from `enums.conversationState` (index or value) |
 >| conversationId | `int`, `string` | ✔ | The conversation id |
 >
 >Changes the conversation state (opened, closed).
@@ -123,6 +123,41 @@
 >| :-: | - |
 >| `boolean` | Whether the conversation state was changed or not |
 >| `string` | if #1, `conversation's url`, else `Result string` or `Error message` |
+>
+
+>### self:changeMessageContentState ( messageId, contentState, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| messageId | `int`, `table`, `string` | ✔ | The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`. |
+>| contentState | `string` | ✔ | An enum from `enums.contentState` (index or value) |
+>| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
+>
+>Changes the restriction state for a message.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the message content state was changed or not |
+>| `string` | if #1, `post's url`, else `Result string` or `Error message` |
+>
+
+>### self:changeMessageState ( messageId, messageState, location, reason )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| messageId | `int`, `table`, `string` | ✔ | The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`. |
+>| messageState | `string`, `int` | ✔ | The message state. An enum from `enums.messageState` (index or value) |
+>| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
+>| reason | `string` | ✕ | The reason for changing the message state |
+>
+>Changes the state of the message. (e.g: active, moderated)
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the message(s) state was(were) changed or not |
+>| `string` | if #1, `post's url`, else `Result string` or `Error message` |
 >
 
 >### self:connect ( userName, userPassword )
@@ -229,6 +264,27 @@
 >| `string` | if #1, `private poll's url`, else `Result string` or `Error message` |
 >
 
+>### self:createSection ( data, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| data | `table` | ✔ | The new section data |
+>| location | `table` | ✔ | The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section and 'tr' is needed if it's a section. |
+>
+>Creates a section.<br>
+>The available data are:<br>
+>string `name` -> Section's name<br>
+>string `icon` -> Section's icon. An enum from `enums.icon` (index or value)<br>
+>string `description` -> Section's description<br>
+>int `min_characters` -> Minimum characters needed for a message in the new section
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the section was created or not |
+>| `string` | if #1, `section's url`, else `Result string` or `Error message` |
+>
+
 >### self:createTopic ( title, message, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -292,7 +348,7 @@
 >### self:favoriteElement ( element, elementId, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| element | `string`, `int` | ✔ | An enum from `enums.element` (index or value) |
+>| element | `string`, `int` | ✔ | The element type. An enum from `enums.element` (index or value) |
 >| elementId | `int`, `string` | ✔ | The element id. |
 >| location | `table` | ✕ | The location of the report. If it's a forum topic the fields 'f' and 't' are needed. |
 >
@@ -353,13 +409,13 @@
 >| `string` | if #1, `post's url`, else `Result string` or `Error message` |
 >
 
->### self:movePrivateConversation ( privLocation, conversationId )
+>### self:movePrivateConversation ( inboxLocale, conversationId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| privLocation | `string`, `int` | ✔ | An enum from `enums.privLocation` (index or value) |
->| conversationId | `int`, `table` | ✕ | The id or ids of the conversation(s) to be moved |
+>| inboxLocale | `string`, `int` | ✔ | Where the conversation will be located. An enum from `enums.inboxLocale` (index or value) |
+>| conversationId | `int`, `table` | ✕ | The id or IDs of the conversation(s) to be moved |
 >
->Moves private conversations to the inbox or bin.
+>Moves private conversations to the inbox or bin.<br>
 >To empty trash, `@conversationId` must be `nil` and `@location` must be `bin`
 >
 >**Returns**
@@ -395,7 +451,7 @@
 >### self:reportElement ( element, elementId, reason, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| element | `string`, `int` | ✔ | An enum from `enums.element` (index or value) |
+>| element | `string`, `int` | ✔ | The element type. An enum from `enums.element` (index or value) |
 >| elementId | `int`, `string` | ✔ | The element id. |
 >| reason | `string` | ✔ | The report reason. |
 >| location | `table` | ✕ | The location of the report. If it's a forum message the field 'f' is needed, if it's a private message the field 'co' is needed. |
@@ -467,6 +523,25 @@
 >| `string` | `Result string` or `Error message` |
 >
 
+>### self:setTribeSectionPermissions ( permissions, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| permissions | `table` | ✔ | The permissions |
+>| location | `table` | ✔ | The section location. The fields 'f', 't' and 'tr' are needed. |
+>
+>Sets the permissions of each rank for a specific section on the tribe forums.<br>
+>The available permissions are `canRead`, `canAnswer`, `canCreateTopic`, `canModerate`, and `canManage`.<br>
+>Each one of them must be a table of IDs (`int` or `string`) of the ranks that this permission should be allowed.<br>
+>To allow _non-members_, use `enums.non_member` or `"non_member"`.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the new permissions were set or not |
+>| `string` | `Result string` or `Error message` |
+>
+
 >### self:unfavoriteElement ( favoriteId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -487,8 +562,8 @@
 >| :-: | :-: | :-: | - |
 >| parameters | `table` | ✔ | The parameters. |
 >
->Updates the account parameters.
->The available parameters are:
+>Updates the account parameters.<br>
+>The available parameters are:<br>
 >boolean `online` -> Whether the account should display if it's online or not
 >
 >**Returns**
@@ -504,12 +579,12 @@
 >| :-: | :-: | :-: | - |
 >| data | `table` | ✔ | The data |
 >
->Updates the account's profile.
->The available data are:
->string | int `community` -> Account's community. An enum from `enums.community` (index or value)
->string `birthday` -> The birthday date (dd/mm/yyyy)
->string `location` -> The location
->string | int `gender` -> account's gender. An enum from `enums.gender` (index or value)
+>Updates the account's profile.<br>
+>The available data are:<br>
+>string | int `community` -> Account's community. An enum from `enums.community` (index or value)<br>
+>string `birthday` -> The birthday date (dd/mm/yyyy)<br>
+>string `location` -> The location<br>
+>string | int `gender` -> Account's gender. An enum from `enums.gender` (index or value)<br>
 >string `presentation` -> Profile's presentation
 >
 >**Returns**
@@ -518,6 +593,49 @@
 >| :-: | - |
 >| `boolean` | Whether the profile was updated or not |
 >| `string` | `Result string` or `Error message` |
+>
+
+>### self:updateSection ( data, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| data | `table` | ✔ | The updated section data |
+>| location | `table` | ✔ | The section location. Fields 'f' and 's' are needed. |
+>
+>Updates a section.<br>
+>The available data are:<br>
+>string `name` -> Section's name<br>
+>string `icon` -> The section's icon. An enum from `enums.icon` (index or value)<br>
+>string `description` -> Section's description<br>
+>int `min_characters` -> Minimum characters needed for a message in the new section<br>
+>string | int `state` -> The section's state (e.g.: opened, closed). An enum from `enums.displayState` (index or value)<br>
+>int `parent` -> The parent section if the updated section is a sub-section. (default = 0)
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the section was updated or not |
+>| `string` | if #1, `section's url`, else `Result string` or `Error message` |
+>
+
+>### self:updateTopic ( data, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| data | `table` | ✔ | The new topic data |
+>| location | `table` | ✔ | The location where the topic is. Fields 'f' and 't' are needed. |
+>
+>Updates a topic state, location and parameters.<br>
+>The available data are:<br>
+>string `title` -> Topic's title<br>
+>boolean `postit` -> Whether the topic should be fixed or not<br>
+>string | int `state` -> The topic's state. An enum from `enums.displayState` (index or value)
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the topic was updated or not |
+>| `string` | if #1, `topic's url`, else `Result string` or `Error message` |
 >
 
 >### self:updateTribeGreetingMessage ( message )
@@ -540,11 +658,11 @@
 >| :-: | :-: | :-: | - |
 >| parameters | `table` | ✔ | The parameters. |
 >
->Updates the account's tribe's parameters.
->The available parameters are:
->boolean `greeting_message` -> Whether the tribe's profile should display the tribe's greeting message or not
->boolean `ranks` -> Whether the tribe's profile should display the tribe ranks or not
->boolean `logs` -> Whether the tribe's profile should display the history logs or not
+>Updates the account's tribe's parameters.<br>
+>The available parameters are:<br>
+>boolean `greeting_message` -> Whether the tribe's profile should display the tribe's greeting message or not<br>
+>boolean `ranks` -> Whether the tribe's profile should display the tribe ranks or not<br>
+>boolean `logs` -> Whether the tribe's profile should display the history logs or not<br>
 >boolean `leader` -> Whether the tribe's profile should display the tribe leaders message or not
 >
 >**Returns**
@@ -560,10 +678,10 @@
 >| :-: | :-: | :-: | - |
 >| data | `table` | ✔ | The data |
 >
->Updates the account's tribe profile.
->The available data are:
->string | int `community` -> Account's tribe community. An enum from `enums.community` (index or value)
->string | int `recruitment` -> Account's tribe recruitment state. An enum from `enums.recruitmentState` (index or value)
+>Updates the account's tribe profile.<br>
+>The available data are:<br>
+>string | int `community` -> Account's tribe community. An enum from `enums.community` (index or value)<br>
+>string | int `recruitment` -> Account's tribe recruitment state. An enum from `enums.recruitmentState` (index or value)<br>
 >string `presentation` -> Account's tribe profile's presentation
 >
 >**Returns**

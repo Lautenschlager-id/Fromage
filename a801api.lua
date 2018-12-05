@@ -25,6 +25,7 @@ local forumUri = {
 		- answer -> a
 		- set -> s
 		- update - u
+		- edit - e
 	]]
 	index = "index",
 	connection = "identification",
@@ -56,7 +57,7 @@ local forumUri = {
 	invDisc = "invite-discussion",
 	exitDisc = "quit-discussion",
 	kickMember = "kick-discussion-member",
-	editMsg = "edit-topic-message",
+	eMsg = "edit-topic-message",
 	like = "like-message",
 	report = "report-element",
 	userImg = "view-user-image",
@@ -75,7 +76,17 @@ local forumUri = {
 	unfav = "remove-favourite",
 	favTopics = "favorite-topics",
 	fav = "add-favourite",
-	favTribes = "favorite-tribes"
+	favTribes = "favorite-tribes",
+	uTopic = "update-topic",
+	eTopic = "edit-topic",
+	moderate = "moderate-selected-topic-messages",
+	manageRestriction = "manage-selected-topic-messages-restriction",
+	cSection = "create-section",
+	nSection = "new-section",
+	uSection = "update-section",
+	eSection = "edit-section",
+	uSectionPerm = "update-section-permissions",
+	eSectionPerm = "edit-section-permissions"
 }
 
 local htmlChunk = {
@@ -91,7 +102,8 @@ local errorString = {
 	not_connected = "This instance is not connected yet, connect first.",
 	no_poll_responses = "Missing poll responses. There must be at least two responses.",
 	invalid_forum_url = "Invalid Atelier801's url.",
-	no_url_location = "Missing location. The fields %s are needed.",
+	no_url_location = "Missing location.",
+	no_required_fields = "The fields %s are needed.",
 	no_url_location_private = "The fields %s are needed if the object is private.",
 	not_poll = "Invalid topic. Poll not detected.",
 	internal = "Internal error.",
@@ -102,7 +114,8 @@ local errorString = {
 	poll_id = "A poll id can not be a string.",
 	image_id = "An image id can not be a number.",
 	invalid_date = "Invalid date format. Expected: dd/mm/yyyy",
-	unaivalable_enum = "This function does not accept this enum."
+	unaivalable_enum = "This function does not accept this enum.",
+	invalid_id = "Invalid id."
 }
 
 local separator = {
@@ -611,28 +624,28 @@ return function()
 	--[[@
 		@desc Moves private conversations to the inbox or bin.
 		@desc To empty trash, `@conversationId` must be `nil` and `@location` must be `bin`
-		@param privLocation<string,int> An enum from `enums.privLocation` (index or value)
-		@param conversationId?<int,table> The id or ids of the conversation(s) to be moved
+		@param inboxLocale<string,int> Where the conversation will be located. An enum from `enums.inboxLocale` (index or value)
+		@param conversationId?<int,table> The id or IDs of the conversation(s) to be moved
 		@returns boolean Whether the conversation was moved or not
 		@returns string if #1, `location's url`, else `Result string` or `Error message`
 	]]
-	self.movePrivateConversation = function(self, privLocation, conversationId)
+	self.movePrivateConversation = function(self, inboxLocale, conversationId)
 		conversationId = tonumber(conversationId) or conversationId
-		assertion("movePrivateConversation", { "string", "number" }, 1 privLocation)
+		assertion("movePrivateConversation", { "string", "number" }, 1 inboxLocale)
 
-		if type(privLocation) == "string" then
-			if not enums.privLocation[privLocation] then
+		if type(inboxLocale) == "string" then
+			if not enums.inboxLocale[inboxLocale] then
 				return false, errorString.invalid_enum
 			end
-			privLocation = enums.privLocation[privLocation]
+			inboxLocale = enums.inboxLocale[inboxLocale]
 		else
-			if not table.search(enums.privLocation, privLocation) then
+			if not table.search(enums.inboxLocale, inboxLocale) then
 				return false, errorString.enum_out_of_range
 			end
 		end
 
 		local moveAll = false
-		if privLocation == enums.privLocation.bin and not conversationId then
+		if inboxLocale == enums.inboxLocale.bin and not conversationId then
 			conversationId = { }
 			moveAll = true
 		end
@@ -649,15 +662,15 @@ return function()
 
 		local postData = (not moveAll and {
 			{ "co", table.concat(conversationId, separator.forumData) },
-			{ "privLocation", privLocation }
+			{ "inboxLocale", inboxLocale }
 		} or nil)
-		local success, data = this:performAction((moveAll and forumUri.moveAll or forumUri.moveConv), postData, forumUri.conversations .. "?privLocation=" .. privLocation)
+		local success, data = this:performAction((moveAll and forumUri.moveAll or forumUri.moveConv), postData, forumUri.conversations .. "?inboxLocale=" .. inboxLocale)
 		return returnRedirection(success, data)
 	end
 
 	--[[@
 		@desc Changes the conversation state (opened, closed).
-		@param conversationState<string,int> An enum from `enums.conversationState` (index or value)
+		@param conversationState<string,int> The conversation state. An enum from `enums.conversationState` (index or value)
 		@param conversationId<int,string> The conversation id
 		@returns boolean Whether the conversation state was changed or not
 		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
@@ -772,7 +785,7 @@ return function()
 		assertion("createTopic", "table", 3, location)
 
 		if not location.f or not location.s then
-			return false, string.format(errorString.no_url_location, "'f', 's'")
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
 		if not this.isConnected then
@@ -811,7 +824,7 @@ return function()
 		end
 
 		if not location.f or not location.s then
-			return false, string.format(errorString.no_url_location, "'f', 's'")
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
 		if not this.isConnected then
@@ -840,9 +853,62 @@ return function()
 	end
 
 	--[[@
+		@desc Updates a topic state, location and parameters.
+		@desc The available data are:
+		@desc string `title` -> Topic's title
+		@desc boolean `postit` -> Whether the topic should be fixed or not
+		@desc string | int `state` -> The topic's state. An enum from `enums.displayState` (index or value)
+		@param data<table> The new topic data
+		@param location<table> The location where the topic is. Fields 'f' and 't' are needed.
+		@returns boolean Whether the topic was updated or not
+		@returns string if #1, `topic's url`, else `Result string` or `Error message`
+	]]
+	self.updateTopic = function(self, data, location)
+		assertion("updateTopic", "table", 1, data)
+		assertion("updateTopic", "table", 2, location)
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local topic = this:getTopic(location)
+		local postit = data.postit
+		if postit == nil then
+			postit = topic.postit
+		end
+		if data.state then
+			if type(data.state) == "string" then
+				if not enums.displayState[data.state] then
+					return false, errorString.invalid_enum .. " (data.state)"
+				end
+				data.state = enums.displayState[data.state]
+			else
+				if not table.search(enums.displayState, data.state) then
+					return false, errorString.enum_out_of_range .. " (data.state)"
+				end
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 't', location.t },
+			{ "titre", (data.title or topic.title) },
+			{ "postit", (postit and "on" or '') }
+			{ "etat", (data.state or topic.state) },
+			{ 's', (data.s or topic.s) }
+		}
+		local success, data = this:performAction(forumUri.uTopic, postData, forumUri.eTopic .. "?f=" .. location.f .. "&t=" .. location.t)
+		return returnRedirection(success, data)
+	end
+
+	--[[@
 		@desc Answers a topic.
 		@param message<string> The answer
-		@param location<table> The location where the message. Fields 'f' and 't' are needed.
+		@param location<table> The location where the message is. Fields 'f' and 't' are needed.
 		@returns boolean Whether the post was created or not
 		@returns string if #1, `post's url`, else `Result string` or `Error message`
 	]]
@@ -851,7 +917,7 @@ return function()
 		assertion("answerTopic", "table", 2, location)
 
 		if not location.f or not location.t then
-			return false, string.format(errorString.no_url_location, "'f', 't'")
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
@@ -881,7 +947,7 @@ return function()
 		assertion("editTopicAnswer", "table", 3, location)
 
 		if not location.f or not location.t then
-			return false, string.format(errorString.no_url_location, "'f', 't'")
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
@@ -898,7 +964,7 @@ return function()
 			{ 'm', messageId },
 			{ "message", message }
 		}
-		local success, data = this:performAction(forumUri.editMsg, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
+		local success, data = this:performAction(forumUri.eMsg, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
 		return returnRedirection(success, data)
 	end
 
@@ -914,7 +980,7 @@ return function()
 		assertion("likeMessage", "table", 2, location)
 
 		if not location.f or not location.t then
-			return false, string.format(errorString.no_url_location, "'f', 't'")
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
@@ -936,7 +1002,7 @@ return function()
 
 	--[[@
 		@desc Reports an element. (e.g: message, profile)
-		@param element<string,int> An enum from `enums.element` (index or value)
+		@param element<string,int> The element type. An enum from `enums.element` (index or value)
 		@param elementId<int,string> The element id.
 		@param reason<string> The report reason.
 		@param location?<table> The location of the report. If it's a forum message the field 'f' is needed, if it's a private message the field 'co' is needed.
@@ -969,7 +1035,7 @@ return function()
 		if element == enums.element.message then
 			-- Message ID
 			if not location.f or not location.t then
-				return false, string.format(errorString.no_url_location, "'f', 't'")
+				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 			end
 			if type(elementId) == "string" then
 				elementId = this:getMessageId(elementId, location)
@@ -987,7 +1053,7 @@ return function()
 		elseif element == enums.element.private_message then
 			-- Private Message, Message ID
 			if not location.co then
-				return false, string.format(errorString.no_url_location, "'co'")
+				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'co'")
 			end
 			if type(elementId) == "string" then
 				elementId = this:getMessageId(elementId, location)
@@ -996,7 +1062,7 @@ return function()
 		elseif element == enums.element.poll then
 			-- Poll ID
 			if not location.f then
-				return false, string.format(errorString.no_url_location, "'f', 't'")
+				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 			end
 			if type(elementId) == "string" then
 				return false, errorString.poll_id
@@ -1023,8 +1089,64 @@ return function()
 	end
 
 	--[[@
+		@desc Changes the state of the message. (e.g: active, moderated)
+		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`.
+		@param messageState<string,int> The message state. An enum from `enums.messageState` (index or value)
+		@param location<table> The topic location. Fields 'f' and 't' are needed.
+		@param reason?<string> The reason for changing the message state
+		@returns boolean Whether the message(s) state was(were) changed or not
+		@returns string if #1, `post's url`, else `Result string` or `Error message`
+	]]
+	self.changeMessageState = function(self, messageId, messageState, location, reason)
+		assertion("moderateMessage", { "number", "table", "string" }, 1, messageId)
+		assertion("moderateMessage", { "string", "number" }, 2, messageState)
+		assertion("moderateMessage", "table", 3, location)
+		assertion("moderateMessage", { "string", "nil" }, 4, reason)
+
+		if type(messageState) == "string" then
+			if not enums.messageState[messageState] then
+				return false, errorString.invalid_enum
+			end
+			messageState = enums.messageState[messageState]
+		else
+			if not table.search(enums.messageState, messageState) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local messageIdIsString = type(messageId) == "string"
+		if messageIdIsString or (type(messageId) == "table" and type(messageId[1]) == "string") then
+			if messageIdIsString then
+				messageId = { this:getMessageId(messageId, location) }
+			end
+
+			for i = 1, #messageId do
+				messageId[i] = this:getMessageId(messageId[i], location)
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 't', location.t },
+			{ "messages", table.concat(messageId, separator.forumData) },
+			{ "etat", messageState },
+			{ "raison", (reason or '') }
+		}
+		local success, data = this:performAction(forumUri.moderate, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
+		return returnRedirection(success, data)
+	end
+
+	--[[@
 		@desc Answers a poll.
-		@param option<int,table,string> The poll option to be selected. You can insert its ID or its text (highly recommended). For multiple options polls, use a table with `numbers` or `strings`.
+		@param option<int,table,string> The poll option to be selected. You can insert its ID or its text (highly recommended). For multiple options polls, use a table with `ints` or `strings`.
 		@param location<table> The location where the poll answer should be recorded. Fields 'f' and 't' are needed for forum poll, 'co' for private poll.
 		@param pollId?<int> The poll id. It's obtained automatically if no value is given.
 		@returns boolean Whether the poll option was recorded or not
@@ -1037,7 +1159,7 @@ return function()
 
 		local isPrivatePoll = not not location.co
 		if not isPrivatePoll and (not location.f or not location.t) then
-			return false, string.format(errorString.no_url_location, "'f', 't'") .. " " .. string.format(errorString.no_url_location_private, "'co'")
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_required_fields_private, "'co'")
 		end
 
 		if not this.isConnected then
@@ -1102,6 +1224,165 @@ return function()
 		end
 
 		local success, data = this:performAction(forumUri[(isPrivatePoll and "apPoll" or "aForumPoll")], postData, url)
+		return returnRedirection(success, data)
+	end
+
+	--[[@
+		@desc Changes the restriction state for a message.
+		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`.
+		@param contentState<string> An enum from `enums.contentState` (index or value)
+		@param location<table> The topic location. Fields 'f' and 't' are needed.
+		@returns boolean Whether the message content state was changed or not
+		@returns string if #1, `post's url`, else `Result string` or `Error message`
+	]]
+	self.changeMessageContentState = function(self, messageId, contentState, location)
+		assertion("moderateMessage", { "number", "table", "string" }, 1, messageId)
+		assertion("moderateMessage", "string", 2, contentState)
+		assertion("moderateMessage", "table", 3, location)
+
+		if type(contentState) == "string" then
+			if not enums.contentState[contentState] then
+				return false, errorString.invalid_enum
+			end
+			contentState = enums.contentState[contentState]
+		else
+			if not table.search(enums.contentState, contentState) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local messageIdIsString = type(messageId) == "string"
+		if messageIdIsString or (type(messageId) == "table" and type(messageId[1]) == "string") then
+			if messageIdIsString then
+				messageId = { this:getMessageId(messageId, location) }
+			end
+
+			for i = 1, #messageId do
+				messageId[i] = this:getMessageId(messageId[i], location)
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 't', location.t },
+			{ "messages", table.concat(messageId, separator.forumData) },
+			{ "restreindre", contentState }
+		}
+		local success, data = this:performAction(forumUri.manageRestriction, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
+		return returnRedirection(success, data)
+	end
+
+	--[[@
+		@desc Creates a section.
+		@desc The available data are:
+		@desc string `name` -> Section's name
+		@desc string `icon` -> Section's icon. An enum from `enums.icon` (index or value)
+		@desc string `description` -> Section's description
+		@desc int `min_characters` -> Minimum characters needed for a message in the new section
+		@param data<table> The new section data
+		@param location<table> The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section and 'tr' is needed if it's a section.
+		@returns boolean Whether the section was created or not
+		@returns string if #1, `section's url`, else `Result string` or `Error message`
+	]]
+	self.createSection = function(self, data, location)
+		assertion("createSection", "table", 1, data)
+		assertion("createSection", "table", 2, location)
+
+		if not location.f or (not location.tr or not location.s) then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 'tr' / 's'")
+		end
+
+		if not data.name or not data.icon or not data.description or not data.min_characters then
+			return false, string.format(errorString.no_required_fields, "data { 'name', 'icon', 'description', 'min_characters' }")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		if type(data.icon) == "string" then
+			if not enums.icon[data.icon] then
+				return false, errorString.invalid_enum
+			end
+			data.icon = enums.displayState[data.icon]
+		else
+			if not table.search(enums.icon, data.icon) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 's', (location.s or '') },
+			{ "tr" (location.tr or '') },
+			{ "nom", data.name },
+			{ "icone", data.icon },
+			{ "description", data.description },
+			{ "caracteres", data.min_characters }
+		}
+		local success, data = this:performAction(forumUri.cSection, postData, forumUri.nSection .. "?f=" .. location.f .. (location.s and ("&s=" .. location.s) or ("&tr=" .. location.tr)))
+		return returnRedirection(success, data)
+	end
+
+	--[[@
+		@desc Updates a section.
+		@desc The available data are:
+		@desc string `name` -> Section's name
+		@desc string `icon` -> The section's icon. An enum from `enums.icon` (index or value)
+		@desc string `description` -> Section's description
+		@desc int `min_characters` -> Minimum characters needed for a message in the new section
+		@desc string | int `state` -> The section's state (e.g.: opened, closed). An enum from `enums.displayState` (index or value)
+		@desc int `parent` -> The parent section if the updated section is a sub-section. (default = 0)
+		@param data<table> The updated section data
+		@param location<table> The section location. Fields 'f' and 's' are needed.
+		@returns boolean Whether the section was updated or not
+		@returns string if #1, `section's url`, else `Result string` or `Error message`
+	]]
+	self.updateSection = function(self, data, location)
+		assertion("createSection", "table", 1, data)
+		assertion("createSection", "table", 2, location)
+
+		if not location.f or not location.s then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local section = this:getSection(location)
+		if data.state then
+			if type(data.state) == "string" then
+				if not enums.displayState[data.state] then
+					return false, errorString.invalid_enum .. " (data.state)"
+				end
+				data.state = enums.displayState[data.state]
+			else
+				if not table.search(enums.displayState, data.state) then
+					return false, errorString.enum_out_of_range .. " (data.state)"
+				end
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 's', location.s },
+			{ "nom", (data.name or section.name) },
+			{ "icone", (data.icon or section.icon) },
+			{ "description", (data.description or section.description) },
+			{ "caracteres", (data.min_characters or data.min_characters) },
+			{ "etat", (data.state or section.state) },
+			{ "parent", (data.parent or section.parent) }
+		}
+		local success, data = this:performAction(forumUri.uSection, postData, forumUri.eSection .. "?f=" .. location.f .. "&s=" .. location.s)
 		return returnRedirection(success, data)
 	end
 
@@ -1259,7 +1540,7 @@ return function()
 		@desc string | int `community` -> Account's community. An enum from `enums.community` (index or value)
 		@desc string `birthday` -> The birthday date (dd/mm/yyyy)
 		@desc string `location` -> The location
-		@desc string | int `gender` -> account's gender. An enum from `enums.gender` (index or value)
+		@desc string | int `gender` -> Account's gender. An enum from `enums.gender` (index or value)
 		@desc string `presentation` -> Profile's presentation
 		@param data<table> The data
 		@returns boolean Whether the profile was updated or not
@@ -1446,6 +1727,85 @@ return function()
 	end
 
 	--[[@
+		@desc Sets the permissions of each rank for a specific section on the tribe forums.
+		@desc The available permissions are `canRead`, `canAnswer`, `canCreateTopic`, `canModerate`, and `canManage`.
+		@desc Each one of them must be a table of IDs (`int` or `string`) of the ranks that this permission should be allowed.
+		@desc To allow _non-members_, use `enums.non_member` or `"non_member"`.
+		@param permissions<table> The permissions
+		@param location<table> The section location. The fields 'f', 't' and 'tr' are needed.
+		@returns boolean Whether the new permissions were set or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.setTribeSectionPermissions = function(self, permissions, location)
+		assertion("setTribeSectionPermissions", "table", 1, permissions)
+		assertion("setTribeSectionPermissions", "table", 2, location)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local ranks = this:getTribeRank(location) -- [i] = { id, name }
+		local ranks_by_id = table.createSet(ranks, 1) -- [id] = { id, name }
+		local ranks_by_name = table.createSet(ranks, 2) -- [name] = { id, name }
+
+		local indexes = { "canRead", "canAnswer", "canCreateTopic", "canModerate", "canManage" }
+
+		local defaultPermission = { ranks[1][1] }
+
+		-- Checks for duplicates, transform strings in IDs, adds the leader id if necessary
+		for i = 1, #indexes do
+			if permissions[indexes[i]] then
+				local perms, permsSet = { }, { }
+				local hasLeader = false
+
+				for j = 1, #permissions[indexes[i]] do
+					if type(permissions[indexes[i]][j]) == "string" then
+						if permissions[indexes[i]][j] == "non_member" then
+							permissions[indexes[i]][j] = enums.non_member
+						else
+							permissions[indexes[i]][j] = ranks_by_name[permissions[indexes[i]][j]][1]
+						end
+						if not permissions[indexes[i]][j] then
+							return false, errorString.invalid_id .. " (in #" .. j .. " at '" .. indexes[i] .. "')"
+						end
+					end
+
+					if not hasLeader and permissions[indexes[i]][j] == ranks[1][1] then
+						hasLeader = true
+					end
+
+					if not ranks_by_id[permissions[indexes[i]][j]] then
+						if permissions[indexes[i]][j] ~= enums.non_member then
+							return false, errorString.invalid_id .. " (in #" .. j .. " at '" .. indexes[i] .. "')"
+						end
+					end
+					if not permsSet[permissions[indexes[i]][j]] then
+						permsSet[permissions[indexes[i]][j]] = true
+						perms[#perms + 1] = permissions[indexes[i]][j]
+					end
+				end
+				if not hasLeader then
+					permissions[indexes[i]][#permissions[indexes[i]] + 1] = ranks[1][1]
+				end
+			else
+				permissions[indexes[i]] = defaultPermission
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 's', location.s },
+			{ "tr", location.tr },
+			{ "droitLire", table.concat(permissions.canRead, separator.forumData) },
+			{ "droitRepondre", table.concat(permissions.canAnswer, separator.forumData) },
+			{ "droitCreerSujet", table.concat(permissions.canCreateTopic, separator.forumData) },
+			{ "droitModerer", table.concat(permissions.canModerate, separator.forumData) },
+			{ "droitGerer", table.concat(permissions.canManage, separator.forumData) }
+		}
+		return this:performAction(forumUri.uSectionPerm, postData, forumUri.eSectionPerm .. "?f=" .. location.f .. "&s=" .. location.s)
+	end
+
+	--[[@
 		@desc Adds a user as friend.
 		@param userName<string> The user to be added
 		@returns boolean Whether the user was added or not
@@ -1485,7 +1845,7 @@ return function()
 
 	--[[@
 		@desc Favorites an element. (e.g: topic, tribe)
-		@param element<string,int> An enum from `enums.element` (index or value)
+		@param element<string,int> The element type. An enum from `enums.element` (index or value)
 		@param elementId<int,string> The element id.
 		@param location?<table> The location of the report. If it's a forum topic the fields 'f' and 't' are needed.
 		@returns boolean Whether the element was favorited or not
@@ -1515,7 +1875,7 @@ return function()
 		if element == enums.element.topic then
 			-- Topic ID
 			if not location.f or not location.t then
-				return false, string.format(errorString.no_url_location, "'f', 't'")
+				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 			end
 			if type(elementId) == "string" then
 				elementId = this:getMessageId(elementId, location)

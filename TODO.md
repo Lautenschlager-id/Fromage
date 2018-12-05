@@ -10,10 +10,10 @@
 - [x] [New Private Message](docs/a801api.md#selfcreatePrivateMessage--destinatary-subject-message-)
 - [x] [New Private Discussion](docs/a801api.md#selfcreatePrivateDiscussion--destinataries-subject-message-)
 - [x] [New Private Poll](docs/a801api.md#selfcreatePrivatePoll--destinataries-subject-message-pollResponses-settings-)
-- [x] [Archive Private Content](docs/a801api.md#selfmovePrivateConversation--privLocation-conversationId-)
-- [x] [Restore Private Content](docs/a801api.md#selfmovePrivateConversation--privLocation-conversationId-)
-- [x] [Delete Private Content](docs/a801api.md#selfmovePrivateConversation--privLocation-conversationId-)
-- [x] [Delete all Archived Content](docs/a801api.md#selfmovePrivateConversation--privLocation-conversationId-)
+- [x] [Archive Private Content](docs/a801api.md#selfmovePrivateConversation--inboxLocale-conversationId-)
+- [x] [Restore Private Content](docs/a801api.md#selfmovePrivateConversation--inboxLocale-conversationId-)
+- [x] [Delete Private Content](docs/a801api.md#selfmovePrivateConversation--inboxLocale-conversationId-)
+- [x] [Delete all Archived Content](docs/a801api.md#selfmovePrivateConversation--inboxLocale-conversationId-)
 - [x] [Answer Private Conversation](docs/a801api.md#selfanswerConversation--conversationId-answer-)
 - [x] [Close Private Conversation](docs/a801api.md#selfchangeConversationState--conversationState-conversationId-)
 - [x] [Reopen Private Conversation](docs/a801api.md#selfchangeConversationState--conversationState-conversationId-)
@@ -26,25 +26,24 @@
 - [ ] Get topic messages (by page?)
 - [ ] Get topic
 - [ ] Get section topics
+- [ ] Get section
 - [x] [Answer topic](docs/a801api.md#selfanswerTopic--message-location-)
 - [x] [Create topic](docs/a801api.md#selfcreateTopic--title-message-location-)
 - [x] [Create poll](docs/a801api.md#selfcreatePoll--title-message-pollResponses-location-settings-)
 - [x] [Vote in a poll](docs/a801api.md#selfanswerPoll--option-location-pollId-)
 - [x] [Edit message](docs/a801api.md#selfeditTopicAnswer--messageId-message-location-)
-- [ ] Edit topic title
-- [ ] Moderate message
-- [ ] Move topic
-- [ ] Postit topic
-- [ ] Close topic
-- [ ] Delete topic
-- [ ] Undelete topic
-- [ ] Restrict topic content
-- [ ] Unrestrict topic content
+- [x] [Edit topic title](docs/a801api.md#selfupdateTopic--data-location-)
+- [x] [Moderate message](docs/a801api.md#selfchangeMessageState--messageId-messageState-location-reason-)
+- [x] [Unmoderate message](docs/a801api.md#selfchangeMessageState--messageId-messageState-location-reason-)
+- [x] [Move topic](docs/a801api.md#selfupdateTopic--data-location-)
+- [x] [Postit topic](docs/a801api.md#selfupdateTopic--data-location-)
+- [x] [Close topic](docs/a801api.md#selfupdateTopic--data-location-)
+- [x] [Delete topic](docs/a801api.md#selfupdateTopic--data-location-)
+- [x] [Undelete topic](docs/a801api.md#selfupdateTopic--data-location-)
+- [x] [Restrict topic content](docs/a801api.md#selfchangeMessageContentState--messageId-contentState-location-)
+- [x] [Unrestrict topic content](docs/a801api.md#selfchangeMessageContentState--messageId-contentState-location-)
 - [ ] Message history logs
 - [x] [Like post](docs/a801api.md#selflikeMessage--messageId-location-)
-- [ ] Create section
-- [ ] Delete section
-- [ ] Edit section
 
 ## Report
 - [x] [Report Message](docs/a801api.md#selfreportElement--element-elementId-reason-location-)
@@ -76,6 +75,11 @@
 - [x] [Edit profile](docs/a801api.md#selfupdateTribeProfile--data-)
 - [x] [Edit greeting message](docs/a801api.md#selfupdateTribeGreetingMessage--message-)
 - [x] [Edit Parameters](docs/a801api.md#selfupdateTribeParameters--parameters-)
+- [x] [Create section](docs/a801api.md#selfcreateSection--data-location-)
+- [x] [Delete section](docs/a801api.md#selfupdateSection--data-location-)
+- [x] [Edit section](docs/a801api.md#selfupdateSection--data-location-)
+- [x] [Edit section permissions](docs/a801api.md#selfsetTribeSectionPermissions--permissions-location-)
+- [ ] Get tribe ranks
 
 ## Search
 - [ ] Search
