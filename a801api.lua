@@ -1,7 +1,7 @@
 --[[ Dependencies ]]--
 local http = require("coro-http")
 local base64 = require("deps/base64")
-local enums = require("deps/enums")
+local enums = require("deps/enumerations")
 
 --[[ System Enums and Sets ]]--
 local cookieState = {
@@ -86,14 +86,46 @@ local forumUri = {
 	uSection = "update-section",
 	eSection = "edit-section",
 	uSectionPerm = "update-section-permissions",
-	eSectionPerm = "edit-section-permissions"
+	eSectionPerm = "edit-section-permissions",
+	staffAjax = "staff-ajax",
+	section = "section"
 }
 
 local htmlChunk = {
 	secretKeys = '<input type="hidden" name="(.-)" value="(.-)">',
 	pollOption = '<label class="(.-) "> +<input type="%1" name="reponse_" id="reponse_(%d+)" value="%2" .-/> +(.-) +</label>',
-	pollId = '<input type="hidden" name="po" value="(%d+)">',
-	userId = '<input type="hidden" name="pr" value="(%d+)">'
+	poll = 'po',
+	userId = 'pr',
+	hidden = '<input type="hidden" name="%s" value="(%%d+)">',
+	staff = '(%S+)<span.-hashtag".-(#%d+)</span>',
+	forumMessage = 'edit',
+	privateMessage = 'citer'
+	message = 'id="m%d"(.-"%s_message.-</div>)',
+	msTime = 'data%-afficher%-secondes.->(%d+)',
+	name = '(%S+)<span class="nav%-header%-hashtag">(#(%d+))',
+	forumMessageData = 'name="m"%%s+value="(%%d+)".-class="coeur".-(%%d+).-edit_message_%%%d.->(.-)</div>',
+	messageEditionTimestamp = 'cadre%-message%-dates.-(%d+)',
+	privateMessageData = 'data%-afficher%-secondes.->(%d+).-(%S+)<span class="nav%-header%-hashtag">(#%d+).-citer_message_(%d+).->(.-)</div>',
+	navBar = 'barre%-navigation.->(.-)</ul>',
+	navBarFragments = '<a href="(.-)".->(.-)</a>',
+	navBarSplitContent = '^<(.+)>(.+)$',
+	postit = '/postit.png',
+	locked = '/cadenas.png',
+	deleted = '/no.png',
+	favorite = 'fa',
+	totalPages = '"input%-pagination".-max="(%d+)"',
+	comment = '<div id="m%d',
+	elementId = 'ie',
+	profileData = '(%d+/%d+/%d+).-(..)%.png.->Messages: </span>(%d+).-Prestige: </span>(%d+).-Level: </span>(%d+)',
+	profileGender = 'Gender :.- (.-)%s+<br>',
+	profileLocation = 'Location :</span> (.-)  <br>'
+	profileSoulmate = '(%S+)<span class="fon%t-s couleur%-hashtag%-pseudo"> (#(%d+))',
+	profileTribe = 'cadre%-tribu%-nom">(.-)</span>.-tr=(%d+)',
+	profileAvatar = 'http://avatars%.atelier801%.com/(%d+)/(%d+)%.%a+%?(%d+)',
+	subsection = '"cadre%-section%-titre%-mini.-(section.-)".- (.-) </a>',
+	topic = '<div class="row">',
+	commu = 'pays/(..)%.png"',
+	icon = 'sections/(.-)%.png'
 }
 
 local errorString = {
@@ -352,30 +384,17 @@ return function()
 
 	-- Gets a page using the headers of the account
 	this.getPage = function(this, url)
-		return http.request("GET", url, this:getHeaders())
+		return http.request("GET", url, forumLink .. this:getHeaders())
 	end
 
 	-- To be replaced soon with self.getProfile
 	this.getPlayerId = function(this, playerName)
 		local head, body = http.request("GET", forumLink .. "profile?pr=" .. playerName)
-		return string.match(body, htmlChunk.userId)
-	end
-	-- To be replaced soon with self.getMessage
-	this.getMessageId = function(this, messageNumber, location)
-		local page = "&p=" .. math.ceil(messageNumber / 20) .. "#m" .. messageNumber
-
-		local link
-		if location.co then
-			link = "conversation?co=" .. location.co
-		else
-			link = "topic?f=" .. location.f .. "&t=" .. location.t
-		end
-
-		local head, body = http.request("GET", forumLink .. link .. page)
-		return string.match(body, htmlChunk.userId)
+		return string.match(body, string.format(htmlChunk.hidden, htmlChunk.userId))
 	end
 
 	--[[ Static Functions ]]--
+	-- > Tool
 	--[[@
 		@desc Fragments a forum URL.
 		@param url<string> The Atelier801's forum URL
@@ -413,42 +432,8 @@ return function()
 		return out, errorString.invalid_forum_url
 	end
 
-	--[[@
-		@desc Gets all the options of a poll.
-		@param url<string> The Atelier801's forum URL
-		@returns table Poll options. The indexes are `id` and `value`.
-		@returns string|nil Error message
-	]]
-	self.getPollOptions = function(url)
-		local out = { }
-
-		if not string.find("^" .. forumLink) then
-			return out, errorString.invalid_forum_url
-		end
-
-		local head, body = this:getPage(url)
-		if not body then
-			return out, errorString.internal
-		end
-
-		if string.find(body, "\"po\"") then -- Check if the topic is a poll
-			local counter = 0
-			string.gsub(body, htmlChunk.pollOption, function(t, id, value)
-				if t == "radio" or t == "checkbox" then
-					counter = counter + 1
-					out[counter] = {
-						id = id
-						value = value
-					}
-				end
-			end)
-
-			return out
-		end
-		return out, errorString.not_poll
-	end
-
-	--[[ Functions ]]--
+	--[[ Functions ]]
+	-- > Settings
 	--[[@
 		@desc Connects to an account on Atelier801's forums.
 		@param userName<string> account's user name
@@ -480,7 +465,6 @@ return function()
 		end
 		return success, data
 	end
-
 	--[[@
 		@desc Disconnects from an account on Atelier801's forums.
 		@returns boolean Whether the account disconnected or not
@@ -500,892 +484,6 @@ return function()
 		end
 		return success, data
 	end
-
-	--[[@
-		@desc Creates a new private message.
-		@param destinatary<string> The user who is going to receive the private message
-		@param subject<string> The subject of the private message
-		@param message<string> The content of the private message
-		@returns boolean Whether the private message was created or not
-		@returns string if #1, `private message's url`, else `Result string` or `Error message`
-	]]
-	self.createPrivateMessage = function(self, destinatary, subject, message)
-		assertion("createPrivateMessage", "string", 1, destinatary)
-		assertion("createPrivateMessage", "string", 2, subject)
-		assertion("createPrivateMessage", "string", 3, message)
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ "destinataire", destinatary },
-			{ "objet", subject },
-			{ "message", message }
-		}
-		local success, data = this:performAction(forumUri.cpm, postData, forumUri.npm)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Creates a new private discussion.
-		@param destinataries<table> The users who are going to be invited to the private discussion
-		@param subject<string> The subject of the private discussion
-		@param message<string> The content of the private discussion
-		@returns boolean Whether the private discussion was created or not
-		@returns string if #1, `private discussion's url`, else `Result string` or `Error message`
-	]]
-	self.createPrivateDiscussion = function(self, destinataries, subject, message)
-		assertion("createPrivateDiscussion", "table", 1, destinataries)
-		assertion("createPrivateDiscussion", "string", 2, subject)
-		assertion("createPrivateDiscussion", "string", 3, message)
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ "destinataires", table.concat(destinatary, separator.forumData) },
-			{ "objet", subject },
-			{ "message", message }
-		}
-		local success, data = this:performAction(forumUri.cpDisc, postData, forumUri.npDisc)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Creates a new private poll.
-		@param destinataries<table> The users who are going to be invited to the private poll
-		@param subject<string> The subject of the private poll
-		@param message<string> The content of the private poll
-		@param pollResponses<table> The poll response options
-		@param settings?<table> The poll settings. The available indexes are: `multiple` and `public`.
-		@returns boolean Whether the private poll was created or not
-		@returns string if #1, `private poll's url`, else `Result string` or `Error message`
-	]]
-	self.createPrivatePoll = function(self, destinataries, subject, message, pollResponses, settings)
-		assertion("createPrivatePoll", "table", 1, destinataries)
-		assertion("createPrivatePoll", "string", 2, subject)
-		assertion("createPrivatePoll", "string", 3, message)
-		assertion("createPrivatePoll", "table", 4, pollResponses)
-		assertion("createPrivatePoll", { "table", "nil" }, 5, settings)
-
-		if #pollResponses < 2 then
-			return false, errorString.no_poll_responses
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ "destinataires", table.concat(destinatary, separator.forumData) },
-			{ "objet", subject },
-			{ "message", message },
-			{ "sondage", "on" },
-			{ "reponses", table.concat(destinatary, separator.forumData) }
-		}
-		if settings then
-			if settings.multiple then
-				postData[#postData + 1] = { "multiple", "on" }
-			end
-			if settings.public then
-				postData[#postData + 1] = { "publique", "on" }
-			end
-		end
-
-		local success, data = this:performAction(forumUri.cpDisc, postData, forumUri.npPoll)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Answers a conversation.
-		@param conversationId<int,string> The conversation id
-		@param answer<string> The answer
-		@returns boolean Whether the answer was posted or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
-	]]
-	self.answerConversation = function(self, conversationId, answer)
-		assertion("answerConversation", { "number", "string" }, 1, conversationId)
-		assertion("answerConversation", "string", 2, answer)
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ "co", conversationId },
-			{ "message_reponse", answer }
-		}
-		local success, data = this:performAction(forumUri.answer, postData, forumUri.conversation .. "?co=" .. conversationId)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Moves private conversations to the inbox or bin.
-		@desc To empty trash, `@conversationId` must be `nil` and `@location` must be `bin`
-		@param inboxLocale<string,int> Where the conversation will be located. An enum from `enums.inboxLocale` (index or value)
-		@param conversationId?<int,table> The id or IDs of the conversation(s) to be moved
-		@returns boolean Whether the conversation was moved or not
-		@returns string if #1, `location's url`, else `Result string` or `Error message`
-	]]
-	self.movePrivateConversation = function(self, inboxLocale, conversationId)
-		conversationId = tonumber(conversationId) or conversationId
-		assertion("movePrivateConversation", { "string", "number" }, 1 inboxLocale)
-
-		if type(inboxLocale) == "string" then
-			if not enums.inboxLocale[inboxLocale] then
-				return false, errorString.invalid_enum
-			end
-			inboxLocale = enums.inboxLocale[inboxLocale]
-		else
-			if not table.search(enums.inboxLocale, inboxLocale) then
-				return false, errorString.enum_out_of_range
-			end
-		end
-
-		local moveAll = false
-		if inboxLocale == enums.inboxLocale.bin and not conversationId then
-			conversationId = { }
-			moveAll = true
-		end
-		
-		assertion("movePrivateConversation", { "number", "table" }, 2, conversationId)
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		if type(conversationId) == "number" then
-			conversationId = { conversationId }
-		end
-
-		local postData = (not moveAll and {
-			{ "co", table.concat(conversationId, separator.forumData) },
-			{ "inboxLocale", inboxLocale }
-		} or nil)
-		local success, data = this:performAction((moveAll and forumUri.moveAll or forumUri.moveConv), postData, forumUri.conversations .. "?inboxLocale=" .. inboxLocale)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Changes the conversation state (opened, closed).
-		@param conversationState<string,int> The conversation state. An enum from `enums.conversationState` (index or value)
-		@param conversationId<int,string> The conversation id
-		@returns boolean Whether the conversation state was changed or not
-		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
-	]]
-	self.changeConversationState = function(self, conversationState, conversationId)
-		assertion("changeConversationState", { "string", "number" }, 1 conversationState)
-		assertion("changeConversationState", { "number", "string" }, 2, conversationId)
-
-		if type(conversationState) == "string" then
-			if not enums.conversationState[conversationState] then
-				return false, errorString.invalid_enum
-			end
-			conversationState = enums.conversationState[conversationState]
-		else
-			if not table.search(enums.conversationState, conversationState) then
-				return false, errorString.enum_out_of_range
-			end
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ "co", conversationId }
-		}
-		local success, data = this:performAction((conversationState == enums.conversationState.opened and forumUri.reopenDisc or forumUri.closeDisc), postData, forumUri.conversation .. "?co=" .. conversationId)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Invites an user to a private conversation.
-		@param conversationId<int,string> The conversation id
-		@param userName<string> The username to be invited
-		@returns boolean Whether the username was added in the conversation or not
-		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
-	]]
-	self.conversationInvite = function(self, conversationId, userName)
-		assertion("conversationInvite", { "number", "string" }, 1, conversationId)
-		assertion("conversationInvite", "string", 2, userName)
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ "co", conversationId },
-			{ "destinataires", userName }
-		}
-		local success, data = this:performAction(forumUri.invDisc, postData, forumUri.conversation .. "?co=" .. conversationId)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Leaves a private conversation.
-		@param conversationId<int,string> The conversation id
-		@returns boolean Whether the account left the conversation or not
-		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
-	]]
-	self.leaveConversation = function(self, conversationId)
-		assertion("leaveConversation", { "number", "string" }, 1, conversationId)
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ "co", conversationId }
-		}
-		local success, data = this:performAction(forumUri.exitDisc, postData, forumUri.conversation .. "?co=" .. conversationId)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Excludes a user from a conversation.
-		@param conversationId<int,string> The conversation id
-		@param userId<int,string> The user id or nickname
-		@returns boolean Whether the user was excluded from the conversation or not
-		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
-	]]
-	self.kickConversationMember = function(self, conversationId, userId)
-		assertion("leaveConversation", { "number", "string" }, 1, conversationId)
-		assertion("leaveConversation", { "number", "string" }, 1, userId)
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		if type(userId) == "string" then
-			userId = this:getPlayerId(userId)
-		end
-
-		local postData = {
-			{ "co", conversationId },
-			{ "pr", userId }
-		}
-		local success, data = this:performAction(forumUri.kickMember, postData, forumUri.conversation .. "?co=" .. conversationId)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Creates a topic.
-		@param title<string> The title of the topic
-		@param message<string> The initial message of the topic
-		@param location<table> The location where the topic should be created. Fields 'f' and 's' are needed.
-		@returns boolean Whether the topic was created or not
-		@returns string if #1, `topic's url`, else `Result string` or `Error message`
-	]]
-	self.createTopic = function(self, title, message, location)
-		assertion("createTopic", "string", 1, title)
-		assertion("createTopic", "string", 2, message)
-		assertion("createTopic", "table", 3, location)
-
-		if not location.f or not location.s then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ 'f', location.f },
-			{ 's', location.s },
-			{ "titre", title },
-			{ "message", message }
-		}
-		local success, data = this:performAction(forumUri.cTopic, postData, forumUri.nTopic .. "?f=" .. location.f .. "&s=" .. location.s)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Creates a new poll.
-		@param title<string> The title of the poll
-		@param message<string> The content of the poll
-		@param pollResponses<table> The poll response options
-		@param location<table> The location where the topic should be created. Fields 'f' and 's' are needed.
-		@param settings?<table> The poll settings. The available indexes are: `multiple` and `public`.
-		@returns boolean Whether the poll was created or not
-		@returns string if #1, `poll's url`, else `Result string` or `Error message`
-	]]
-	self.createPoll = function(self, title, message, pollResponses, location, settings)
-		assertion("createPoll", "string", 1, title)
-		assertion("createPoll", "string", 2, message)
-		assertion("createPoll", "table", 3, pollResponses)
-		assertion("createPoll", "table", 4, location)
-		assertion("createPoll", { "table", "nil" }, 5, settings)
-
-		if #pollResponses < 2 then
-			return false, errorString.no_poll_responses
-		end
-
-		if not location.f or not location.s then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ 'f', location.f },
-			{ 's', location.s },
-			{ "titre", title },
-			{ "message", message },
-			{ "sondage", "on" },
-			{ "reponses", table.concat(destinatary, separator.forumData) }
-		}
-		if settings then
-			if settings.multiple then
-				postData[#postData + 1] = { "multiple", "on" }
-			end
-			if settings.public then
-				postData[#postData + 1] = { "publique", "on" }
-			end
-		end
-
-		local success, data = this:performAction(forumUri.cTopic, postData, forumUri.nPoll .. "?f=" .. location.f .. "&s=" .. location.s)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Updates a topic state, location and parameters.
-		@desc The available data are:
-		@desc string `title` -> Topic's title
-		@desc boolean `postit` -> Whether the topic should be fixed or not
-		@desc string | int `state` -> The topic's state. An enum from `enums.displayState` (index or value)
-		@param data<table> The new topic data
-		@param location<table> The location where the topic is. Fields 'f' and 't' are needed.
-		@returns boolean Whether the topic was updated or not
-		@returns string if #1, `topic's url`, else `Result string` or `Error message`
-	]]
-	self.updateTopic = function(self, data, location)
-		assertion("updateTopic", "table", 1, data)
-		assertion("updateTopic", "table", 2, location)
-
-		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local topic = this:getTopic(location)
-		local postit = data.postit
-		if postit == nil then
-			postit = topic.postit
-		end
-		if data.state then
-			if type(data.state) == "string" then
-				if not enums.displayState[data.state] then
-					return false, errorString.invalid_enum .. " (data.state)"
-				end
-				data.state = enums.displayState[data.state]
-			else
-				if not table.search(enums.displayState, data.state) then
-					return false, errorString.enum_out_of_range .. " (data.state)"
-				end
-			end
-		end
-
-		local postData = {
-			{ 'f', location.f },
-			{ 't', location.t },
-			{ "titre", (data.title or topic.title) },
-			{ "postit", (postit and "on" or '') }
-			{ "etat", (data.state or topic.state) },
-			{ 's', (data.s or topic.s) }
-		}
-		local success, data = this:performAction(forumUri.uTopic, postData, forumUri.eTopic .. "?f=" .. location.f .. "&t=" .. location.t)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Answers a topic.
-		@param message<string> The answer
-		@param location<table> The location where the message is. Fields 'f' and 't' are needed.
-		@returns boolean Whether the post was created or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
-	]]
-	self.answerTopic = function(self, message, location)
-		assertion("answerTopic", "string", 1, message)
-		assertion("answerTopic", "table", 2, location)
-
-		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ 'f', location.f },
-			{ 't', location.t },
-			{ "message_reponse", message }
-		}
-		local success, data = this:performAction(forumUri.cTopic, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Edits a message content.
-		@param messageId<int,string> The message id. Use `string` if it's the post number.
-		@param message<string> The new message
-		@param location<table> The location where the message should be edited. Fields 'f' and 't' are needed.
-		@returns boolean Whether the message content was edited or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
-	]]
-	self.editTopicAnswer = function(self, messageId, message, location)
-		assertion("editTopicAnswer", { "number", "string" }, 1, messageId)
-		assertion("editTopicAnswer", "string", 2, message)
-		assertion("editTopicAnswer", "table", 3, location)
-
-		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		if type(messageId) == "string" then
-			messageId = this:getMessageId(messageId, location)
-		end
-
-		local postData = {
-			{ 'f', location.f },
-			{ 't', location.t },
-			{ 'm', messageId },
-			{ "message", message }
-		}
-		local success, data = this:performAction(forumUri.eMsg, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Likes a message.
-		@param messageId<int,string> The message id. Use `string` if it's the post number.
-		@param location<table> The topic location. Fields 'f' and 't' are needed.
-		@returns boolean Whether the like was recorded or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
-	]]
-	self.likeMessage = function(self, messageId, location)
-		assertion("likeMessage", { "number", "string" }, 1, messageId)
-		assertion("likeMessage", "table", 2, location)
-
-		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		if type(messageId) == "string" then
-			messageId = this:getMessageId(messageId, location)
-		end
-
-		local postData = {
-			{ 'f', location.f },
-			{ 't', location.t },
-			{ 'm', messageId }
-		}
-		local success, data = this:performAction(forumUri.like, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Reports an element. (e.g: message, profile)
-		@param element<string,int> The element type. An enum from `enums.element` (index or value)
-		@param elementId<int,string> The element id.
-		@param reason<string> The report reason.
-		@param location?<table> The location of the report. If it's a forum message the field 'f' is needed, if it's a private message the field 'co' is needed.
-		@returns boolean Whether the report was recorded or not
-		@returns string `Result string` or `Error message`
-	]]
-	self.reportElement = function(self, element, elementId, reason, location)
-		assertion("reportElement", { "string", "number" }, 1, element)
-		assertion("reportElement", { "number", "string" }, 2, elementId)
-		assertion("reportElement", "string", 3, reason)
-		assertion("reportElement", { "table", "nil" }, 4, location)
-
-		if type(element) == "string" then
-			if not enums.element[element] then
-				return false, errorString.invalid_enum
-			end
-			element = enums.element[element]
-		else
-			if not table.search(enums.element, element) then
-				return false, errorString.enum_out_of_range
-			end
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		location = location or { }
-		local link
-		if element == enums.element.message then
-			-- Message ID
-			if not location.f or not location.t then
-				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
-			end
-			if type(elementId) == "string" then
-				elementId = this:getMessageId(elementId, location)
-			end
-			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
-		elseif element == enums.element.tribe then
-			-- Tribe ID
-			link = forumUri.tribe .. "?tr=" .. elementId
-		elseif element == enums.element.profile then
-			-- User ID
-			if type(elementId) == "string" then
-				elementId = this:getPlayerId(elementId)
-			end
-			link = forumUri.profile .. "?tr=" .. elementId -- (Can be the ID too)
-		elseif element == enums.element.private_message then
-			-- Private Message, Message ID
-			if not location.co then
-				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'co'")
-			end
-			if type(elementId) == "string" then
-				elementId = this:getMessageId(elementId, location)
-			end
-			link = forumUri.conversation .. "?co=" .. location.co
-		elseif element == enums.element.poll then
-			-- Poll ID
-			if not location.f then
-				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
-			end
-			if type(elementId) == "string" then
-				return false, errorString.poll_id
-			end
-			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
-		elseif element == enums.element.image then
-			-- Image ID
-			if type(elementId) == "number" then
-				return false, errorString.image_id
-			end
-			link = forumUri.userImg .. "?im=" .. elementId
-		else
-			return false, errorString.unaivalable_enum 
-		end
-
-		location.f = (location.f or 0)
-		local postData = {
-			{ 'f', location.f },
-			{ "te", element },
-			{ "ie", elementId },
-			{ "raison", reason }
-		}
-		return this:performAction(forumUri.report, postData, link)
-	end
-
-	--[[@
-		@desc Changes the state of the message. (e.g: active, moderated)
-		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`.
-		@param messageState<string,int> The message state. An enum from `enums.messageState` (index or value)
-		@param location<table> The topic location. Fields 'f' and 't' are needed.
-		@param reason?<string> The reason for changing the message state
-		@returns boolean Whether the message(s) state was(were) changed or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
-	]]
-	self.changeMessageState = function(self, messageId, messageState, location, reason)
-		assertion("moderateMessage", { "number", "table", "string" }, 1, messageId)
-		assertion("moderateMessage", { "string", "number" }, 2, messageState)
-		assertion("moderateMessage", "table", 3, location)
-		assertion("moderateMessage", { "string", "nil" }, 4, reason)
-
-		if type(messageState) == "string" then
-			if not enums.messageState[messageState] then
-				return false, errorString.invalid_enum
-			end
-			messageState = enums.messageState[messageState]
-		else
-			if not table.search(enums.messageState, messageState) then
-				return false, errorString.enum_out_of_range
-			end
-		end
-
-		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local messageIdIsString = type(messageId) == "string"
-		if messageIdIsString or (type(messageId) == "table" and type(messageId[1]) == "string") then
-			if messageIdIsString then
-				messageId = { this:getMessageId(messageId, location) }
-			end
-
-			for i = 1, #messageId do
-				messageId[i] = this:getMessageId(messageId[i], location)
-			end
-		end
-
-		local postData = {
-			{ 'f', location.f },
-			{ 't', location.t },
-			{ "messages", table.concat(messageId, separator.forumData) },
-			{ "etat", messageState },
-			{ "raison", (reason or '') }
-		}
-		local success, data = this:performAction(forumUri.moderate, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Answers a poll.
-		@param option<int,table,string> The poll option to be selected. You can insert its ID or its text (highly recommended). For multiple options polls, use a table with `ints` or `strings`.
-		@param location<table> The location where the poll answer should be recorded. Fields 'f' and 't' are needed for forum poll, 'co' for private poll.
-		@param pollId?<int> The poll id. It's obtained automatically if no value is given.
-		@returns boolean Whether the poll option was recorded or not
-		@returns string if #1, `poll's url`, else `Result string` or `Error message`
-	]]
-	self.answerPoll = function(self, option, location, pollId)
-		assertion("answerPoll", { "number", "table", "string" }, 1, option)
-		assertion("answerPoll", "table", 2, location)
-		assertion("answerPoll", { "number", "nil" }, 3, pollId)
-
-		local isPrivatePoll = not not location.co
-		if not isPrivatePoll and (not location.f or not location.t) then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_required_fields_private, "'co'")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local url = forumLink .. (isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or ("?f=" .. location.f .. "&t=" .. location.t))
-
-		local optionIsString = type(option) == "string"
-		if optionIsString or (type(option) == "table" and type(option[1]) == "string") then
-			local options, err = self.getPollOptions(url)
-			if err then
-				return false, err
-			end
-
-			if optionIsString then
-				local index = table.search(options, option, "value")
-				if not index then
-					return false, errorString.poll_option_not_found
-				end
-				option = options[index].id
-			else
-				local tmpSet = table.createSet(options, "value")
-				for i = 1, #option do
-					if tmpSet[options[i]] then
-						options[i] = tmpSet[options[i]].id
-					else
-						return false, errorString.poll_option_not_found
-					end
-				end
-			end
-		end
-
-		if not pollId then
-			local head, body = this:getPage(forumLink .. pollId)
-			if not body then
-				return false, errorString.internal
-			end
-
-			pollId = tonumber(string.match(body, htmlChunk.pollId))
-			if not pollId then
-				return false, errorString.not_poll
-			end
-		end
-
-		local postData = {
-			{ "po", pollId }
-		}
-		if isPrivatePoll then
-			postData[2] = { "co", location.co }
-		else
-			postData[2] = { 'f', location.f }
-			postData[3] = { 't', location.t }
-		end
-		if type(option) == "string" then
-			postData[#postData + 1] = { "reponse_", option }
-		else
-			local len = #postData
-			for i = 1, #option do
-				postData[len + i] = { ("reponse_" .. option[i]), option[i] }
-			end
-		end
-
-		local success, data = this:performAction(forumUri[(isPrivatePoll and "apPoll" or "aForumPoll")], postData, url)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Changes the restriction state for a message.
-		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`.
-		@param contentState<string> An enum from `enums.contentState` (index or value)
-		@param location<table> The topic location. Fields 'f' and 't' are needed.
-		@returns boolean Whether the message content state was changed or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
-	]]
-	self.changeMessageContentState = function(self, messageId, contentState, location)
-		assertion("moderateMessage", { "number", "table", "string" }, 1, messageId)
-		assertion("moderateMessage", "string", 2, contentState)
-		assertion("moderateMessage", "table", 3, location)
-
-		if type(contentState) == "string" then
-			if not enums.contentState[contentState] then
-				return false, errorString.invalid_enum
-			end
-			contentState = enums.contentState[contentState]
-		else
-			if not table.search(enums.contentState, contentState) then
-				return false, errorString.enum_out_of_range
-			end
-		end
-
-		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local messageIdIsString = type(messageId) == "string"
-		if messageIdIsString or (type(messageId) == "table" and type(messageId[1]) == "string") then
-			if messageIdIsString then
-				messageId = { this:getMessageId(messageId, location) }
-			end
-
-			for i = 1, #messageId do
-				messageId[i] = this:getMessageId(messageId[i], location)
-			end
-		end
-
-		local postData = {
-			{ 'f', location.f },
-			{ 't', location.t },
-			{ "messages", table.concat(messageId, separator.forumData) },
-			{ "restreindre", contentState }
-		}
-		local success, data = this:performAction(forumUri.manageRestriction, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Creates a section.
-		@desc The available data are:
-		@desc string `name` -> Section's name
-		@desc string `icon` -> Section's icon. An enum from `enums.icon` (index or value)
-		@desc string `description` -> Section's description
-		@desc int `min_characters` -> Minimum characters needed for a message in the new section
-		@param data<table> The new section data
-		@param location<table> The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section and 'tr' is needed if it's a section.
-		@returns boolean Whether the section was created or not
-		@returns string if #1, `section's url`, else `Result string` or `Error message`
-	]]
-	self.createSection = function(self, data, location)
-		assertion("createSection", "table", 1, data)
-		assertion("createSection", "table", 2, location)
-
-		if not location.f or (not location.tr or not location.s) then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 'tr' / 's'")
-		end
-
-		if not data.name or not data.icon or not data.description or not data.min_characters then
-			return false, string.format(errorString.no_required_fields, "data { 'name', 'icon', 'description', 'min_characters' }")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		if type(data.icon) == "string" then
-			if not enums.icon[data.icon] then
-				return false, errorString.invalid_enum
-			end
-			data.icon = enums.displayState[data.icon]
-		else
-			if not table.search(enums.icon, data.icon) then
-				return false, errorString.enum_out_of_range
-			end
-		end
-
-		local postData = {
-			{ 'f', location.f },
-			{ 's', (location.s or '') },
-			{ "tr" (location.tr or '') },
-			{ "nom", data.name },
-			{ "icone", data.icon },
-			{ "description", data.description },
-			{ "caracteres", data.min_characters }
-		}
-		local success, data = this:performAction(forumUri.cSection, postData, forumUri.nSection .. "?f=" .. location.f .. (location.s and ("&s=" .. location.s) or ("&tr=" .. location.tr)))
-		return returnRedirection(success, data)
-	end
-
-	--[[@
-		@desc Updates a section.
-		@desc The available data are:
-		@desc string `name` -> Section's name
-		@desc string `icon` -> The section's icon. An enum from `enums.icon` (index or value)
-		@desc string `description` -> Section's description
-		@desc int `min_characters` -> Minimum characters needed for a message in the new section
-		@desc string | int `state` -> The section's state (e.g.: opened, closed). An enum from `enums.displayState` (index or value)
-		@desc int `parent` -> The parent section if the updated section is a sub-section. (default = 0)
-		@param data<table> The updated section data
-		@param location<table> The section location. Fields 'f' and 's' are needed.
-		@returns boolean Whether the section was updated or not
-		@returns string if #1, `section's url`, else `Result string` or `Error message`
-	]]
-	self.updateSection = function(self, data, location)
-		assertion("createSection", "table", 1, data)
-		assertion("createSection", "table", 2, location)
-
-		if not location.f or not location.s then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
-		end
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local section = this:getSection(location)
-		if data.state then
-			if type(data.state) == "string" then
-				if not enums.displayState[data.state] then
-					return false, errorString.invalid_enum .. " (data.state)"
-				end
-				data.state = enums.displayState[data.state]
-			else
-				if not table.search(enums.displayState, data.state) then
-					return false, errorString.enum_out_of_range .. " (data.state)"
-				end
-			end
-		end
-
-		local postData = {
-			{ 'f', location.f },
-			{ 's', location.s },
-			{ "nom", (data.name or section.name) },
-			{ "icone", (data.icon or section.icon) },
-			{ "description", (data.description or section.description) },
-			{ "caracteres", (data.min_characters or data.min_characters) },
-			{ "etat", (data.state or section.state) },
-			{ "parent", (data.parent or section.parent) }
-		}
-		local success, data = this:performAction(forumUri.uSection, postData, forumUri.eSection .. "?f=" .. location.f .. "&s=" .. location.s)
-		return returnRedirection(success, data)
-	end
-
 	--[[@
 		@desc Sends a validation code to the account's e-mail.
 		@returns boolean Whether the validation code was sent or not
@@ -1398,15 +496,14 @@ return function()
 
 		return this:performAction(forumUri.getCert, nil, forumUri.acc)
 	end
-
 	--[[@
-		@desc Validates the validation code.
+		@desc Submits the validation code to the forum to be validated.
 		@param code<string> The validation code.
 		@returns boolean Whether the validation code was sent to be validated or not
 		@returns string `Result string` (Empty for success) or `Error message`
 	]]
-	self.sendValidationCode = function(self, code)
-		assertion("validateValidationCode", "string", 1, code)
+	self.submitValidationCode = function(self, code)
+		assertion("submitValidationCode", "string", 1, code)
 
 		if not this.isConnected then
 			return false, errorString.not_connected
@@ -1421,7 +518,6 @@ return function()
 
 		return success, data
 	end
-
 	--[[@
 		@desc Sets the new account's e-mail.
 		@param email<string> The e-mail
@@ -1443,7 +539,6 @@ return function()
 			{ "mail", email }
 		}, forumUri.acc)
 	end
-
 	--[[@
 		@desc Sets the new account's password.
 		@param password<string> The new password
@@ -1472,23 +567,65 @@ return function()
 		return this:performAction(forumUri.sPw, postData, forumUri.acc)
 	end
 
+	-- > Profile
 	--[[@
-		@desc Removes the account's avatar.
-		@returns boolean Whether the avatar was removed or not
-		@returns string `Result string` or `Error message`
+		@desc Gets an user profile.
+		@param userName?<string,int> User name or id. (default = Client's account name)
+		@returns table|nil The profile data, if there's any
+		@returns nil|string The message error, if any occurred
 	]]
-	self.removeAvatar = function(self)
-		if not this.isConnected then
+	self.getProfile = function(self, userName)
+		assertion("getProfile", { "string", "number", "nil" }, 1, userName)
+
+		if not userName and not this.isConnected then
 			return false, errorString.not_connected
 		end
 
-		local id = this:getPlayerId(this.userName)
-		local postData = {
-			{ "pr", id }
-		}
-		return this:performAction(forumUri.remAvatar, postData, forumUri.profile .. "?tr=" .. id)
-	end
+		userName = userName or this.userName
+		local head, body = this:getPage(forumUri.profile .. "?pr=" .. userName)
 
+		local id = string.match(body, string.format(htmlChunk.hidden, htmlChunk.userId))
+		local name, hashtag, discriminator = string.match(body, htmlChunk.name)
+		
+		local highestRole = tonumber(discriminator)
+		if highestRole == 0 then
+			highestRole = nil
+		end
+
+		local registrationDate, community, messages, prestige, level = string.match(body, htmlChunk.profileData)
+		level = tonumber(level)
+		
+		local gender = string.match(body, htmlChunk.profileGender)
+		gender = gender and (enums.gender[string.lower(gender)]) or enums.gender.none
+		
+		local location = string.match(body, htmlChunk.profileLocation)
+		
+		local soulmate, soulmateDiscriminator = string.match(body, htmlChunk.profileSoulmate)
+		if soulmate then
+			soulmate = soulmate .. soulmateDiscriminator
+		end
+		
+		local tribeName, tribeId = string.match(body, htmlChunk.profileTribe)
+
+		local avatar = string.match(body, htmlChunk.profileAvatar)
+
+		return {
+			id = tonumber(id), -- Probably only exists for the account owner
+			highestRole = highestRole,
+			registrationDate = registrationDate,
+			community = enums.community[community],
+			totalMessages = tonumber(messages),
+			totalPrestige = tonumber(prestige),
+			level = level,
+			title = enums.forumTitle[level],
+			gender = gender,
+			location = location,
+			soulmate = soulmate,
+			tribe = tribeName,
+			tribeId = tonumber(tribeId),
+			avatarUrl = avatar
+		}
+	end
 	--[[@
 		@desc Updates the account parameters.
 		@desc The available parameters are:
@@ -1514,33 +651,13 @@ return function()
 
 		return this:performAction(forumUri.uParam, postData, forumUri.profile .. "?tr=" .. id)
 	end
-
-	--[[@
-		@desc Deletes an image from the account's micepix.
-		@param imageId<string> The image id
-		@returns boolean Whether the image was deleted or not
-		@returns string `Result string` or `Error message`
-	]]
-	self.deleteMicepixImage = function(self, imageId)
-		assertion("deleteMicepixImage", "string", 1, imageId)
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ "im", imageId }
-		}
-		return this:performAction(forumUri.remImg, postData, forumUri.userImg .. "?im=" .. imageId)
-	end
-
 	--[[@
 		@desc Updates the account's profile.
 		@desc The available data are:
-		@desc string | int `community` -> Account's community. An enum from `enums.community` (index or value)
+		@desc string|int `community` -> Account's community. An enum from `enums.community` (index or value)
 		@desc string `birthday` -> The birthday date (dd/mm/yyyy)
 		@desc string `location` -> The location
-		@desc string | int `gender` -> Account's gender. An enum from `enums.gender` (index or value)
+		@desc string|int `gender` -> Account's gender. An enum from `enums.gender` (index or value)
 		@desc string `presentation` -> Profile's presentation
 		@param data<table> The data
 		@returns boolean Whether the profile was updated or not
@@ -1598,29 +715,1151 @@ return function()
 
 		return this:performAction(forumUri.remImg, postData, forumUri.tribe .. "?tr=" .. id)
 	end
-
 	--[[@
-		@desc Removes the logo of the account's tribe.
-		@returns boolean Whether the logo was removed or not
+		@desc Removes the account's avatar.
+		@returns boolean Whether the avatar was removed or not
 		@returns string `Result string` or `Error message`
 	]]
-	self.removeTribeLogo = function(self)
+	self.removeAvatar = function(self)
 		if not this.isConnected then
 			return false, errorString.not_connected
 		end
 
-		local id = 0 -- Get tribe id using this.userName... (check if has tribe)
+		local id = this:getPlayerId(this.userName)
+		local postData = {
+			{ "pr", id }
+		}
+		return this:performAction(forumUri.remAvatar, postData, forumUri.profile .. "?tr=" .. id)
+	end
+
+	-- > Private
+	--[[@
+		@desc Creates a new private message.
+		@param destinatary<string> The user who is going to receive the private message
+		@param subject<string> The subject of the private message
+		@param message<string> The content of the private message
+		@returns boolean Whether the private message was created or not
+		@returns string if #1, `private message's url`, else `Result string` or `Error message`
+	]]
+	self.createPrivateMessage = function(self, destinatary, subject, message)
+		assertion("createPrivateMessage", "string", 1, destinatary)
+		assertion("createPrivateMessage", "string", 2, subject)
+		assertion("createPrivateMessage", "string", 3, message)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "destinataire", destinatary },
+			{ "objet", subject },
+			{ "message", message }
+		}
+		local success, data = this:performAction(forumUri.cpm, postData, forumUri.npm)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Creates a new private discussion.
+		@param destinataries<table> The users who are going to be invited to the private discussion
+		@param subject<string> The subject of the private discussion
+		@param message<string> The content of the private discussion
+		@returns boolean Whether the private discussion was created or not
+		@returns string if #1, `private discussion's url`, else `Result string` or `Error message`
+	]]
+	self.createPrivateDiscussion = function(self, destinataries, subject, message)
+		assertion("createPrivateDiscussion", "table", 1, destinataries)
+		assertion("createPrivateDiscussion", "string", 2, subject)
+		assertion("createPrivateDiscussion", "string", 3, message)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "destinataires", table.concat(destinatary, separator.forumData) },
+			{ "objet", subject },
+			{ "message", message }
+		}
+		local success, data = this:performAction(forumUri.cpDisc, postData, forumUri.npDisc)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Creates a new private poll.
+		@param destinataries<table> The users who are going to be invited to the private poll
+		@param subject<string> The subject of the private poll
+		@param message<string> The content of the private poll
+		@param pollResponses<table> The poll response options
+		@param settings?<table> The poll settings. The available indexes are: `multiple` and `public`.
+		@returns boolean Whether the private poll was created or not
+		@returns string if #1, `private poll's url`, else `Result string` or `Error message`
+	]]
+	self.createPrivatePoll = function(self, destinataries, subject, message, pollResponses, settings)
+		assertion("createPrivatePoll", "table", 1, destinataries)
+		assertion("createPrivatePoll", "string", 2, subject)
+		assertion("createPrivatePoll", "string", 3, message)
+		assertion("createPrivatePoll", "table", 4, pollResponses)
+		assertion("createPrivatePoll", { "table", "nil" }, 5, settings)
+
+		if #pollResponses < 2 then
+			return false, errorString.no_poll_responses
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "destinataires", table.concat(destinatary, separator.forumData) },
+			{ "objet", subject },
+			{ "message", message },
+			{ "sondage", "on" },
+			{ "reponses", table.concat(destinatary, separator.forumData) }
+		}
+		if settings then
+			if settings.multiple then
+				postData[#postData + 1] = { "multiple", "on" }
+			end
+			if settings.public then
+				postData[#postData + 1] = { "publique", "on" }
+			end
+		end
+
+		local success, data = this:performAction(forumUri.cpDisc, postData, forumUri.npPoll)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Answers a conversation.
+		@param conversationId<int,string> The conversation id
+		@param answer<string> The answer
+		@returns boolean Whether the answer was posted or not
+		@returns string if #1, `post's url`, else `Result string` or `Error message`
+	]]
+	self.answerConversation = function(self, conversationId, answer)
+		assertion("answerConversation", { "number", "string" }, 1, conversationId)
+		assertion("answerConversation", "string", 2, answer)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "co", conversationId },
+			{ "message_reponse", answer }
+		}
+		local success, data = this:performAction(forumUri.answer, postData, forumUri.conversation .. "?co=" .. conversationId)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Moves private conversations to the inbox or bin.
+		@desc To empty trash, `@conversationId` must be `nil` and `@location` must be `bin`
+		@param inboxLocale<string,int> Where the conversation will be located. An enum from `enums.inboxLocale` (index or value)
+		@param conversationId?<int,table> The id or IDs of the conversation(s) to be moved
+		@returns boolean Whether the conversation was moved or not
+		@returns string if #1, `location's url`, else `Result string` or `Error message`
+	]]
+	self.movePrivateConversation = function(self, inboxLocale, conversationId)
+		conversationId = tonumber(conversationId) or conversationId
+		assertion("movePrivateConversation", { "string", "number" }, 1 inboxLocale)
+
+		if type(inboxLocale) == "string" then
+			if not enums.inboxLocale[inboxLocale] then
+				return false, errorString.invalid_enum
+			end
+			inboxLocale = enums.inboxLocale[inboxLocale]
+		else
+			if not table.search(enums.inboxLocale, inboxLocale) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		local moveAll = false
+		if inboxLocale == enums.inboxLocale.bin and not conversationId then
+			conversationId = { }
+			moveAll = true
+		end
+		
+		assertion("movePrivateConversation", { "number", "table" }, 2, conversationId)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		if type(conversationId) == "number" then
+			conversationId = { conversationId }
+		end
+
+		local postData = (not moveAll and {
+			{ "co", table.concat(conversationId, separator.forumData) },
+			{ "inboxLocale", inboxLocale }
+		} or nil)
+		local success, data = this:performAction((moveAll and forumUri.moveAll or forumUri.moveConv), postData, forumUri.conversations .. "?inboxLocale=" .. inboxLocale)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Changes the conversation state (opened, closed).
+		@param conversationState<string,int> The conversation state. An enum from `enums.conversationState` (index or value)
+		@param conversationId<int,string> The conversation id
+		@returns boolean Whether the conversation state was changed or not
+		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
+	]]
+	self.changeConversationState = function(self, conversationState, conversationId)
+		assertion("changeConversationState", { "string", "number" }, 1 conversationState)
+		assertion("changeConversationState", { "number", "string" }, 2, conversationId)
+
+		if type(conversationState) == "string" then
+			if not enums.conversationState[conversationState] then
+				return false, errorString.invalid_enum
+			end
+			conversationState = enums.conversationState[conversationState]
+		else
+			if not table.search(enums.conversationState, conversationState) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "co", conversationId }
+		}
+		local success, data = this:performAction((conversationState == enums.conversationState.opened and forumUri.reopenDisc or forumUri.closeDisc), postData, forumUri.conversation .. "?co=" .. conversationId)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Leaves a private conversation.
+		@param conversationId<int,string> The conversation id
+		@returns boolean Whether the account left the conversation or not
+		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
+	]]
+	self.leaveConversation = function(self, conversationId)
+		assertion("leaveConversation", { "number", "string" }, 1, conversationId)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "co", conversationId }
+		}
+		local success, data = this:performAction(forumUri.exitDisc, postData, forumUri.conversation .. "?co=" .. conversationId)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Invites an user to a private conversation.
+		@param conversationId<int,string> The conversation id
+		@param userName<string> The username to be invited
+		@returns boolean Whether the username was added in the conversation or not
+		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
+	]]
+	self.conversationInvite = function(self, conversationId, userName)
+		assertion("conversationInvite", { "number", "string" }, 1, conversationId)
+		assertion("conversationInvite", "string", 2, userName)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "co", conversationId },
+			{ "destinataires", userName }
+		}
+		local success, data = this:performAction(forumUri.invDisc, postData, forumUri.conversation .. "?co=" .. conversationId)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Excludes a user from a conversation.
+		@param conversationId<int,string> The conversation id
+		@param userId<int,string> The user id or nickname
+		@returns boolean Whether the user was excluded from the conversation or not
+		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
+	]]
+	self.kickConversationMember = function(self, conversationId, userId)
+		assertion("kickConversationMember", { "number", "string" }, 1, conversationId)
+		assertion("kickConversationMember", { "number", "string" }, 1, userId)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		if type(userId) == "string" then
+			userId = this:getPlayerId(userId)
+		end
+
+		local postData = {
+			{ "co", conversationId },
+			{ "pr", userId }
+		}
+		local success, data = this:performAction(forumUri.kickMember, postData, forumUri.conversation .. "?co=" .. conversationId)
+		return returnRedirection(success, data)
+	end
+
+	-- > Forum
+	--[[@
+		@desc Gets the data of a message.
+		@param postId<int,string> The post id (note: not the message id, but the #mID)
+		@param location<table> The post topic or conversation location. Fields 'f' and 't' are needed for forum messages, field 'co' is needed for private message.
+		@returns table|nil The message data, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getMessage = function(self, postId, location)
+		assertion("getMessage", { "number", "string" }, 1, postId)
+		assertion("getMessage", "table", 2, location)
+
+		if not this.isConnected then
+			return nil, errorString.not_connected
+		end
+
+		postId = tonumber(postId)
+		local pageNumber = math.ceil(postId / 20)
+
+		local head, body = this:getPage(forumUri.topic .. (location.co and (forumUri.conversation .. "?co=" .. location.co) or ("?f=" .. location.f .. "&t=" .. location.t)) .. "&p=" .. pageNumber)
+
+		local post
+		if not location.co then
+			-- Forum message
+			post = string.match(body, string.format(htmlChunk.message, postId, htmlChunk.forumMessage))
+			if not post then
+				return nil, errorString.internal
+			end
+
+			local timestamp, author, authorDiscriminator, _, id, prestige, content = string.match(post, htmlChunk.msTime .. ".-" .. htmlChunk.name .. ".-" .. string.format(htmlChunk.forumMessageData, 5))
+			if not timestamp then
+				return nil, errorString.internal
+			end
+			local editTimestamp = string.match(post, htmlChunk.messageEditionTimestamp)
+
+			return {
+				f = location.f,
+				t = location.t,
+				p = pageNumber,
+				post = postId,
+				timestamp = tonumber(timestamp),
+				author = author .. authorDiscriminator,
+				id = tonumber(id),
+				prestige = tonumber(prestige),
+				content = content,
+				edit_timestamp = tonumber(editTimestamp)
+			}
+		else
+			-- Private message
+			post = string.match(body, string.format(htmlChunk.message, postId, htmlChunk.privateMessage))
+			if not post then
+				return nil, errorString.internal
+			end
+
+			local timestamp, author, authorDiscriminator, id, content = string.match(post, htmlChunk.messageTimeAndAuthor .. htmlChunk.privateMessageData)
+			if not timestamp then
+				return nil, errorString.internal
+			end
+
+			return {
+				f = 0,
+				co = location.co,
+ 				p = pageNumber,
+				post = postId,
+				timestamp = tonumber(timestamp),
+				author = author .. authorDiscriminator,
+				id = tonumber(id),
+				content = content
+			}
+		end
+	end
+	--[[@
+		@desc Gets the data of a topic.
+		@param location<table> The topic location. Fields 'f' and 't' are needed.
+		@param ignoreFirstMessage?<boolean> Whether the data of the first message should be sent or not. (default = false)
+		@returns table|nil The topic data, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getTopic = function(self, location, ignoreFirstMessage)
+		assertion("getTopic", "table", 1, location)
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return nil, errorString.not_connected
+		end
+
+		local path = "?f=" .. location.f .. "&t=" .. location.t
+		local head, body = this:getPage(forumUri.topic .. path)
+
+		local ie = tonumber(string.match(body, string.format(htmlChunk.hidden, htmlChunk.elementId)))
+
+		local navBar = string.match(body, htmlChunk.navBar)
+		if not navBar then
+			return nil, errorString.internal
+		end
+
+		local isFixed, isLocked, isDeleted = false, false, false
+		local navigation_bar, community = { }
+
+		local counter, lastHtml = 0, ''
+		string.gsub(navBar, htmlChunk.navBarFragments, function(href, code)]
+			counter = counter + 1
+			local html, name = string.match(code, htmlChunk.navBarSplitContent)
+			if html then
+				lastHtml = html
+				navigation_bar[counter] = { href, name }
+
+				if not community then
+					community = string.match(html, htmlChunk.commu)
+				end
+			else
+				navigation_bar[counter] = { href, code }
+			end
+		end)
+
+		isFixed = not not string.find(lastHtml, htmlChunk.postit)
+		isLocked = not not string.find(lastHtml, htmlChunk.locked)
+		isDeleted = not not string.find(lastHtml, htmlChunk.deleted)
+
+		local fa = tonumber(string.match(body, string.format(htmlChunk.hidden, htmlChunk.favorite)))
+		
+		-- Get total of pages and total of messages
+		local totalPages = tonumber(string.match(body, htmlChunk.topicPages))
+		if not totalPages then
+			return nil, errorString.internal
+		end
+
+		local _, lastPage = this:getPage(forumUri.topic .. path .. "&p=" .. totalPages)
+		local counter = 0
+		string.gsub(lastPage, htmlChunk.comment, function()
+			counter = counter + 1
+		end)
+
+		local totalMessages = ((totalPages - 1) * 20) + counter
+
+		local firstMessage
+		if not ignoreFirstMessage then
+			firstMessage = self:getMessage('1', location)
+		end
+
+		return {
+			f = location.f,
+			t = location.t,
+			elementId = ie,
+			navbar = navigation_bar,
+			title = navigation_bar[#navigation_bar][2],
+			isFixed = isFixed,
+			isLocked = isLocked,
+			isDeleted = isDeleted,
+			isFavorited = not not fa,
+			favoriteId = fa,
+			pages = totalPages,
+			totalMessages = totalMessages,
+			firstMessage = firstMessage,
+			community = (community and enums.community[community] or nil)
+		}
+	end
+	--[[@
+		@desc Gets the data of a section.
+		@param location<table> The section location. Fields 'f' and 's' are needed.
+		@returns table|nil The section data, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getSection = function(self, location)
+		assertion("getSection", "table", 1, location)
+
+		if not location.f or not location.s then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local path = "?f=" .. location.f .. "&s=" .. location.s
+		local head, body = this:getPage(forumUri.section .. path)
+
+		local navBar = string.match(body, htmlChunk.navBar)
+		if not navBar then
+			return nil, errorString.internal
+		end
+
+		local navigation_bar, community = { }
+		local counter = 0
+
+		string.gsub(navBar, htmlChunk.navBarFragments, function(href, code)
+			counter = counter + 1
+			local html, name = string.match(code, htmlChunk.navBarSplitContent)
+			if html then
+				navigation_bar[counter] = { href, name }
+
+				if not community then
+					community = string.match(html, htmlChunk.commu)
+				end
+			else
+				navigation_bar[counter] = { href, code }
+			end
+		end)
+
+		local subsections, counter, totalSubsections = { }, 0
+		string.gsub(lastPage, htmlChunk.subsection, function(href, name)
+			counter = counter + 1
+			subsections[counter] = { href, name }
+		end)
+		if counter == 0 then
+			subsections = nil
+		else
+			totalSubsections = counter
+		end
+
+		local totalPages = tonumber(string.match(body, htmlChunk.topicPages))
+		if not totalPages then
+			return nil, errorString.internal
+		end
+
+		counter = 0
+		_, lastPage = this:getPage(forumUri.section .. path .. "&p=" .. totalPages)
+		string.gsub(lastPage, htmlChunk.topic, function()
+			counter = counter + 1
+		end)
+
+		local totalTopics = ((totalPages - 1) * 30) + (counter - (totalSubsections and 1 or 0))
+
+		local fixedTopics = 0
+		string.gsub(lastPage, htmlChunk.postit, function()
+			fixedTopics = fixedTopics + 1
+		end)
+
+		local icon = string.match(body, htmlChunk.icon)
+		icon = enums.icon(icon) or icon
+
+		return {
+			f = location.f,
+			s = location.s,
+			navbar = navigation_bar,
+			name = navigation_bar[#navigation_bar][2],
+			hasSubsections = not not totalSubsections,
+			totalSubsections = totalSubsections,
+			subsections = subsections,
+			pages = totalPages,
+			totalTopics = totalTopics,
+			fixedTopics = fixedTopics,
+			community = (community and enums.community[community] or nil),
+			icon = icon
+		}
+	end
+	--[[@
+		@desc Creates a topic.
+		@param title<string> The title of the topic
+		@param message<string> The initial message of the topic
+		@param location<table> The location where the topic should be created. Fields 'f' and 's' are needed.
+		@returns boolean Whether the topic was created or not
+		@returns string if #1, `topic's url`, else `Result string` or `Error message`
+	]]
+	self.createTopic = function(self, title, message, location)
+		assertion("createTopic", "string", 1, title)
+		assertion("createTopic", "string", 2, message)
+		assertion("createTopic", "table", 3, location)
+
+		if not location.f or not location.s then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 's', location.s },
+			{ "titre", title },
+			{ "message", message }
+		}
+		local success, data = this:performAction(forumUri.cTopic, postData, forumUri.nTopic .. "?f=" .. location.f .. "&s=" .. location.s)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Answers a topic.
+		@param message<string> The answer
+		@param location<table> The location where the message is. Fields 'f' and 't' are needed.
+		@returns boolean Whether the post was created or not
+		@returns string if #1, `post's url`, else `Result string` or `Error message`
+	]]
+	self.answerTopic = function(self, message, location)
+		assertion("answerTopic", "string", 1, message)
+		assertion("answerTopic", "table", 2, location)
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 't', location.t },
+			{ "message_reponse", message }
+		}
+		local success, data = this:performAction(forumUri.cTopic, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Edits a message content.
+		@param messageId<int,string> The message id. Use `string` if it's the post number.
+		@param message<string> The new message
+		@param location<table> The location where the message should be edited. Fields 'f' and 't' are needed.
+		@returns boolean Whether the message content was edited or not
+		@returns string if #1, `post's url`, else `Result string` or `Error message`
+	]]
+	self.editTopicAnswer = function(self, messageId, message, location)
+		assertion("editTopicAnswer", { "number", "string" }, 1, messageId)
+		assertion("editTopicAnswer", "string", 2, message)
+		assertion("editTopicAnswer", "table", 3, location)
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		if type(messageId) == "string" then
+			local err
+			messageId, err = self:getMessage(messageId, location)
+			if messageId then
+				messageId = messageId.id
+			else
+				return false, err
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 't', location.t },
+			{ 'm', messageId },
+			{ "message", message }
+		}
+		local success, data = this:performAction(forumUri.eMsg, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Creates a new poll.
+		@param title<string> The title of the poll
+		@param message<string> The content of the poll
+		@param pollResponses<table> The poll response options
+		@param location<table> The location where the topic should be created. Fields 'f' and 's' are needed.
+		@param settings?<table> The poll settings. The available indexes are: `multiple` and `public`.
+		@returns boolean Whether the poll was created or not
+		@returns string if #1, `poll's url`, else `Result string` or `Error message`
+	]]
+	self.createPoll = function(self, title, message, pollResponses, location, settings)
+		assertion("createPoll", "string", 1, title)
+		assertion("createPoll", "string", 2, message)
+		assertion("createPoll", "table", 3, pollResponses)
+		assertion("createPoll", "table", 4, location)
+		assertion("createPoll", { "table", "nil" }, 5, settings)
+
+		if #pollResponses < 2 then
+			return false, errorString.no_poll_responses
+		end
+
+		if not location.f or not location.s then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 's', location.s },
+			{ "titre", title },
+			{ "message", message },
+			{ "sondage", "on" },
+			{ "reponses", table.concat(destinatary, separator.forumData) }
+		}
+		if settings then
+			if settings.multiple then
+				postData[#postData + 1] = { "multiple", "on" }
+			end
+			if settings.public then
+				postData[#postData + 1] = { "publique", "on" }
+			end
+		end
+
+		local success, data = this:performAction(forumUri.cTopic, postData, forumUri.nPoll .. "?f=" .. location.f .. "&s=" .. location.s)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Gets all the options of a poll.
+		@param url<string> The Atelier801's forum URL
+		@returns table Poll options. The indexes are `id` and `value`.
+		@returns string|nil Error message
+	]]
+	self.getPollOptions = function(self, url)
+		local out = { }
+
+		local foo = string.find("^" .. forumLink)
+		if not foo then
+			return out, errorString.invalid_forum_url
+		end
+
+		local head, body = this:getPage(string.sub(url, foo + 1))
+
+		if string.find(body, "\"po\"") then -- Check if the topic is a poll
+			local counter = 0
+			string.gsub(body, htmlChunk.pollOption, function(t, id, value)
+				if t == "radio" or t == "checkbox" then
+					counter = counter + 1
+					out[counter] = {
+						id = id
+						value = value
+					}
+				end
+			end)
+
+			return out
+		end
+		return out, errorString.not_poll
+	end
+	--[[@
+		@desc Answers a poll.
+		@param option<int,table,string> The poll option to be selected. You can insert its ID or its text (highly recommended). For multiple options polls, use a table with `ints` or `strings`.
+		@param location<table> The location where the poll answer should be recorded. Fields 'f' and 't' are needed for forum poll, 'co' for private poll.
+		@param pollId?<int> The poll id. It's obtained automatically if no value is given.
+		@returns boolean Whether the poll option was recorded or not
+		@returns string if #1, `poll's url`, else `Result string` or `Error message`
+	]]
+	self.answerPoll = function(self, option, location, pollId)
+		assertion("answerPoll", { "number", "table", "string" }, 1, option)
+		assertion("answerPoll", "table", 2, location)
+		assertion("answerPoll", { "number", "nil" }, 3, pollId)
+
+		local isPrivatePoll = not not location.co
+		if not isPrivatePoll and (not location.f or not location.t) then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_required_fields_private, "'co'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local url = forumLink .. (isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or ("?f=" .. location.f .. "&t=" .. location.t))
+
+		local optionIsString = type(option) == "string"
+		if optionIsString or (type(option) == "table" and type(option[1]) == "string") then
+			local options, err = self:getPollOptions(url)
+			if err then
+				return false, err
+			end
+
+			if optionIsString then
+				local index = table.search(options, option, "value")
+				if not index then
+					return false, errorString.poll_option_not_found
+				end
+				option = options[index].id
+			else
+				local tmpSet = table.createSet(options, "value")
+				for i = 1, #option do
+					if tmpSet[options[i]] then
+						options[i] = tmpSet[options[i]].id
+					else
+						return false, errorString.poll_option_not_found
+					end
+				end
+			end
+		end
+
+		if not pollId then
+			local head, body = this:getPage(pollId)
+
+			pollId = tonumber(string.match(body, string.format(htmlChunk.hidden, htmlChunk.poll))
+			if not pollId then
+				return false, errorString.not_poll
+			end
+		end
+
+		local postData = {
+			{ "po", pollId }
+		}
+		if isPrivatePoll then
+			postData[2] = { "co", location.co }
+		else
+			postData[2] = { 'f', location.f }
+			postData[3] = { 't', location.t }
+		end
+		if type(option) == "string" then
+			postData[#postData + 1] = { "reponse_", option }
+		else
+			local len = #postData
+			for i = 1, #option do
+				postData[len + i] = { ("reponse_" .. option[i]), option[i] }
+			end
+		end
+
+		local success, data = this:performAction(forumUri[(isPrivatePoll and "apPoll" or "aForumPoll")], postData, url)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Likes a message.
+		@param messageId<int,string> The message id. Use `string` if it's the post number.
+		@param location<table> The topic location. Fields 'f' and 't' are needed.
+		@returns boolean Whether the like was recorded or not
+		@returns string if #1, `post's url`, else `Result string` or `Error message`
+	]]
+	self.likeMessage = function(self, messageId, location)
+		assertion("likeMessage", { "number", "string" }, 1, messageId)
+		assertion("likeMessage", "table", 2, location)
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		if type(messageId) == "string" then
+			local err
+			messageId, err = self:getMessage(messageId, location)
+			if messageId then
+				messageId = messageId.id
+			else
+				return false, err
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 't', location.t },
+			{ 'm', messageId }
+		}
+		local success, data = this:performAction(forumUri.like, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
+		return returnRedirection(success, data)
+	end
+
+	-- > Moderation
+	--[[@
+		@desc Updates a topic state, location and parameters.
+		@desc The available data are:
+		@desc string `title` -> Topic's title
+		@desc boolean `postit` -> Whether the topic should be fixed or not
+		@desc string|int `state` -> The topic's state. An enum from `enums.displayState` (index or value)
+		@param data<table> The new topic data
+		@param location<table> The location where the topic is. Fields 'f' and 't' are needed.
+		@returns boolean Whether the topic was updated or not
+		@returns string if #1, `topic's url`, else `Result string` or `Error message`
+	]]
+	self.updateTopic = function(self, data, location)
+		assertion("updateTopic", "table", 1, data)
+		assertion("updateTopic", "table", 2, location)
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local topic = this:getTopic(location)
+		local postit = data.postit
+		if postit == nil then
+			postit = topic.postit
+		end
+		if data.state then
+			if type(data.state) == "string" then
+				if not enums.displayState[data.state] then
+					return false, errorString.invalid_enum .. " (data.state)"
+				end
+				data.state = enums.displayState[data.state]
+			else
+				if not table.search(enums.displayState, data.state) then
+					return false, errorString.enum_out_of_range .. " (data.state)"
+				end
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 't', location.t },
+			{ "titre", (data.title or topic.title) },
+			{ "postit", (postit and "on" or '') }
+			{ "etat", (data.state or topic.state) },
+			{ 's', (data.s or topic.s) }
+		}
+		local success, data = this:performAction(forumUri.uTopic, postData, forumUri.eTopic .. "?f=" .. location.f .. "&t=" .. location.t)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Reports an element. (e.g: message, profile)
+		@param element<string,int> The element type. An enum from `enums.element` (index or value)
+		@param elementId<int,string> The element id.
+		@param reason<string> The report reason.
+		@param location?<table> The location of the report. If it's a forum message the field 'f' is needed, if it's a private message the field 'co' is needed.
+		@returns boolean Whether the report was recorded or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.reportElement = function(self, element, elementId, reason, location)
+		assertion("reportElement", { "string", "number" }, 1, element)
+		assertion("reportElement", { "number", "string" }, 2, elementId)
+		assertion("reportElement", "string", 3, reason)
+		assertion("reportElement", { "table", "nil" }, 4, location)
+
+		if type(element) == "string" then
+			if not enums.element[element] then
+				return false, errorString.invalid_enum
+			end
+			element = enums.element[element]
+		else
+			if not table.search(enums.element, element) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		location = location or { }
+		local link, err
+		if element == enums.element.message then
+			-- Message ID
+			if not location.f or not location.t then
+				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			end
+			if type(elementId) == "string" then
+				elementId, err = self:getMessage(elementId, location)
+				if elementId then
+					elementId = elementId.id
+				else
+					return false, err
+				end
+			end
+			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
+		elseif element == enums.element.tribe then
+			-- Tribe ID
+			link = forumUri.tribe .. "?tr=" .. elementId
+		elseif element == enums.element.profile then
+			-- User ID
+			if type(elementId) == "string" then
+				elementId = this:getPlayerId(elementId)
+			end
+			link = forumUri.profile .. "?tr=" .. elementId -- (Can be the ID too)
+		elseif element == enums.element.private_message then
+			-- Private Message, Message ID
+			if not location.co then
+				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'co'")
+			end
+			if type(elementId) == "string" then
+				elementId, err = self:getMessage(elementId, location)
+				if elementId then
+					elementId = elementId.id
+				else
+					return false, err
+				end
+			end
+			link = forumUri.conversation .. "?co=" .. location.co
+		elseif element == enums.element.poll then
+			-- Poll ID
+			if not location.f then
+				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			end
+			if type(elementId) == "string" then
+				return false, errorString.poll_id
+			end
+			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
+		elseif element == enums.element.image then
+			-- Image ID
+			if type(elementId) == "number" then
+				return false, errorString.image_id
+			end
+			link = forumUri.userImg .. "?im=" .. elementId
+		else
+			return false, errorString.unaivalable_enum 
+		end
+
+		location.f = (location.f or 0)
+		local postData = {
+			{ 'f', location.f },
+			{ "te", element },
+			{ "ie", elementId },
+			{ "raison", reason }
+		}
+		return this:performAction(forumUri.report, postData, link)
+	end
+	--[[@
+		@desc Changes the state of the message. (e.g: active, moderated)
+		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`.
+		@param messageState<string,int> The message state. An enum from `enums.messageState` (index or value)
+		@param location<table> The topic location. Fields 'f' and 't' are needed.
+		@param reason?<string> The reason for changing the message state
+		@returns boolean Whether the message(s) state was(were) changed or not
+		@returns string if #1, `post's url`, else `Result string` or `Error message`
+	]]
+	self.changeMessageState = function(self, messageId, messageState, location, reason)
+		assertion("changeMessageState", { "number", "table", "string" }, 1, messageId)
+		assertion("changeMessageState", { "string", "number" }, 2, messageState)
+		assertion("changeMessageState", "table", 3, location)
+		assertion("changeMessageState", { "string", "nil" }, 4, reason)
+
+		if type(messageState) == "string" then
+			if not enums.messageState[messageState] then
+				return false, errorString.invalid_enum
+			end
+			messageState = enums.messageState[messageState]
+		else
+			if not table.search(enums.messageState, messageState) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local messageIdIsString = type(messageId) == "string"
+		if messageIdIsString or (type(messageId) == "table" and type(messageId[1]) == "string") then
+			if messageIdIsString then
+				messageId = { self:getMessage(messageId, location).id }
+			end
+
+			for i = 1, #messageId do
+				messageId[i] = self:getMessage(messageId[i], location).id
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 't', location.t },
+			{ "messages", table.concat(messageId, separator.forumData) },
+			{ "etat", messageState },
+			{ "raison", (reason or '') }
+		}
+		local success, data = this:performAction(forumUri.moderate, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Changes the restriction state for a message.
+		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`.
+		@param contentState<string> An enum from `enums.contentState` (index or value)
+		@param location<table> The topic location. Fields 'f' and 't' are needed.
+		@returns boolean Whether the message content state was changed or not
+		@returns string if #1, `post's url`, else `Result string` or `Error message`
+	]]
+	self.changeMessageContentState = function(self, messageId, contentState, location)
+		assertion("changeMessageContentState", { "number", "table", "string" }, 1, messageId)
+		assertion("changeMessageContentState", "string", 2, contentState)
+		assertion("changeMessageContentState", "table", 3, location)
+
+		if type(contentState) == "string" then
+			if not enums.contentState[contentState] then
+				return false, errorString.invalid_enum
+			end
+			contentState = enums.contentState[contentState]
+		else
+			if not table.search(enums.contentState, contentState) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local messageIdIsString = type(messageId) == "string"
+		if messageIdIsString or (type(messageId) == "table" and type(messageId[1]) == "string") then
+			if messageIdIsString then
+				messageId = { self:getMessage(messageId, location).id }
+			end
+
+			for i = 1, #messageId do
+				messageId[i] = self:getMessage(messageId[i], location).id
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 't', location.t },
+			{ "messages", table.concat(messageId, separator.forumData) },
+			{ "restreindre", contentState }
+		}
+		local success, data = this:performAction(forumUri.manageRestriction, postData, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
+		return returnRedirection(success, data)
+	end
+
+	-- > Tribe
+	--[[@
+		@desc Updates the account's tribe greeting message.
+		@param message<string> The new message
+		@returns boolean Whether the tribe's greeting message was updated or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.updateTribeGreetingMessage = function(self, message)
+		assertion("updateTribeGreetingMessage", "string", 1, message)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local id = 0 -- Get tribe id using this.userName...
+		local postData = {
+			{ "tr", id },
+			{ "message_jour", message }
+		}
+		return this:performAction(forumUri.uTribeMsg, postData, forumUri.tribe .. "?tr=" .. id)
+	end
+	--[[@
+		@desc Updates the account's tribe's parameters.
+		@desc The available parameters are:
+		@desc boolean `greeting_message` -> Whether the tribe's profile should display the tribe's greeting message or not
+		@desc boolean `ranks` -> Whether the tribe's profile should display the tribe ranks or not
+		@desc boolean `logs` -> Whether the tribe's profile should display the history logs or not
+		@desc boolean `leader` -> Whether the tribe's profile should display the tribe leaders message or not
+		@param parameters<table> The parameters.
+		@returns boolean Whether the new tribe parameter settings were set or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.updateTribeParameters = function(self, parameters)
+		assertion("updateTribeParameters", "table", 1, parameters)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local id = 0 -- Get tribe id using this.userName...
 		local postData = {
 			{ "tr", id }
 		}
-		return this:performAction(forumUri.remLogo, postData, forumUri.tribe .. "?tr=" .. id)
-	end
+		if type(parameters.greeting_message) == "boolean" and parameters.greeting_message then
+			postData[#postData + 1] = { "message_jour_public", "on" }
+		end
+		if type(parameters.ranks) == "boolean" and parameters.ranks then
+			postData[#postData + 1] = { "rangs_publics", "on" }
+		end
+		if type(parameters.logs) == "boolean" and parameters.logs then
+			postData[#postData + 1] = { "historique_public", "on" }
+		end
+		if type(parameters.leader) == "boolean" and parameters.leader then
+			postData[#postData + 1] = { "chefs_publics", "on" }
+		end
 
+		return this:performAction(forumUri.uTribeParam, postData, forumUri.profile .. "?tr=" .. id)
+	end
 	--[[@
 		@desc Updates the account's tribe profile.
 		@desc The available data are:
-		@desc string | int `community` -> Account's tribe community. An enum from `enums.community` (index or value)
-		@desc string | int `recruitment` -> Account's tribe recruitment state. An enum from `enums.recruitmentState` (index or value)
+		@desc string|int `community` -> Account's tribe community. An enum from `enums.community` (index or value)
+		@desc string|int `recruitment` -> Account's tribe recruitment state. An enum from `enums.recruitmentState` (index or value)
 		@desc string `presentation` -> Account's tribe profile's presentation
 		@param data<table> The data
 		@returns boolean Whether the tribe's profile was updated or not
@@ -1666,71 +1905,131 @@ return function()
 
 		return this:performAction(forumUri.uTribe, postData, forumUri.tribe .. "?tr=" .. id)
 	end
-
 	--[[@
-		@desc Updates the account's tribe greeting message.
-		@param message<string> The new message
-		@returns boolean Whether the tribe's greeting message was updated or not
+		@desc Removes the logo of the account's tribe.
+		@returns boolean Whether the logo was removed or not
 		@returns string `Result string` or `Error message`
 	]]
-	self.updateTribeGreetingMessage = function(self, message)
-		assertion("updateTribeGreetingMessage", "string", 1, message)
-
+	self.removeTribeLogo = function(self)
 		if not this.isConnected then
 			return false, errorString.not_connected
 		end
 
-		local id = 0 -- Get tribe id using this.userName...
-		local postData = {
-			{ "tr", id },
-			{ "message_jour", message }
-		}
-		return this:performAction(forumUri.uTribeMsg, postData, forumUri.tribe .. "?tr=" .. id)
-	end
-
-	--[[@
-		@desc Updates the account's tribe's parameters.
-		@desc The available parameters are:
-		@desc boolean `greeting_message` -> Whether the tribe's profile should display the tribe's greeting message or not
-		@desc boolean `ranks` -> Whether the tribe's profile should display the tribe ranks or not
-		@desc boolean `logs` -> Whether the tribe's profile should display the history logs or not
-		@desc boolean `leader` -> Whether the tribe's profile should display the tribe leaders message or not
-		@param parameters<table> The parameters.
-		@returns boolean Whether the new tribe parameter settings were set or not
-		@returns string `Result string` or `Error message`
-	]]
-	self.updateTribeParameters = function(self, parameters)
-		assertion("updateTribeParameters", "table", 1, parameters)
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local id = 0 -- Get tribe id using this.userName...
+		local id = 0 -- Get tribe id using this.userName... (check if has tribe)
 		local postData = {
 			{ "tr", id }
 		}
-		if type(parameters.greeting_message) == "boolean" and parameters.greeting_message then
-			postData[#postData + 1] = { "message_jour_public", "on" }
-		end
-		if type(parameters.ranks) == "boolean" and parameters.ranks then
-			postData[#postData + 1] = { "rangs_publics", "on" }
-		end
-		if type(parameters.logs) == "boolean" and parameters.logs then
-			postData[#postData + 1] = { "historique_public", "on" }
-		end
-		if type(parameters.leader) == "boolean" and parameters.leader then
-			postData[#postData + 1] = { "chefs_publics", "on" }
-		end
-
-		return this:performAction(forumUri.uTribeParam, postData, forumUri.profile .. "?tr=" .. id)
+		return this:performAction(forumUri.remLogo, postData, forumUri.tribe .. "?tr=" .. id)
 	end
+	--[[@
+		@desc Creates a section.
+		@desc The available data are:
+		@desc string `name` -> Section's name
+		@desc string `icon` -> Section's icon. An enum from `enums.icon` (index or value)
+		@desc string `description` -> Section's description
+		@desc int `min_characters` -> Minimum characters needed for a message in the new section
+		@param data<table> The new section data
+		@param location<table> The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section and 'tr' is needed if it's a section.
+		@returns boolean Whether the section was created or not
+		@returns string if #1, `section's url`, else `Result string` or `Error message`
+	]]
+	self.createSection = function(self, data, location)
+		assertion("createSection", "table", 1, data)
+		assertion("createSection", "table", 2, location)
 
+		if not location.f or (not location.tr or not location.s) then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 'tr' / 's'")
+		end
+
+		if not data.name or not data.icon or not data.description or not data.min_characters then
+			return false, string.format(errorString.no_required_fields, "data { 'name', 'icon', 'description', 'min_characters' }")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		if type(data.icon) == "string" then
+			if not enums.icon[data.icon] then
+				return false, errorString.invalid_enum
+			end
+			data.icon = enums.displayState[data.icon]
+		else
+			if not table.search(enums.icon, data.icon) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 's', (location.s or '') },
+			{ "tr" (location.tr or '') },
+			{ "nom", data.name },
+			{ "icone", data.icon },
+			{ "description", data.description },
+			{ "caracteres", data.min_characters }
+		}
+		local success, data = this:performAction(forumUri.cSection, postData, forumUri.nSection .. "?f=" .. location.f .. (location.s and ("&s=" .. location.s) or ("&tr=" .. location.tr)))
+		return returnRedirection(success, data)
+	end
+	--[[@
+		@desc Updates a section.
+		@desc The available data are:
+		@desc string `name` -> Section's name
+		@desc string `icon` -> The section's icon. An enum from `enums.icon` (index or value)
+		@desc string `description` -> Section's description
+		@desc int `min_characters` -> Minimum characters needed for a message in the new section
+		@desc string|int `state` -> The section's state (e.g.: opened, closed). An enum from `enums.displayState` (index or value)
+		@desc int `parent` -> The parent section if the updated section is a sub-section. (default = 0)
+		@param data<table> The updated section data
+		@param location<table> The section location. Fields 'f' and 's' are needed.
+		@returns boolean Whether the section was updated or not
+		@returns string if #1, `section's url`, else `Result string` or `Error message`
+	]]
+	self.updateSection = function(self, data, location)
+		assertion("updateSection", "table", 1, data)
+		assertion("updateSection", "table", 2, location)
+
+		if not location.f or not location.s then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local section = this:getSection(location)
+		if data.state then
+			if type(data.state) == "string" then
+				if not enums.displayState[data.state] then
+					return false, errorString.invalid_enum .. " (data.state)"
+				end
+				data.state = enums.displayState[data.state]
+			else
+				if not table.search(enums.displayState, data.state) then
+					return false, errorString.enum_out_of_range .. " (data.state)"
+				end
+			end
+		end
+
+		local postData = {
+			{ 'f', location.f },
+			{ 's', location.s },
+			{ "nom", (data.name or section.name) },
+			{ "icone", (data.icon or section.icon) },
+			{ "description", (data.description or section.description) },
+			{ "caracteres", (data.min_characters or data.min_characters) },
+			{ "etat", (data.state or section.state) },
+			{ "parent", (data.parent or section.parent) }
+		}
+		local success, data = this:performAction(forumUri.uSection, postData, forumUri.eSection .. "?f=" .. location.f .. "&s=" .. location.s)
+		return returnRedirection(success, data)
+	end
 	--[[@
 		@desc Sets the permissions of each rank for a specific section on the tribe forums.
 		@desc The available permissions are `canRead`, `canAnswer`, `canCreateTopic`, `canModerate`, and `canManage`.
 		@desc Each one of them must be a table of IDs (`int` or `string`) of the ranks that this permission should be allowed.
-		@desc To allow _non-members_, use `enums.non_member` or `"non_member"`.
+		@desc To allow _non-members_, use `enums.misc.non_member` or `"non_member"`.
 		@param permissions<table> The permissions
 		@param location<table> The section location. The fields 'f', 't' and 'tr' are needed.
 		@returns boolean Whether the new permissions were set or not
@@ -1761,7 +2060,7 @@ return function()
 				for j = 1, #permissions[indexes[i]] do
 					if type(permissions[indexes[i]][j]) == "string" then
 						if permissions[indexes[i]][j] == "non_member" then
-							permissions[indexes[i]][j] = enums.non_member
+							permissions[indexes[i]][j] = enums.misc.non_member
 						else
 							permissions[indexes[i]][j] = ranks_by_name[permissions[indexes[i]][j]][1]
 						end
@@ -1775,7 +2074,7 @@ return function()
 					end
 
 					if not ranks_by_id[permissions[indexes[i]][j]] then
-						if permissions[indexes[i]][j] ~= enums.non_member then
+						if permissions[indexes[i]][j] ~= enums.misc.non_member then
 							return false, errorString.invalid_id .. " (in #" .. j .. " at '" .. indexes[i] .. "')"
 						end
 					end
@@ -1805,6 +2104,27 @@ return function()
 		return this:performAction(forumUri.uSectionPerm, postData, forumUri.eSectionPerm .. "?f=" .. location.f .. "&s=" .. location.s)
 	end
 
+	-- > Micepix
+	--[[@
+		@desc Deletes an image from the account's micepix.
+		@param imageId<string> The image id
+		@returns boolean Whether the image was deleted or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.deleteMicepixImage = function(self, imageId)
+		assertion("deleteMicepixImage", "string", 1, imageId)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "im", imageId }
+		}
+		return this:performAction(forumUri.remImg, postData, forumUri.userImg .. "?im=" .. imageId)
+	end
+
+	-- > Miscellaneous
 	--[[@
 		@desc Adds a user as friend.
 		@param userName<string> The user to be added
@@ -1823,7 +2143,6 @@ return function()
 		}
 		return this:performAction(forumUri.addFriend, postData, forumUri.friends .. "?pr=" .. this:getPlayerId(this.userName))
 	end
-
 	--[[@
 		@desc Adds a user in the blacklist.
 		@param userName<string> The user to be blacklisted
@@ -1842,18 +2161,17 @@ return function()
 		}
 		return this:performAction(forumUri.ignoreUser, postData, forumUri.blacklist .. "?pr=" .. this:getPlayerId(this.userName))
 	end
-
 	--[[@
 		@desc Favorites an element. (e.g: topic, tribe)
 		@param element<string,int> The element type. An enum from `enums.element` (index or value)
-		@param elementId<int,string> The element id.
+		@param elementId<int> The element id.
 		@param location?<table> The location of the report. If it's a forum topic the fields 'f' and 't' are needed.
 		@returns boolean Whether the element was favorited or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.favoriteElement = function(self, element, elementId, location)
 		assertion("favoriteElement", { "string", "number" }, 1, element)
-		assertion("favoriteElement", { "number", "string" }, 2, elementId)
+		assertion("favoriteElement", "number", 2, elementId)
 		assertion("favoriteElement", "table", 3, location)
 
 		if type(element) == "string" then
@@ -1877,9 +2195,6 @@ return function()
 			if not location.f or not location.t then
 				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 			end
-			if type(elementId) == "string" then
-				elementId = this:getMessageId(elementId, location)
-			end
 			link = forumUri.topic .. forumUri.favTopics
 		elseif element == enums.element.tribe then
 			-- Tribe ID
@@ -1896,7 +2211,6 @@ return function()
 		}
 		return this:performAction(forumUri.fav, postData, link)
 	end
-
 	--[[@
 		@desc Unfavorites an element.
 		@param favoriteId<int,string> The element favorite-id.
@@ -1914,6 +2228,39 @@ return function()
 			{ "fa", favoriteId }
 		}
 		return this:performAction(forumUri.unfav, postData, forumLink .. forumUri.favTopics)
+	end
+	--[[@
+		@desc Lists the members of a specific role.
+		@param role<string,int<> The role id. An enum from `enums.listRole` (index or value)
+		@returns table|nil The list, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getStaffList = function(self, role)
+		assertion("getStaffList", { "string", "number" }, 1, role)
+
+		if type(role) == "string" then
+			if not enums.listRole[role] then
+				return nil, errorString.invalid_enum
+			end
+			role = enums.listRole[role]
+		else
+			if not table.search(enums.listRole, role) then
+				return nil, errorString.enum_out_of_range
+			end
+		end
+
+		if not this.isConnected then
+			return nil, errorString.not_connected
+		end
+
+		local sucess, result = this:getPage(forumUri.staffAjax .. "?role=" .. role)
+		local data, counter = { }, 0
+		string.gsub(result, htmlChunk.staff, function(name, discriminator)
+			counter = counter + 1
+			data[counter] = name .. discriminator
+		end)
+
+		return data
 	end
 
 	return self

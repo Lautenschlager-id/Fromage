@@ -1,14 +1,16 @@
+local enum = require("enum")
+
 return {
-	inboxLocale = {
+	inboxLocale = enum {
 		inbox = 0,
 		archives = 1,
 		bin = 2
 	},
-	conversationState = {
+	conversationState = enum {
 		opened = 0,
 		closed = 1
 	},
-	element = {
+	element = enum {
 		topic = 3,
 		message = 4,
 		tribe = 9,
@@ -17,13 +19,13 @@ return {
 		poll = 34,
 		image = 45
 	},
-	gender = {
+	gender = enum {
 		none = 0,
 		female = 1,
 		male = 2
 	},
-	community = {
-		en = 1,
+	community = enum {
+		xx = 1,
 		fr = 2,
 		br = 4,
 		es = 5,
@@ -36,7 +38,7 @@ return {
 		ro = 12,
 		id = 13,
 		de = 14,
-		e2 = 15,
+		en = 15,
 		ar = 16,
 		ph = 17,
 		lt = 18,
@@ -54,24 +56,24 @@ return {
 		az = 31,
 		pt = 33
 	},
-	recruitmentState = {
+	recruitmentState = enum {
 		closed = 0,
 		opened = 1
 	},
-	displayState = {
+	displayState = enum {
 		open = 0,
 		locked = 1,
 		deleted = 2
 	},
-	messageState = {
+	messageState = enum {
 		active = 0,
 		moderated = 1
 	},
-	contentState = {
+	contentState = enum {
 		restricted = "true",
 		unrestricted = "false"
 	},
-	icon = {
+	icon = enum {
 		nekodancer = "nekodancer.png",
 		fortoresse = "fortoresse.png",
 		balloon_cheese = "bulle-fromage.png",
@@ -91,5 +93,33 @@ return {
 		flag = "drapeau.png",
 		runforcheese = "runforcheese.png"
 	},
-	non_member = -2
+	misc = enum {
+		non_member = -2
+	},
+	listRole = enum {
+		moderator = 1,
+		sentinel = 4,
+		arbitre = 8,
+		mapcrew = 16,
+		module_team = 32,
+		anti_hack_brigade = 64,
+		administrator = 128,
+		votecrew = 512,
+		translator = 1024,
+		funcorp = 2048
+	},
+	role = enum {
+		administrator = 1,
+		moderator = 1,
+		sentinel = 15,
+		mapcrew = 20
+	},
+	forumTitle = enum {
+		[1] = "Citizen",
+		[2] = "Censor",
+		[3] = "Consul",
+		[4] = "Senator",
+		[5] = "Archon",
+		[6] = "Heliast"
+	}
 }

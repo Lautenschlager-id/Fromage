@@ -14,21 +14,6 @@
 >| `string`, `nil` | Error message |
 >
 
->### getPollOptions ( url )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| url | `string` | ✔ | The Atelier801's forum URL |
->
->Gets all the options of a poll.
->
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `table` | Poll options. The indexes are `id` and `value`. |
->| `string`, `nil` | Error message |
->
-
 ## Methods
 >### self:addFriend ( userName )
 >| Parameter | Type | Required | Description |
@@ -349,7 +334,7 @@
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| element | `string`, `int` | ✔ | The element type. An enum from `enums.element` (index or value) |
->| elementId | `int`, `string` | ✔ | The element id. |
+>| elementId | `int` | ✔ | The element id. |
 >| location | `table` | ✕ | The location of the report. If it's a forum topic the fields 'f' and 't' are needed. |
 >
 >Favorites an element. (e.g: topic, tribe)
@@ -360,6 +345,98 @@
 >| :-: | - |
 >| `boolean` | Whether the element was favorited or not |
 >| `string` | `Result string` or `Error message` |
+>
+
+>### self:getMessage ( postId, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| postId | `int`, `string` | ✔ | The post id (note: not the message id, but the #mID) |
+>| location | `table` | ✔ | The post topic or conversation location. Fields 'f' and 't' are needed for forum messages, field 'co' is needed for private message. |
+>
+>Gets the data of a message.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The message data, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getPollOptions ( url )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| url | `string` | ✔ | The Atelier801's forum URL |
+>
+>Gets all the options of a poll.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table` | Poll options. The indexes are `id` and `value`. |
+>| `string`, `nil` | Error message |
+>
+
+>### self:getProfile ( userName )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| userName | `string`, `int` | ✕ | User name or id. (default = Client's account name) |
+>
+>Gets an user profile.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The profile data, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getSection ( location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| location | `table` | ✔ | The section location. Fields 'f' and 's' are needed. |
+>
+>Gets the data of a section.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The section data, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getStaffList ( role )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| role | `string`, `int<` | ✔ | The role id. An enum from `enums.listRole` (index or value) |
+>
+>Lists the members of a specific role.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The list, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getTopic ( location, ignoreFirstMessage )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
+>| ignoreFirstMessage | `boolean` | ✕ | Whether the data of the first message should be sent or not. (default = false) |
+>
+>Gets the data of a topic.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The topic data, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
 >
 
 >### self:kickConversationMember ( conversationId, userId )
@@ -477,21 +554,6 @@
 >| `string` | `Result string` or `Error message` |
 >
 
->### self:sendValidationCode ( code )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| code | `string` | ✔ | The validation code. |
->
->Validates the validation code.
->
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `boolean` | Whether the validation code was sent to be validated or not |
->| `string` | `Result string` (Empty for success) or `Error message` |
->
-
 >### self:setEmail ( email )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -532,7 +594,7 @@
 >Sets the permissions of each rank for a specific section on the tribe forums.<br>
 >The available permissions are `canRead`, `canAnswer`, `canCreateTopic`, `canModerate`, and `canManage`.<br>
 >Each one of them must be a table of IDs (`int` or `string`) of the ranks that this permission should be allowed.<br>
->To allow _non-members_, use `enums.non_member` or `"non_member"`.
+>To allow _non-members_, use `enums.misc.non_member` or `"non_member"`.
 >
 >**Returns**
 >
@@ -540,6 +602,21 @@
 >| :-: | - |
 >| `boolean` | Whether the new permissions were set or not |
 >| `string` | `Result string` or `Error message` |
+>
+
+>### self:submitValidationCode ( code )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| code | `string` | ✔ | The validation code. |
+>
+>Submits the validation code to the forum to be validated.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the validation code was sent to be validated or not |
+>| `string` | `Result string` (Empty for success) or `Error message` |
 >
 
 >### self:unfavoriteElement ( favoriteId )
@@ -581,10 +658,10 @@
 >
 >Updates the account's profile.<br>
 >The available data are:<br>
->string | int `community` -> Account's community. An enum from `enums.community` (index or value)<br>
+>string|int `community` -> Account's community. An enum from `enums.community` (index or value)<br>
 >string `birthday` -> The birthday date (dd/mm/yyyy)<br>
 >string `location` -> The location<br>
->string | int `gender` -> Account's gender. An enum from `enums.gender` (index or value)<br>
+>string|int `gender` -> Account's gender. An enum from `enums.gender` (index or value)<br>
 >string `presentation` -> Profile's presentation
 >
 >**Returns**
@@ -607,7 +684,7 @@
 >string `icon` -> The section's icon. An enum from `enums.icon` (index or value)<br>
 >string `description` -> Section's description<br>
 >int `min_characters` -> Minimum characters needed for a message in the new section<br>
->string | int `state` -> The section's state (e.g.: opened, closed). An enum from `enums.displayState` (index or value)<br>
+>string|int `state` -> The section's state (e.g.: opened, closed). An enum from `enums.displayState` (index or value)<br>
 >int `parent` -> The parent section if the updated section is a sub-section. (default = 0)
 >
 >**Returns**
@@ -628,7 +705,7 @@
 >The available data are:<br>
 >string `title` -> Topic's title<br>
 >boolean `postit` -> Whether the topic should be fixed or not<br>
->string | int `state` -> The topic's state. An enum from `enums.displayState` (index or value)
+>string|int `state` -> The topic's state. An enum from `enums.displayState` (index or value)
 >
 >**Returns**
 >
@@ -680,8 +757,8 @@
 >
 >Updates the account's tribe profile.<br>
 >The available data are:<br>
->string | int `community` -> Account's tribe community. An enum from `enums.community` (index or value)<br>
->string | int `recruitment` -> Account's tribe recruitment state. An enum from `enums.recruitmentState` (index or value)<br>
+>string|int `community` -> Account's tribe community. An enum from `enums.community` (index or value)<br>
+>string|int `recruitment` -> Account's tribe recruitment state. An enum from `enums.recruitmentState` (index or value)<br>
 >string `presentation` -> Account's tribe profile's presentation
 >
 >**Returns**

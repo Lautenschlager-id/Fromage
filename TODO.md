@@ -2,11 +2,12 @@
 - [x] [Login](docs/a801api.md#selfconnect--userName-userPassword-)
 - [x] [Disconnect](docs/a801api.md#selfdisconnect---)
 - [x] [Send Validation Code](docs/a801api.md#selfrequestValidationCode---)
-- [x] [Valid Validation Code](docs/a801api.md#selfsendValidationCode--code-)
+- [x] [Valid Validation Code](docs/a801api.md#selfsubmitValidationCode--code-)
 - [x] [Add/change e-mail](docs/a801api.md#selfsetEmail--email-)
 - [x] [Change password](docs/a801api.md#selfsetPassword--password-disconnect-)
 
 ## Inbox
+- [ ] Get conversation
 - [x] [New Private Message](docs/a801api.md#selfcreatePrivateMessage--destinatary-subject-message-)
 - [x] [New Private Discussion](docs/a801api.md#selfcreatePrivateDiscussion--destinataries-subject-message-)
 - [x] [New Private Poll](docs/a801api.md#selfcreatePrivatePoll--destinataries-subject-message-pollResponses-settings-)
@@ -22,11 +23,11 @@
 - [x] [Exclude guest from Conversation](docs/a801api.md#selfkickConversationMember--conversationId-userId-)
 
 ## Forum
-- [ ] Get message
+- [x] [Get message](docs/a801api.md#selfgetMessage--postId-location-)
+- [x] [Get topic](docs/a801api.md#selfgetTopic--location-ignoreFirstMessage-)
+- [x] [Get section](docs/a801api.md#selfgetSection---)
 - [ ] Get topic messages (by page?)
-- [ ] Get topic
 - [ ] Get section topics
-- [ ] Get section
 - [x] [Answer topic](docs/a801api.md#selfanswerTopic--message-location-)
 - [x] [Create topic](docs/a801api.md#selfcreateTopic--title-message-location-)
 - [x] [Create poll](docs/a801api.md#selfcreatePoll--title-message-pollResponses-location-settings-)
@@ -58,7 +59,7 @@
 - [x] [Remove avatar](docs/a801api.md#selfremoveAvatar---)
 - [x] [Display online status](docs/a801api.md#selfupdateParameters--parameters-)
 - [x] [Edit Profile](docs/a801api.md#selfupdateProfile--data-)
-- [ ] Get player Profile
+- [x] [Get player Profile](docs/a801api.md#selfgetProfile--userName-)
 
 ## Micepix
 - [ ] Get micepix images (self) (by page?!)
@@ -98,4 +99,4 @@
 - [x] [Unfavorite topic](docs/a801api.md#selfunfavoriteElement--favoriteId-)
 - [ ] Get favorite topics
 - [ ] Get favorite tribes
-- [ ] List staff
+- [x] [List staff](docs/a801api.md#selfgetStaffList--role-)
