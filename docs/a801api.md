@@ -1,17 +1,17 @@
 ## Static Methods
->### fragmentUrl ( url )
+>### parseUrlData ( href )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| url | `string` | ✔ | The Atelier801's forum URL |
+>| href | `string` | ✔ | The uri and data to be parsed. |
 >
->Fragments a forum URL.
+>Parses the URL data.
 >
 >**Returns**
 >
 >| Type | Description |
 >| :-: | - |
->| `table` | Fragmented URL. The available indexes are: `uri`, `raw_data` and `data`. |
->| `string`, `nil` | Error message |
+>| `table`, `nil` | Parsed data. The available indexes are: `uri`, `raw_data` and `data`. |
+>| `nil`, `string` | Error message |
 >
 
 ## Methods
@@ -258,7 +258,7 @@
 >Creates a section.<br>
 >The available data are:<br>
 >string `name` -> Section's name<br>
->string `icon` -> Section's icon. An enum from `enums.icon` (index or value)<br>
+>string `icon` -> Section's icon. An enum from `enums.sectionIcon` (index or value)<br>
 >string `description` -> Section's description<br>
 >int `min_characters` -> Minimum characters needed for a message in the new section
 >
@@ -347,6 +347,22 @@
 >| `string` | `Result string` or `Error message` |
 >
 
+>### self:getConversation ( location, ignoreFirstMessage )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| location | `table` | ✔ | The conversation location. Field 'co' is needed. |
+>| ignoreFirstMessage | `boolean` | ✕ | Whether the data of the first message should be ignored or not. (default = false) |
+>
+>Gets the data of a conversation.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The conversation data, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
 >### self:getMessage ( postId, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -363,10 +379,10 @@
 >| `nil`, `string` | The message error, if any occurred |
 >
 
->### self:getPollOptions ( url )
+>### self:getPollOptions ( location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| url | `string` | ✔ | The Atelier801's forum URL |
+>| location | `table` | ✔ | The location of the poll. Fields 'f' and 't' are needed. |
 >
 >Gets all the options of a poll.
 >
@@ -374,7 +390,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `table` | Poll options. The indexes are `id` and `value`. |
+>| `table`, `nil` | Poll options, if any is found. The indexes are `id` and `value`. |
 >| `string`, `nil` | Error message |
 >
 
@@ -427,7 +443,7 @@
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
->| ignoreFirstMessage | `boolean` | ✕ | Whether the data of the first message should be sent or not. (default = false) |
+>| ignoreFirstMessage | `boolean` | ✕ | Whether the data of the first message should be ignored or not. (default = false) |
 >
 >Gets the data of a topic.
 >
@@ -681,7 +697,7 @@
 >Updates a section.<br>
 >The available data are:<br>
 >string `name` -> Section's name<br>
->string `icon` -> The section's icon. An enum from `enums.icon` (index or value)<br>
+>string `icon` -> The section's icon. An enum from `enums.sectionIcon` (index or value)<br>
 >string `description` -> Section's description<br>
 >int `min_characters` -> Minimum characters needed for a message in the new section<br>
 >string|int `state` -> The section's state (e.g.: opened, closed). An enum from `enums.displayState` (index or value)<br>

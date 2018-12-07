@@ -7,7 +7,7 @@
 - [x] [Change password](docs/a801api.md#selfsetPassword--password-disconnect-)
 
 ## Inbox
-- [ ] Get conversation
+- x] [Get conversation
 - [x] [New Private Message](docs/a801api.md#selfcreatePrivateMessage--destinatary-subject-message-)
 - [x] [New Private Discussion](docs/a801api.md#selfcreatePrivateDiscussion--destinataries-subject-message-)
 - [x] [New Private Poll](docs/a801api.md#selfcreatePrivatePoll--destinataries-subject-message-pollResponses-settings-)
@@ -25,7 +25,7 @@
 ## Forum
 - [x] [Get message](docs/a801api.md#selfgetMessage--postId-location-)
 - [x] [Get topic](docs/a801api.md#selfgetTopic--location-ignoreFirstMessage-)
-- [x] [Get section](docs/a801api.md#selfgetSection---)
+- [x] [Get section](docs/a801api.md#selfgetSection--location-)
 - [ ] Get topic messages (by page?)
 - [ ] Get section topics
 - [x] [Answer topic](docs/a801api.md#selfanswerTopic--message-location-)

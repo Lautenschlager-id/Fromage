@@ -73,7 +73,7 @@ return {
 		restricted = "true",
 		unrestricted = "false"
 	},
-	icon = enum {
+	sectionIcon = enum {
 		nekodancer = "nekodancer.png",
 		fortoresse = "fortoresse.png",
 		balloon_cheese = "bulle-fromage.png",
@@ -121,5 +121,13 @@ return {
 		[4] = "Senator",
 		[5] = "Archon",
 		[6] = "Heliast"
+	},
+	topicIcon = enum {
+		poll = "/sondage.png",
+		private_discussion = "/bulle-pointillets.png",
+		private_message = "/enveloppe.png",
+		postit = "/postit.png",
+		locked = "/cadenas.png",
+		deleted = "/no.png"
 	}
 }
