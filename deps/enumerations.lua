@@ -7,7 +7,7 @@ return {
 		bin = 2
 	},
 	conversationState = enum {
-		opened = 0,
+		open = 0,
 		closed = 1
 	},
 	element = enum {
@@ -58,7 +58,7 @@ return {
 	},
 	recruitmentState = enum {
 		closed = 0,
-		opened = 1
+		open = 1
 	},
 	displayState = enum {
 		open = 0,

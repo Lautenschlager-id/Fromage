@@ -7,7 +7,7 @@
 - [x] [Change password](docs/a801api.md#selfsetPassword--password-disconnect-)
 
 ## Inbox
-- x] [Get conversation
+- [x] [Get conversation](docs/a801api.md#selfgetConversation--location-ignoreFirstMessage-)
 - [x] [New Private Message](docs/a801api.md#selfcreatePrivateMessage--destinatary-subject-message-)
 - [x] [New Private Discussion](docs/a801api.md#selfcreatePrivateDiscussion--destinataries-subject-message-)
 - [x] [New Private Poll](docs/a801api.md#selfcreatePrivatePoll--destinataries-subject-message-pollResponses-settings-)

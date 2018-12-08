@@ -115,10 +115,12 @@ local htmlChunk = {
 	totalPages = '"input%-pagination".-max="(%d+)"',
 	comment = '<div id="m%d',
 	elementId = 'ie',
-	profileData = '(%d+/%d+/%d+).-(..)%.png.->Messages: </span>(%d+).-Prestige: </span>(%d+).-Level: </span>(%d+)',
+	profileDateAndCommunity = '(%d+/%d+/%d+).-(..)%.png.->',
+	profileData = 'Messages: </span>(%d+).-Prestige: </span>(%d+).-Level: </span>(%d+)',
 	profileGender = 'Gender :.- (.-)%s+<br>',
+	profileBirthday = 'Birthday :</span> (%d+/%d+/%d+)',
 	profileLocation = 'Location :</span> (.-)  <br>'
-	profileSoulmate = '(%S+)<span class="fon%t-s couleur%-hashtag%-pseudo"> (#(%d+))',
+	nickname = '(%S+)<span class="fon%t-s couleur%-hashtag%-pseudo"> (#(%d+))',
 	profileTribe = 'cadre%-tribu%-nom">(.-)</span>.-tr=(%d+)',
 	profileAvatar = 'http://avatars%.atelier801%.com/(%d+)/(%d+)%.%a+%?(%d+)',
 	subsection = '"cadre%-section%-titre%-mini.-(section.-)".- (.-) </a>',
@@ -126,7 +128,13 @@ local htmlChunk = {
 	commu = 'pays/(..)%.png"',
 	icon = 'sections/(.-)%.png',
 	title = '<title>(.-)</title>',
-	navBarTitleIcon = '<img (.+)> %s'
+	navBarTitleIcon = '<img (.+)> %s',
+	recruitment = 'Recruitment : (.-)<',
+	tribeLeader = '(%S+)<span class="nav-header-hashtag">(#%d+)</span>',
+	greetingMessage = '<h4>Greeting message</h4> (.-) </div>',
+	tribePresentation = 'cadre%-presentation"> ([^>]+) </div>',
+	profilePresentation = 'cadre-presentation"> (.-) </div>',
+	blacklistName = 'cadre%-ignore%-nom">(.-)</span>'
 }
 
 local errorString = {
@@ -148,7 +156,8 @@ local errorString = {
 	image_id = "An image id can not be a number.",
 	invalid_date = "Invalid date format. Expected: dd/mm/yyyy",
 	unaivalable_enum = "This function does not accept this enum.",
-	invalid_id = "Invalid id."
+	invalid_id = "Invalid id.",
+	no_tribe = "This instance does not have a tribe."
 }
 
 local separator = {
@@ -300,6 +309,7 @@ return function()
 		-- The nickname of the account, if it's connected.
 		userName = '',
 		userId = nil,
+		tribeId = nil,
 		cookieState = cookieState.login,
 		-- account cookies
 		cookies = { },
@@ -455,7 +465,9 @@ return function()
 				this.isConnected = true
 				this.userName = userName
 				this.cookieState = cookieState.afterLogin
-				this.userId = self:getProfile().id
+				local pr = self:getProfile()
+				this.userId = pr.id
+				this.tribeId = pr.tribeId
 			end
 		end
 		return success, data
@@ -477,6 +489,7 @@ return function()
 			this.cookieState = cookieState.login
 			this.cookies = { }
 			this.userId = nil
+			this.tribeId = nil
 		end
 		return success, data
 	end
@@ -588,15 +601,19 @@ return function()
 			highestRole = nil
 		end
 
-		local registrationDate, community, messages, prestige, level = string.match(body, htmlChunk.profileData)
+		local registrationDate, community, messages, prestige, level = string.match(body, htmlChunk.profileDateAndCommunity .. htmlChunk.profileData)
 		level = tonumber(level)
 		
 		local gender = string.match(body, htmlChunk.profileGender)
 		gender = gender and (enums.gender[string.lower(gender)]) or enums.gender.none
 		
 		local location = string.match(body, htmlChunk.profileLocation)
+
+		local birthday = string.match(body, htmlChunk.profileBirthday)
+
+		local presentation = string.match(body, htmlChunk.profilePresentation)
 		
-		local soulmate, soulmateDiscriminator = string.match(body, htmlChunk.profileSoulmate)
+		local soulmate, soulmateDiscriminator = string.match(body, htmlChunk.nickname)
 		if soulmate then
 			soulmate = soulmate .. soulmateDiscriminator
 		end
@@ -615,11 +632,13 @@ return function()
 			level = level,
 			title = enums.forumTitle[level],
 			gender = gender,
+			birthday = birthday,
 			location = location,
 			soulmate = soulmate,
 			tribe = tribeName,
 			tribeId = tonumber(tribeId),
-			avatarUrl = avatar
+			avatarUrl = avatar,
+			presentation = presentation
 		}
 	end
 	--[[@
@@ -969,7 +988,7 @@ return function()
 		return returnRedirection(success, data)
 	end
 	--[[@
-		@desc Changes the conversation state (opened, closed).
+		@desc Changes the conversation state (open, closed).
 		@param conversationState<string,int> The conversation state. An enum from `enums.conversationState` (index or value)
 		@param conversationId<int,string> The conversation id
 		@returns boolean Whether the conversation state was changed or not
@@ -997,7 +1016,7 @@ return function()
 		local postData = {
 			{ "co", conversationId }
 		}
-		local success, data = this:performAction((conversationState == enums.conversationState.opened and forumUri.reopenDisc or forumUri.closeDisc), postData, forumUri.conversation .. "?co=" .. conversationId)
+		local success, data = this:performAction((conversationState == enums.conversationState.open and forumUri.reopenDisc or forumUri.closeDisc), postData, forumUri.conversation .. "?co=" .. conversationId)
 		return returnRedirection(success, data)
 	end
 	--[[@
@@ -1916,6 +1935,60 @@ return function()
 
 	-- > Tribe
 	--[[@
+		@desc Gets the data of a tribe.
+		@param tribeId?<int> The tribe id. (default = Client's account name)
+		@returns table|nil The tribe data, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getTribe = function(self, tribeId)
+		assertion("getTribe", { "number", "nil" }, 1, tribeId)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		if not tribeId then
+			if not this.tribeId then
+				return false, errorString.no_tribe
+			end
+			tribeId = this.tribeId
+		end
+
+		local head, body = this:getPage(forumUri.tribe .. "?tr=" .. tribeId)
+
+		local fa = tonumber(string.match(body, string.format(htmlChunk.hidden, htmlChunk.favorite)))
+
+		local name = string.match(body, htmlChunk.title)
+		local creationDate, community = string.match(body, htmlChunk.profileDateAndCommunity)
+		local recruitment = string.match(body, htmlChunk.recruitment)
+		
+		local leaders, counter = { }, 0
+		-- Some tribes may have more than one leader
+		string.gsub(body, htmlChunk.tribeLeader, function(name, discriminator)
+			counter = counter + 1
+			leaders[counter] = name .. discriminator
+		end)
+
+		local greetingMessage = string.match(body, htmlChunk.greetingMessage)
+		if greetingMessage then
+			greetingMessage = string.gsub(greetingMessage, "<br ?/?>", '\n')
+		end
+		local presentation = string.match(body, htmlChunk.tribePresentation)
+
+		return {
+			id = tribeId,
+			name = name,
+			creationDate = creationDate,
+			community = enums.community[community],
+			recruitment = enums.recruitmentState[string.lower(recruitment)],
+			leaders = leaders,
+			greetingMessage = greetingMessage,
+			presentation = presentation,
+			isFavorited = not not fa,
+			favoriteId = fa
+		}
+	end
+	--[[@
 		@desc Updates the account's tribe greeting message.
 		@param message<string> The new message
 		@returns boolean Whether the tribe's greeting message was updated or not
@@ -1928,12 +2001,15 @@ return function()
 			return false, errorString.not_connected
 		end
 
-		local id = 0 -- Get tribe id using this.userName...
+		if not this.tribeId then
+			return false, errorString.no_tribe
+		end
+
 		local postData = {
-			{ "tr", id },
+			{ "tr", this.tribeId },
 			{ "message_jour", message }
 		}
-		return this:performAction(forumUri.uTribeMsg, postData, forumUri.tribe .. "?tr=" .. id)
+		return this:performAction(forumUri.uTribeMsg, postData, forumUri.tribe .. "?tr=" .. this.tribeId)
 	end
 	--[[@
 		@desc Updates the account's tribe's parameters.
@@ -1953,9 +2029,12 @@ return function()
 			return false, errorString.not_connected
 		end
 
-		local id = 0 -- Get tribe id using this.userName...
+		if not this.tribeId then
+			return false, errorString.no_tribe
+		end
+
 		local postData = {
-			{ "tr", id }
+			{ "tr", this.tribeId }
 		}
 		if type(parameters.greeting_message) == "boolean" and parameters.greeting_message then
 			postData[#postData + 1] = { "message_jour_public", "on" }
@@ -1970,7 +2049,7 @@ return function()
 			postData[#postData + 1] = { "chefs_publics", "on" }
 		end
 
-		return this:performAction(forumUri.uTribeParam, postData, forumUri.profile .. "?tr=" .. id)
+		return this:performAction(forumUri.uTribeParam, postData, forumUri.profile .. "?tr=" .. this.tribeId)
 	end
 	--[[@
 		@desc Updates the account's tribe profile.
@@ -1989,9 +2068,12 @@ return function()
 			return false, errorString.not_connected
 		end
 
-		local id = 0 -- Get tribe id using this.userName...
+		if not this.tribeId then
+			return false, errorString.no_tribe
+		end
+
 		local postData = {
-			{ "tr", id }
+			{ "tr", this.tribeId }
 		}
 
 		if data.community then
@@ -2020,7 +2102,7 @@ return function()
 			postData[#postData + 1] = { "presentation", data.presentation }
 		end
 
-		return this:performAction(forumUri.uTribe, postData, forumUri.tribe .. "?tr=" .. id)
+		return this:performAction(forumUri.uTribe, postData, forumUri.tribe .. "?tr=" .. this.tribeId)
 	end
 	--[[@
 		@desc Removes the logo of the account's tribe.
@@ -2032,11 +2114,14 @@ return function()
 			return false, errorString.not_connected
 		end
 
-		local id = 0 -- Get tribe id using this.userName... (check if has tribe)
+		if not this.tribeId then
+			return false, errorString.no_tribe
+		end
+
 		local postData = {
-			{ "tr", id }
+			{ "tr", this.tribeId }
 		}
-		return this:performAction(forumUri.remLogo, postData, forumUri.tribe .. "?tr=" .. id)
+		return this:performAction(forumUri.remLogo, postData, forumUri.tribe .. "?tr=" .. this.tribeId)
 	end
 	--[[@
 		@desc Creates a section.
@@ -2046,7 +2131,7 @@ return function()
 		@desc string `description` -> Section's description
 		@desc int `min_characters` -> Minimum characters needed for a message in the new section
 		@param data<table> The new section data
-		@param location<table> The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section and 'tr' is needed if it's a section.
+		@param location<table> The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section.
 		@returns boolean Whether the section was created or not
 		@returns string if #1, `section's url`, else `Result string` or `Error message`
 	]]
@@ -2054,8 +2139,8 @@ return function()
 		assertion("createSection", "table", 1, data)
 		assertion("createSection", "table", 2, location)
 
-		if not location.f or (not location.tr or not location.s) then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 'tr' / 's'")
+		if not location.f then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f'")
 		end
 
 		if not data.name or not data.icon or not data.description or not data.min_characters then
@@ -2080,13 +2165,13 @@ return function()
 		local postData = {
 			{ 'f', location.f },
 			{ 's', (location.s or '') },
-			{ "tr" (location.tr or '') },
+			{ "tr" (location.s and '' or this.tribeId) },
 			{ "nom", data.name },
 			{ "icone", data.icon },
 			{ "description", data.description },
 			{ "caracteres", data.min_characters }
 		}
-		local success, data = this:performAction(forumUri.cSection, postData, forumUri.nSection .. "?f=" .. location.f .. (location.s and ("&s=" .. location.s) or ("&tr=" .. location.tr)))
+		local success, data = this:performAction(forumUri.cSection, postData, forumUri.nSection .. "?f=" .. location.f .. (location.s and ("&s=" .. location.s) or ("&tr=" .. this.tribeId)))
 		return returnRedirection(success, data)
 	end
 	--[[@
@@ -2096,7 +2181,7 @@ return function()
 		@desc string `icon` -> The section's icon. An enum from `enums.sectionIcon` (index or value)
 		@desc string `description` -> Section's description
 		@desc int `min_characters` -> Minimum characters needed for a message in the new section
-		@desc string|int `state` -> The section's state (e.g.: opened, closed). An enum from `enums.displayState` (index or value)
+		@desc string|int `state` -> The section's state (e.g.: open, closed). An enum from `enums.displayState` (index or value)
 		@desc int `parent` -> The parent section if the updated section is a sub-section. (default = 0)
 		@param data<table> The updated section data
 		@param location<table> The section location. Fields 'f' and 's' are needed.
@@ -2175,6 +2260,10 @@ return function()
 			return false, errorString.not_connected
 		end
 
+		if not this.tribeId then
+			return false, errorString.no_tribe
+		end
+
 		local ranks = this:getTribeRank(location) -- [i] = { id, name }
 		local ranks_by_id = table.createSet(ranks, 1) -- [id] = { id, name }
 		local ranks_by_name = table.createSet(ranks, 2) -- [name] = { id, name }
@@ -2226,7 +2315,7 @@ return function()
 		local postData = {
 			{ 'f', location.f },
 			{ 's', location.s },
-			{ "tr", location.tr },
+			{ "tr", this.tribeId },
 			{ "droitLire", table.concat(permissions.canRead, separator.forumData) },
 			{ "droitRepondre", table.concat(permissions.canAnswer, separator.forumData) },
 			{ "droitCreerSujet", table.concat(permissions.canCreateTopic, separator.forumData) },
@@ -2257,6 +2346,46 @@ return function()
 	end
 
 	-- > Miscellaneous
+	--[[@
+		@desc Gets the account's friendlist.
+		@returns table|nil The friendlist, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getFriendlist = function(self)
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local head, body = this:getPage(forumUri.friends .. "?pr=" .. this.userId)
+
+		local friends, counter = { }, 0
+		string.gsub(body, htmlChunk.nickname, function(name, discriminator)
+			counter = counter + 1
+			friends[counter] = name .. discriminator
+		end)
+
+		return friends
+	end
+	--[[@
+		@desc Gets the account's blacklist.
+		@returns table|nil The blacklist, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getBlacklist = function(self)
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local head, body = this:getPage(forumUri.blacklist .. "?pr=" .. this.userId)
+
+		local blacklist, counter = { }, 0
+		string.gsub(body, htmlChunk.blacklistName, function(name, discriminator)
+			counter = counter + 1
+			blacklist[counter] = name .. discriminator
+		end)
+
+		return blacklist
+	end
 	--[[@
 		@desc Adds a user as friend.
 		@param userName<string> The user to be added
