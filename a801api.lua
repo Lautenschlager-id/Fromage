@@ -94,7 +94,10 @@ local forumUri = {
 	tribeHistory = "tribe-history",
 	messageHistory = "tribulle-frame-topic-message-history",
 	gallery = "gallery-images-ajax",
-	clientGallery = "user-images-grid-ajax"
+	clientGallery = "user-images-grid-ajax",
+	posts = "posts",
+	topicStarted = "topics-started",
+	tracker = "dev-tracker"
 }
 
 local htmlChunk = {
@@ -112,11 +115,8 @@ local htmlChunk = {
 	messageEditionTimestamp = 'cadre%-message%-dates.-(%d+)',
 	privateMessageData = 'data%-afficher%-secondes.->(%d+).-(%S+)<span class="nav%-header%-hashtag">(#%d+).-citer_message_(%d+).->(.-)</div>',
 	navBar = 'barre%-navigation.->(.-)</ul>',
-	navBarFragments = '<a href="(.-)".->(.-)</a>',
-	navBarSplitContent = '^<(.+)>(.+)$',
-	postit = '/postit.png',
-	locked = '/cadenas.png',
-	deleted = '/no.png',
+	navBarFragments = '<a href="(.-)".->%s*(.-)%s*</a>',
+	navBarSplitContent = '^<(.+)>%s*(.+)%s*$',
 	favorite = 'fa',
 	totalPages = '"input%-pagination".-max="(%d+)"',
 	comment = '<div id="m%d',
@@ -148,7 +148,12 @@ local htmlChunk = {
 	moderatedMessage = 'cadre%-message%-modere%-texte">by ([^,]+)[^:]*:?(.*)%]<',
 	tribeHistory = '<td> (.-) </td>',
 	messageHistory = 'class="hidden"> (.-) </div>',
-	imageInfo = '?im=(%w+)".-pr=(.-)"'
+	imageInfo = '?im=(%w+)".-pr=(.-)"',
+	messageHref = 'href="(topic?.-)#m(%d+)">#%2</a>',
+	listedTopic = 'href="(topic?[^#]+)#?m?(%d*)">%s+(.-) </a>',
+	tracker = '<div class="row">(.-)</div>%s+</div>',
+	msgHtml = 'Message</a></span> :%s+(.-)</div>%s+</td>%s+</tr>',
+	adminName = 'cadre%-type%-auteur%-admin">(.-)</span>'
 }
 
 local errorString = {
@@ -425,12 +430,12 @@ return function()
 	-- > Tool
 	--[[@
 		@desc Parses the URL data.
-		@param href<string> The uri and data to be parsed.
-		@returns table|nil Parsed data. The available indexes are: `uri`, `raw_data` and `data`.
+		@param href<string> The uri and data to be parsed
+		@returns table|nil Parsed data. The available indexes are: `uri`, `raw_data` and `data`
 		@returns nil|string Error message
 	]]
 	self.parseUrlData = function(href)
-		assertion("extractLocation", "string", 1, href)
+		assertion("parseUrlData", "string", 1, href)
 
 		local uri, data = string.match(url, "^/?(.*)%?(.-)$")
 		if not uri then
@@ -442,7 +447,7 @@ return function()
 			local raw_data = data
 
 			local data = { }
-			string.gsub(raw_data, "([^&]+)=([^&]+)", function(name, value)
+			string.gsub(raw_data, "([^&]+)=([^&#]+)", function(name, value)
 				data[name] = value
 			end)
 
@@ -619,7 +624,7 @@ return function()
 	self.getProfile = function(self, userName)
 		assertion("getProfile", { "string", "number", "nil" }, 1, userName)
 
-		if not userName and not this.isConnected then
+		if not this.isConnected then
 			return false, errorString.not_connected
 		end
 
@@ -1022,24 +1027,28 @@ return function()
 	end
 	--[[@
 		@desc Changes the conversation state (open, closed).
-		@param conversationState<string,int> The conversation state. An enum from `enums.conversationState` (index or value)
+		@param displayState<string,int> The conversation display state. An enum from `enums.displayState` (index or value)
 		@param conversationId<int,string> The conversation id
-		@returns boolean Whether the conversation state was changed or not
+		@returns boolean Whether the conversation display state was changed or not
 		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
 	]]
-	self.changeConversationState = function(self, conversationState, conversationId)
-		assertion("changeConversationState", { "string", "number" }, 1 conversationState)
+	self.changeConversationState = function(self, displayState, conversationId)
+		assertion("changeConversationState", { "string", "number" }, 1 displayState)
 		assertion("changeConversationState", { "number", "string" }, 2, conversationId)
 
-		if type(conversationState) == "string" then
-			if not enums.conversationState[conversationState] then
+		if type(displayState) == "string" then
+			if not enums.displayState[displayState] then
 				return false, errorString.invalid_enum
 			end
-			conversationState = enums.conversationState[conversationState]
+			displayState = enums.displayState[displayState]
 		else
-			if not table.search(enums.conversationState, conversationState) then
+			if not table.search(enums.displayState, displayState) then
 				return false, errorString.enum_out_of_range
 			end
+		end
+
+		if displayState == enums.contentState.deleted then
+			return false, errorString.unaivalable_enum
 		end
 
 		if not this.isConnected then
@@ -1049,7 +1058,7 @@ return function()
 		local postData = {
 			{ "co", conversationId }
 		}
-		local success, data = this:performAction((conversationState == enums.conversationState.open and forumUri.reopenDisc or forumUri.closeDisc), postData, forumUri.conversation .. "?co=" .. conversationId)
+		local success, data = this:performAction((displayState == enums.displayState.open and forumUri.reopenDisc or forumUri.closeDisc), postData, forumUri.conversation .. "?co=" .. conversationId)
 		return returnRedirection(success, data)
 	end
 	--[[@
@@ -1239,7 +1248,10 @@ return function()
 
 		string.gsub(body, htmlChunk.messageHistory .. ".-" .. htmlChunk.msTime, function(bbcode, timestamp)
 			counter = counter + 1
-			history[counter] = { bbcode, timestamp }
+			history[counter] = {
+				bbcode = bbcode,
+				timestamp = tonumber(timestamp)
+			}
 		end)
 
 		return history
@@ -1282,7 +1294,7 @@ return function()
 		local counter, lastHtml = 0, ''
 
 		local err
-		string.gsub(navBar, htmlChunk.navBarFragments, function(href, code)]
+		string.gsub(navBar, htmlChunk.navBarFragments, function(href, code)
 			href, err = self.parseUrlData(href)
 			if err then
 				return false, err
@@ -1292,13 +1304,19 @@ return function()
 			local html, name = string.match(code, htmlChunk.navBarSplitContent)
 			if html then
 				lastHtml = html
-				navigation_bar[counter] = { href, name }
+				navigation_bar[counter] = {
+					location = href,
+					name = name
+				}
 
 				if not community then
 					community = string.match(html, htmlChunk.commu)
 				end
 			else
-				navigation_bar[counter] = { href, code }
+				navigation_bar[counter] = {
+					location = href,
+					name = code
+				}
 			end
 		end)
 
@@ -1385,13 +1403,19 @@ return function()
 			counter = counter + 1
 			local html, name = string.match(code, htmlChunk.navBarSplitContent)
 			if html then
-				navigation_bar[counter] = { href, name }
+				navigation_bar[counter] = {
+					location = href,
+					name = name
+				}
 
 				if not community then
 					community = string.match(html, htmlChunk.commu)
 				end
 			else
-				navigation_bar[counter] = { href, code }
+				navigation_bar[counter] = {
+					location = href,
+					name = code
+				}
 			end
 		end)
 
@@ -2017,7 +2041,7 @@ return function()
 	-- > Tribe
 	--[[@
 		@desc Gets the data of a tribe.
-		@param tribeId?<int> The tribe id. (default = Client's account name)
+		@param tribeId?<int> The tribe id. (default = Client's tribe id)
 		@returns table|nil The tribe data, if there's any
 		@returns nil|string The message error, if any occurred
 	]]
@@ -2149,7 +2173,7 @@ return function()
 	end
 	--[[@
 		@desc Gets the members of a tribe.
-		@param tribeId?<int> The tribe id. (default = Client's account name)
+		@param tribeId?<int> The tribe id. (default = Client's tribe id)
 		@param pageNumber?<int> The list page (case the tribe has more than 30 members). To list ALL members, use `0`. (default = 1)
 		@returns table|nil The names of the tribe ranks. Total pages at `_pages`, total members at `_count`.
 		@returns nil|string The message error, if any occurred
@@ -2175,7 +2199,7 @@ return function()
 	end
 	--[[@
 		@desc Gets the ranks of a tribe, if possible.
-		@param tribeId?<int> The tribe id. (default = Client's account name)
+		@param tribeId?<int> The tribe id. (default = Client's tribe id)
 		@returns table|nil The names of the tribe ranks
 		@returns nil|string The message error, if any occurred
 	]]
@@ -2238,14 +2262,17 @@ return function()
 		local counter = 0
 		string.gsub(body, htmlChunk.msTime .. ".-" .. htmlChunk.tribeHistory, function(timestamp, log)
 			counter = counter + 1
-			history[counter] = { log, tonumber(timestamp) }
+			history[counter] = {
+				log = log,
+				timestamp = tonumber(timestamp)
+			}
 		end)
 
 		return history
 	end
 	--[[@
 		@desc Gets the history logs of a tribe, if possible.
-		@param tribeId?<int> The tribe id. (default = Client's account name)
+		@param tribeId?<int> The tribe id. (default = Client's tribe id)
 		@param pageNumber?<int> The page number of the history. To list ALL the history, use `0`. (default = 1)
 		@returns table|nil The history logs. Total pages at `_pages`.
 		@returns nil|string The message error, if any occurred
@@ -2637,7 +2664,10 @@ return function()
 		local images, counter = { }, 0
 		string.gsub(body, htmlChunk.imageInfo .. ".-" .. htmlChunk.msTime, function(code, _, timestamp)
 			counter = counter + 1
-			images[counter] = { code, timestamp }
+			images[counter] = {
+				imageId = code,
+				timestamp = tonumber(timestamp)
+			}
 		end)
 
 		return images
@@ -2688,7 +2718,11 @@ return function()
 
 			string.gsub(body, pat, function(code, name, timestamp)
 				counter = counter + 1
-				images[counter] = { code, self.formatNickname(name), timestamp }
+				images[counter] = {
+					imageId = code,
+					author = self.formatNickname(name),
+					timestamp = tonumber(timestamp)
+				}
 				lastImage = code
 			end)
 		end
@@ -2715,6 +2749,67 @@ return function()
 	end
 
 	-- > Miscellaneous
+	--[[@
+		@desc Gets the topics created by a user.
+		@param userName?<string,int> User name or id. (default = Client's account id)
+		@returns table|nil The list of topics, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getCreatedTopics = function(self, userName)
+		assertion("getCreatedTopics", { "string", "number", "nil" }, 1, userName)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local head, body = this:getPage(forumUri.topicStarted .. "?pr=" .. (userName or this.userId))
+
+		local topics, counter = { }, 0
+		string.gsub(body, htmlChunk.commu .. ".-" .. htmlChunk.listedTopic .. ".- on " .. htmlChunk.msTime, function(community, topic, lastMessage, creationDate)
+			counter = counter + 1
+			topics[counter] = {
+				location = self.parseUrlData(topic),
+				totalMessages = tonumber(lastMessage),
+				community = enums.community[community],
+				creationDate = tonumber(creationDate)
+			}
+		end)
+
+		return topics
+	end
+	--[[@
+		@desc Gets the last posts of a user.
+		@param pageNumber?<int> The page number of the last posts list. (default = 1)
+		@param userName?<string,int> User name or id. (default = Client's account id)
+		@returns table|nil The list of posts, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getLastPosts = function(self, pageNumber, userName)
+		assertion("getLastPosts", { "number", "nil" }, 1, pageNumber)
+		assertion("getLastPosts", { "string", "number", "nil" }, 2, userName)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local head, body = this:getPage(forumUri.posts .. "?pr=" .. (userName or this.userId) .. "&p=" .. (pageNumber or 1))
+
+		local totalPages = tonumber(string.match(body, htmlChunk.totalPages)) or 1
+
+		local posts, counter = {
+			_pages = totalPages
+		}, 0
+		string.gsub(body, htmlChunk.messageHref .. htmlChunk.msTime, function(post, postId, timestamp)
+			counter = counter + 1
+			posts[counter] = {
+				location = self.parseUrlData(post),
+				post = tonumber(postId),
+				timestamp = tonumber(timestamp)
+			}
+		end)
+
+		return posts
+	end
 	--[[@
 		@desc Gets the account's friendlist.
 		@returns table|nil The friendlist, if there's any
@@ -2754,6 +2849,67 @@ return function()
 		end)
 
 		return blacklist
+	end
+	--[[@
+		@desc Gets the latest messages sent by admins.
+		@returns table|nil The list of posts, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getDevTracker = function(self)
+		local head, body = this:getPage(forumUri.tracker)
+
+		local posts, counter = { }, 0
+		string.gsub(body, htmlChunk.tracker, function(content)
+			local navBar = string.match(content, htmlChunk.navBar)
+			if not navBar then
+				return nil, errorString.internal
+			end
+
+			local navigation_bar, community = { }
+			local _counter = 0
+
+			local err
+			string.gsub(navBar, htmlChunk.navBarFragments, function(href, code)
+				href, err = self.parseUrlData(href)
+				if err then
+					return false, err
+				end
+				
+				_counter = _counter + 1
+				local html, name = string.match(code, htmlChunk.navBarSplitContent)
+				if html then
+					navigation_bar[_counter] = {
+						location = href,
+						name = name
+					}
+
+					if not community then
+						community = string.match(html, htmlChunk.commu)
+					end
+				else
+					navigation_bar[_counter] = {
+						location = href,
+						name = code
+					}
+				end
+			end)
+
+			local postId = tonumber(string.sub(navigation_bar[_counter].name, 2))
+			navigation_bar[_counter] = nil
+
+			local messageHtml, timestamp, admin = string.match(content, htmlChunk.msgHtml .. ".-" .. htmlChunk.msTime .. ".-" .. htmlChunk.adminName)
+
+			counter = counter + 1
+			posts[counter] = {
+				navbar = navigation_bar,
+				post = postId,
+				messageHtml = messageHtml,
+				timestamp = tonumber(timestamp),
+				author = admin .. "#0001"
+			}
+		end)
+
+		return posts
 	end
 	--[[@
 		@desc Adds a user as friend.
