@@ -1,4 +1,18 @@
 ## Static Methods
+>### formatNickname ( nickname )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| nickname | `string` | ✔ | The nickname to be formated |
+>
+>Formats a nickname.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `string` | Formated nickname |
+>
+
 >### parseUrlData ( href )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -100,7 +114,7 @@
 >| conversationState | `string`, `int` | ✔ | The conversation state. An enum from `enums.conversationState` (index or value) |
 >| conversationId | `int`, `string` | ✔ | The conversation id |
 >
->Changes the conversation state (opened, closed).
+>Changes the conversation state (open, closed).
 >
 >**Returns**
 >
@@ -253,7 +267,7 @@
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| data | `table` | ✔ | The new section data |
->| location | `table` | ✔ | The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section and 'tr' is needed if it's a section. |
+>| location | `table` | ✔ | The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section. |
 >
 >Creates a section.<br>
 >The available data are:<br>
@@ -347,6 +361,17 @@
 >| `string` | `Result string` or `Error message` |
 >
 
+>### self:getBlacklist (  )
+>Gets the account's blacklist.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The blacklist, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
 >### self:getConversation ( location, ignoreFirstMessage )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -363,6 +388,32 @@
 >| `nil`, `string` | The message error, if any occurred |
 >
 
+>### self:getFriendlist (  )
+>Gets the account's friendlist.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The friendlist, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getLatestImages ( quantity )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| quantity | `int` | ✕ | The quantity of images needed. Must be a number multiple of 16. (default = 16) |
+>
+>Gets the latest images that were hosted on Micepix.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The data of the images. |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
 >### self:getMessage ( postId, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -376,6 +427,22 @@
 >| Type | Description |
 >| :-: | - |
 >| `table`, `nil` | The message data, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getMessageHistory ( messageId, location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| messageId | `int`, `string` | ✔ | The message id. Use `string` if it's the post number. |
+>| location | `table` | ✔ | The message location. Fields 'f' and 't' are needed. |
+>
+>Gets the edition logs of a message, if possible.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The edition logs |
 >| `nil`, `string` | The message error, if any occurred |
 >
 
@@ -452,6 +519,68 @@
 >| Type | Description |
 >| :-: | - |
 >| `table`, `nil` | The topic data, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getTribe ( tribeId )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| tribeId | `int` | ✕ | The tribe id. (default = Client's account name) |
+>
+>Gets the data of a tribe.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The tribe data, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getTribeHistory ( tribeId, pageNumber )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| tribeId | `int` | ✕ | The tribe id. (default = Client's account name) |
+>| pageNumber | `int` | ✕ | The page number. To list ALL the history, use `0`. (default = 1) |
+>
+>Gets the history logs of a tribe, if possible.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The history logs. Total pages at `_pages`. |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getTribeMembers ( tribeId, pageNumber )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| tribeId | `int` | ✕ | The tribe id. (default = Client's account name) |
+>| pageNumber | `int` | ✕ | The list page (case the tribe has more than 30 members). To list ALL members, use `0`. (default = 1) |
+>
+>Gets the members of a tribe.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The names of the tribe ranks. Total pages at `_pages`, total members at `_count`. |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getTribeRanks ( tribeId )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| tribeId | `int` | ✕ | The tribe id. (default = Client's account name) |
+>
+>Gets the ranks of a tribe, if possible.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The names of the tribe ranks |
 >| `nil`, `string` | The message error, if any occurred |
 >
 
@@ -635,6 +764,21 @@
 >| `string` | `Result string` (Empty for success) or `Error message` |
 >
 
+>### self:unblacklistUser ( userName )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| userName | `string` | ✔ | The user to be blacklisted |
+>
+>Adds a user in the blacklist.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the user was blacklisted or not |
+>| `string` | `Result string` or `Error message` |
+>
+
 >### self:unfavoriteElement ( favoriteId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -700,7 +844,7 @@
 >string `icon` -> The section's icon. An enum from `enums.sectionIcon` (index or value)<br>
 >string `description` -> Section's description<br>
 >int `min_characters` -> Minimum characters needed for a message in the new section<br>
->string|int `state` -> The section's state (e.g.: opened, closed). An enum from `enums.displayState` (index or value)<br>
+>string|int `state` -> The section's state (e.g.: open, closed). An enum from `enums.displayState` (index or value)<br>
 >int `parent` -> The parent section if the updated section is a sub-section. (default = 0)
 >
 >**Returns**

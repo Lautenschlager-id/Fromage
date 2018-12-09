@@ -43,7 +43,7 @@
 - [x] [Undelete topic](docs/a801api.md#selfupdateTopic--data-location-)
 - [x] [Restrict topic content](docs/a801api.md#selfchangeMessageContentState--messageId-contentState-location-)
 - [x] [Unrestrict topic content](docs/a801api.md#selfchangeMessageContentState--messageId-contentState-location-)
-- [ ] Message history logs
+- [x] [Message history logs](docs/a801api.md#selfgetMessageHistory--messageId-location-)
 - [x] [Like post](docs/a801api.md#selflikeMessage--messageId-location-)
 
 ## Report
@@ -63,14 +63,14 @@
 
 ## Micepix
 - [ ] Get micepix images (self) (by page?!)
-- [ ] Get last micepix images hosted by users
+- [x] [Get last micepix images hosted by users](docs/a801api.md#selfgetLatestImages--quantity-)
 - [ ] Post image
 - [x] [Delete image](docs/a801api.md#selfdeleteMicepixImage--imageId-)
 
 ## Tribe
-- [ ] Get tribe profile
-- [ ] Get tribe members
-- [ ] Get tribe history
+- [x] [Get tribe profile](docs/a801api.md#selfgetTribe--tribeId-)
+- [x] [Get tribe members](docs/a801api.md#selfgetTribeMembers--tribeId-pageNumber-)
+- [x] [Get tribe history](docs/a801api.md#selfgetTribeHistory--tribeId-pageNumber-)
 - [ ] Change logo
 - [x] [Remove logo](docs/a801api.md#selfremoveTribeLogo---)
 - [x] [Edit profile](docs/a801api.md#selfupdateTribeProfile--data-)
@@ -80,16 +80,17 @@
 - [x] [Delete section](docs/a801api.md#selfupdateSection--data-location-)
 - [x] [Edit section](docs/a801api.md#selfupdateSection--data-location-)
 - [x] [Edit section permissions](docs/a801api.md#selfsetTribeSectionPermissions--permissions-location-)
-- [ ] Get tribe ranks
+- [x] [Get tribe ranks](docs/a801api.md#selfgetTribeRanks--tribeId-)
 
 ## Search
 - [ ] Search
 
 ## Misc
-- [ ] Get friendlist
-- [ ] Get blacklist
+- [x] [Get friendlist](docs/a801api.md#selfgetFriendlist---)
+- [x] [Get blacklist](docs/a801api.md#selfgetBlacklist---)
 - [x] [Add user as friend](docs/a801api.md#selfaddFriend--userName-)
 - [x] [Add user in the blacklist](docs/a801api.md#selfblacklistUser--userName-)
+- [x] [Remove user from the blacklist](docs/a801api.md#selfunblacklistUser--userName-)
 - [ ] Get user last posts
 - [ ] Get user created topics
 - [ ] Get dev-tracker messages
