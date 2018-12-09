@@ -37,18 +37,15 @@ enum.community = e {
 	ph	=	17,
 	lt	=	18,
 	jp	=	19,
-	ch	=	20,
 	fi	=	21,
 	cz	=	22,
-	sk	=	23,
-	hr	=	24,
+	hr	=	23,
 	bu	=	25,
 	lv	=	26,
 	he	=	27,
 	it	=	28,
-	et	=	30,
-	az	=	31,
-	pt	=	33
+	ee	=	29,
+	az	=	30
 }
 --[[@
 
@@ -65,19 +62,21 @@ enum.forum = e {
 ]]
 enum.section = e {
 	atelier801 = e {
-		discussions	=	0,
-		off_topic	=	1,
-		forum_games	=	2,
-		tribes		=	3
+		announcements	=	-1,
+		discussions		=	0,
+		off_topic		=	1,
+		forum_games		=	2,
+		tribes			=	3
 	},
 	transformice = e {
-		discussions	=	0,
-		map_editor	=	1,
-		modules		=	2,
-		fanart		=	3,
-		suggestions	=	4,
-		bugs		=	5,
-		archives	=	6
+		map_submissions	=	-1,
+		discussions		=	0,
+		map_editor		=	1,
+		modules			=	2,
+		fanart			=	3,
+		suggestions		=	4,
+		bugs			=	5,
+		archives		=	6
 	},
 	bouboum = e {
 		discussions	=	0
@@ -87,17 +86,190 @@ enum.section = e {
 	},
 	nekodancer = e {
 		discussions	=	0
+	}
+}
+--@ Private enum
+local section_ID = {
+	fr = {
+		atelier801	=	08,
+		transformice=	04,
+		others		=	01
 	},
-
-	en = e {
+	br = {
+		atelier801	=	16,
+		transformice=	18,
+		others		=	03
+	},
+	es = {
+		atelier801	=	20,
+		transformice=	25,
+		others		=	04
+	},
+	cn = {
+		atelier801	=	24,
+		transformice=	32,
+		others		=	05
+	},
+	tr = {
+		atelier801	=	28,
+		transformice=	39,
+		others		=	06
+	},
+	vk = {
+		atelier801	=	32,
+		transformice=	46,
+		others		=	07
+	},
+	pl = {
+		atelier801	=	36,
+		transformice=	53,
+		others		=	08
+	},
+	hu = {
+		atelier801	=	40,
+		transformice=	60,
+		others		=	09
+	},
+	nl = {
+		atelier801	=	44,
+		transformice=	67,
+		others		=	10
+	},
+	ro = {
+		atelier801	=	48,
+		transformice=	74,
+		others		=	11
+	},
+	id = {
+		atelier801	=	52,
+		transformice=	81,
+		others		=	12
+	},
+	de = {
+		atelier801	=	56,
+		transformice=	88,
+		others		=	13
+	},
+	en = {
 		atelier801	=	60,
 		transformice=	95,
 		bouboum		=	14,
 		fortoresse	=	14,
 		nekodancer	=	14
 	},
-	
+	ar = {
+		atelier801	=	077,
+		transformice=	104,
+		others		=	015
+	},
+	ph = {
+		atelier801	=	081,
+		transformice=	111,
+		others		=	016
+	},
+	lt = {
+		atelier801	=	085,
+		transformice=	118,
+		others		=	017
+	},
+	jp = {
+		atelier801	=	089,
+		transformice=	125,
+		others		=	018
+	},
+	fi = {
+		atelier801	=	093,
+		transformice=	132,
+		others		=	019
+	},
+	cz = {
+		atelier801	=	123,
+		transformice=	176,
+		others		=	022
+	},
+	hr = {
+		atelier801	=	127,
+		transformice=	183,
+		others		=	023
+	},
+	bu = {
+		atelier801	=	135,
+		transformice=	197,
+		others		=	025
+	},
+	lv = {
+		atelier801	=	139,
+		transformice=	204,
+		others		=	026
+	},
+	he = {
+		atelier801	=	101,
+		transformice=	146,
+		others		=	021
+	},
+	it = {
+		atelier801	=	097,
+		transformice=	139,
+		others		=	020
+	},
+	ee = {
+		atelier801	=	143,
+		transformice=	211,
+		others		=	027
+	},
+	az = {
+		atelier801	=	147,
+		transformice=	218,
+		others		=	028
+	}
 }
+--[[@
+
+]]
+enum.location = { }
+for community, ids in next, section_ID do
+	enum.section[community] = { }
+
+	for forum, data in pairs(enum.section) do
+		enum.section[community][forum] = { }
+
+		local id = ids[forum]
+		if not id then
+			id = ids.others
+		end
+
+		for name, value in next, data do
+			if value >= 0 then
+				enum.section[community][forum][name] = value + id
+			end
+		end
+
+		enum.section[community][forum] = e(enum.section[community][forum])
+	end
+
+	enum.section[community] = e(enum.section[community])
+end
+enum.location.xx = e {
+	atelier801 = e {
+		announcements = 1
+	},
+	transformice = e {
+		map_submissions = 102
+	}
+}
+--[[ Structure
+enum
+	section
+		en
+			atelier801
+				discussions
+			transformice
+				modules
+		xx
+			transformice
+				map_submissions
+]]
+enum.location = e(enum.location)
 --[[@
 
 ]]

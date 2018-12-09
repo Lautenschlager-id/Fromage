@@ -461,6 +461,56 @@ return function()
 		return nil, errorString.invalid_forum_url
 	end
 	--[[@
+		@desc Gets the location of a section on forums based on its community.
+		@param forum<int,string> The forum of the location. An enum from `enums.forum` (index or value)
+		@param community<string,int> The location community. An enum from `enums.community` (index or value)
+		@param section<string,int> The section of the location. An enum from `enums.section` (index or value)
+		@returns table The location table. Fields `f` and `s`.
+	]]
+	self.getLocation = function(forum, community, section)
+		assertion("getLocation", { "number", "string" }, 1, forum)
+		assertion("getLocation", { "string", "number" }, 2, community)
+		assertion("getLocation", { "string", "number" }, 3, section)
+
+		if type(forum) == "string" then
+			if not enums.forum[forum] then
+				return false, errorString.invalid_enum
+			end
+			forum = enums.forum[forum]
+		else
+			if not table.search(enums.forum, forum) then
+				return false, errorString.enum_out_of_range
+			end
+		end
+
+		if type(community) == "string" then
+			if not enums.community[community] then
+				return false, errorString.invalid_enum
+			end
+		else
+			if not table.search(enums.community, community) then
+				return false, errorString.enum_out_of_range
+			end
+			community = enums.community(community)
+		end
+
+		if type(section) == "string" then
+			if not enums.section[section] then
+				return false, errorString.invalid_enum
+			end
+		else
+			if not table.search(enums.section, section) then
+				return false, errorString.enum_out_of_range
+			end
+			section = enums.section(section)
+		end
+
+		return {
+			f = forum,
+			s = enums.location[community][forum][section]
+		}
+	end
+	--[[@
 		@desc Formats a nickname.
 		@param nickname<string> The nickname to be formated
 		@returns string Formated nickname
