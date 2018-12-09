@@ -16,7 +16,7 @@
 >### parseUrlData ( href )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| href | `string` | ✔ | The uri and data to be parsed. |
+>| href | `string` | ✔ | The uri and data to be parsed |
 >
 >Parses the URL data.
 >
@@ -24,7 +24,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `table`, `nil` | Parsed data. The available indexes are: `uri`, `raw_data` and `data`. |
+>| `table`, `nil` | Parsed data. The available indexes are: `uri`, `raw_data` and `data` |
 >| `nil`, `string` | Error message |
 >
 
@@ -108,10 +108,10 @@
 >| `string` | `Result string` or `Error message` |
 >
 
->### self:changeConversationState ( conversationState, conversationId )
+>### self:changeConversationState ( displayState, conversationId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| conversationState | `string`, `int` | ✔ | The conversation state. An enum from `enums.conversationState` (index or value) |
+>| displayState | `string`, `int` | ✔ | The conversation display state. An enum from `enums.displayState` (index or value) |
 >| conversationId | `int`, `string` | ✔ | The conversation id |
 >
 >Changes the conversation state (open, closed).
@@ -120,7 +120,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `boolean` | Whether the conversation state was changed or not |
+>| `boolean` | Whether the conversation display state was changed or not |
 >| `string` | if #1, `conversation's url`, else `Result string` or `Error message` |
 >
 
@@ -361,6 +361,21 @@
 >| `string` | `Result string` or `Error message` |
 >
 
+>### self:getAccountImages ( pageNumber )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| pageNumber | `int` | ✕ | The page number of the gallery. To list ALL the gallery, use `0`. (default = 1) |
+>
+>Gets the images that were hosted in your account.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The data of the images. Total pages at `_pages`. |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
 >### self:getBlacklist (  )
 >Gets the account's blacklist.
 >
@@ -388,6 +403,32 @@
 >| `nil`, `string` | The message error, if any occurred |
 >
 
+>### self:getCreatedTopics ( userName )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| userName | `string`, `int` | ✕ | User name or id. (default = Client's account id) |
+>
+>Gets the topics created by a user.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The list of topics, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getDevTracker (  )
+>Gets the latest messages sent by admins.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The list of posts, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
 >### self:getFriendlist (  )
 >Gets the account's friendlist.
 >
@@ -396,6 +437,22 @@
 >| Type | Description |
 >| :-: | - |
 >| `table`, `nil` | The friendlist, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getLastPosts ( pageNumber, userName )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| pageNumber | `int` | ✕ | The page number of the last posts list. (default = 1) |
+>| userName | `string`, `int` | ✕ | User name or id. (default = Client's account id) |
+>
+>Gets the last posts of a user.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The list of posts, if there's any |
 >| `nil`, `string` | The message error, if any occurred |
 >
 
@@ -525,7 +582,7 @@
 >### self:getTribe ( tribeId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| tribeId | `int` | ✕ | The tribe id. (default = Client's account name) |
+>| tribeId | `int` | ✕ | The tribe id. (default = Client's tribe id) |
 >
 >Gets the data of a tribe.
 >
@@ -540,8 +597,8 @@
 >### self:getTribeHistory ( tribeId, pageNumber )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| tribeId | `int` | ✕ | The tribe id. (default = Client's account name) |
->| pageNumber | `int` | ✕ | The page number. To list ALL the history, use `0`. (default = 1) |
+>| tribeId | `int` | ✕ | The tribe id. (default = Client's tribe id) |
+>| pageNumber | `int` | ✕ | The page number of the history. To list ALL the history, use `0`. (default = 1) |
 >
 >Gets the history logs of a tribe, if possible.
 >
@@ -556,7 +613,7 @@
 >### self:getTribeMembers ( tribeId, pageNumber )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| tribeId | `int` | ✕ | The tribe id. (default = Client's account name) |
+>| tribeId | `int` | ✕ | The tribe id. (default = Client's tribe id) |
 >| pageNumber | `int` | ✕ | The list page (case the tribe has more than 30 members). To list ALL members, use `0`. (default = 1) |
 >
 >Gets the members of a tribe.
@@ -572,7 +629,7 @@
 >### self:getTribeRanks ( tribeId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| tribeId | `int` | ✕ | The tribe id. (default = Client's account name) |
+>| tribeId | `int` | ✕ | The tribe id. (default = Client's tribe id) |
 >
 >Gets the ranks of a tribe, if possible.
 >

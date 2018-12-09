@@ -16,17 +16,19 @@
 - [x] [Delete Private Content](docs/a801api.md#selfmovePrivateConversation--inboxLocale-conversationId-)
 - [x] [Delete all Archived Content](docs/a801api.md#selfmovePrivateConversation--inboxLocale-conversationId-)
 - [x] [Answer Private Conversation](docs/a801api.md#selfanswerConversation--conversationId-answer-)
-- [x] [Close Private Conversation](docs/a801api.md#selfchangeConversationState--conversationState-conversationId-)
-- [x] [Reopen Private Conversation](docs/a801api.md#selfchangeConversationState--conversationState-conversationId-)
+- [x] [Close Private Conversation](docs/a801api.md#selfchangeConversationState--displayState-conversationId-)
+- [x] [Reopen Private Conversation](docs/a801api.md#selfchangeConversationState--displayState-conversationId-)
 - [x] [Invite guest to a Conversation](docs/a801api.md#selfconversationInvite--conversationId-userName-)
 - [x] [Leave Private Conversation](docs/a801api.md#selfleaveConversation--conversationId-)
 - [x] [Exclude guest from Conversation](docs/a801api.md#selfkickConversationMember--conversationId-userId-)
+- [ ] Get unread conversations
+- [ ] Get new conversations
 
 ## Forum
 - [x] [Get message](docs/a801api.md#selfgetMessage--postId-location-)
 - [x] [Get topic](docs/a801api.md#selfgetTopic--location-ignoreFirstMessage-)
 - [x] [Get section](docs/a801api.md#selfgetSection--location-)
-- [ ] Get topic messages (by page?)
+- [ ] Get topic messages
 - [ ] Get section topics
 - [x] [Answer topic](docs/a801api.md#selfanswerTopic--message-location-)
 - [x] [Create topic](docs/a801api.md#selfcreateTopic--title-message-location-)
@@ -62,7 +64,7 @@
 - [x] [Get player Profile](docs/a801api.md#selfgetProfile--userName-)
 
 ## Micepix
-- [ ] Get micepix images (self) (by page?!)
+- [x] [Get micepix images (self)](docs/a801api.md#selfgetAccountImages--pageNumber-)
 - [x] [Get last micepix images hosted by users](docs/a801api.md#selfgetLatestImages--quantity-)
 - [ ] Post image
 - [x] [Delete image](docs/a801api.md#selfdeleteMicepixImage--imageId-)
@@ -91,9 +93,9 @@
 - [x] [Add user as friend](docs/a801api.md#selfaddFriend--userName-)
 - [x] [Add user in the blacklist](docs/a801api.md#selfblacklistUser--userName-)
 - [x] [Remove user from the blacklist](docs/a801api.md#selfunblacklistUser--userName-)
-- [ ] Get user last posts
-- [ ] Get user created topics
-- [ ] Get dev-tracker messages
+- [x] [Get user last posts](docs/a801api.md#selfgetLastPosts--pageNumber-userName-)
+- [x] [Get user created topics](docs/a801api.md#selfgetCreatedTopics--userName-)
+- [x] [Get dev-tracker messages](docs/a801api.md#selfgetDevTracker---)
 - [x] [Favorite topic](docs/a801api.md#selffavoriteElement--element-elementId-location-)
 - [x] [Unfavorite topic](docs/a801api.md#selfunfavoriteElement--favoriteId-)
 - [x] [Favorite tribe](docs/a801api.md#selffavoriteElement--element-elementId-location-)
