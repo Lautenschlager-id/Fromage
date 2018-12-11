@@ -99,7 +99,9 @@ local forumUri = {
 	topicStarted = "topics-started",
 	tracker = "dev-tracker",
 	uAvatar = "update-profile-avatar",
-	profile = "profile"
+	profile = "profile",
+	uploadImage = 'upload-user-image',
+	userGallery = 'user-images-home'
 }
 
 local htmlChunk = {
@@ -3019,6 +3021,50 @@ return function()
 		end
 
 		return images
+	end
+	--[[@
+		@desc Uploads an image in Micepix.
+		@param image<string> The new image. An URL or file name.
+		@param isPublic?<boolean> Whether the image should appear in the gallery or not. (default = false)
+		@returns boolean Whether the image was hosted or not
+		@returns string if #1, `image's url`, else `Result string` or `Error message`
+	]]
+	self.uploadImage = function(self, image, isPublic)
+		assertion("uploadImage", "string", 1, image)
+		assertion("uploadImage", { "boolean", "nil" }, 2, isPublic)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local extension = getExtension(image)
+		if not extension then
+			return false, errorString.invalid_extension
+		end
+
+		image = getFile(image)
+		if not image then
+			return false, errorString.invalid_file
+		end
+
+		local file = {
+			boundaries[2],
+			'Content-Disposition: form-data; name="/KEY1/"',
+			separator.file,
+			"/KEY2/",
+			boundaries[2],
+			'Content-Disposition: form-data; name="fichier"; filename="Lautenschlager_id.' .. extension .. '"',
+			"Content-Type: image/" .. extension,
+			separator.file,
+			image,
+			(isPublic and boundaries[2] or nil),
+			(isPublic and 'Content-Disposition: form-data; name="enGalerie"' or nil),
+			(isPublic and separator.file or nil),
+			(isPublic and "on" or nil),
+			boundaries[3]
+		}
+		local sucess, data = this:performAction(forumUri.uploadImage, nil, forumUri.userGallery, table.concat(file, separator.file))
+		return returnRedirection(success, data)
 	end
 	--[[@
 		@desc Deletes an image from the account's micepix.
