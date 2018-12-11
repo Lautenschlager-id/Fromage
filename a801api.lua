@@ -97,7 +97,9 @@ local forumUri = {
 	clientGallery = "user-images-grid-ajax",
 	posts = "posts",
 	topicStarted = "topics-started",
-	tracker = "dev-tracker"
+	tracker = "dev-tracker",
+	uAvatar = "update-profile-avatar",
+	profile = "profile"
 }
 
 local htmlChunk = {
@@ -115,7 +117,7 @@ local htmlChunk = {
 	messageEditionTimestamp = 'cadre%-message%-dates.-(%d+)',
 	privateMessageData = 'data%-afficher%-secondes.->(%d+).-(%S+)<span class="nav%-header%-hashtag">(#%d+).-citer_message_(%d+).->(.-)</div>',
 	navBar = 'barre%-navigation.->(.-)</ul>',
-	navBarFragments = '<a href="(.-)".->%s*(.-)%s*</a>',
+	navBarFragments = '<a.-href="(.-)".->%s*(.-)%s*</a>',
 	navBarSplitContent = '^<(.+)>%s*(.+)%s*$',
 	favorite = 'fa',
 	totalPages = '"input%-pagination".-max="(%d+)"',
@@ -153,7 +155,9 @@ local htmlChunk = {
 	listedTopic = 'href="(topic?[^#]+)#?m?(%d*)">%s+(.-) </a>',
 	tracker = '<div class="row">(.-)</div>%s+</div>',
 	msgHtml = 'Message</a></span> :%s+(.-)</div>%s+</td>%s+</tr>',
-	adminName = 'cadre%-type%-auteur%-admin">(.-)</span>'
+	adminName = 'cadre%-type%-auteur%-admin">(.-)</span>',
+	favTopics = '<td rowspan="2">(.-)</td>%s+<td rowspan="2">.-name="fa" value="(%d+)"',
+	topicName = 'href="topic.-t=(%d+).-">%s+(.-)%s+</a>%s+</td>%s+<td rowspan="2">'
 }
 
 local errorString = {
@@ -177,13 +181,25 @@ local errorString = {
 	unaivalable_enum = "This function does not accept this enum.",
 	invalid_id = "Invalid id.",
 	no_tribe = "This instance does not have a tribe.",
-	no_right = "You don't have rights to see this info."
+	no_right = "You don't have rights to see this info.",
+	invalid_file = "Provided file does not exist.",
+	invalid_extension = "Provided file url or name does not have a valid extension."
 }
 
 local separator = {
 	cookie = ", ",
-	forumData = "§#§"
+	forumData = "§#§",
+	file = "\r\n"
 }
+
+local fileExtensions = { "png", "jpg", "jpeg", "gif" }
+
+local boundaries = { }
+do
+	boundaries[1] = "LautenschlagerAPI_" .. os.time()
+	boundaries[2] = "--" .. boundaries[1]
+	boundaries[3] = boundaries[2] .. "--"
+end
 
 --[[ Functions and Tables ]]--
 local forumLink = "https://atelier801.com/"
@@ -218,6 +234,53 @@ do
 		hash:update(str)
 		return hash:final()
 	end
+end
+
+table.search = function(tbl, value, index)
+	local found = false
+	for k, v in next, tbl do
+		if index and type(v) == "table" then
+			found = (v[index] == value)
+		else
+			found = (v == value)
+		end
+		if found then
+			return k
+		end
+	end
+end
+
+table.createSet = function(tbl, index)
+	local out = { }
+
+	local j = true
+	for k, v in next, tbl do
+		local i
+		if index then
+			i = v[index]
+			j = v
+		else
+			i = v
+		end
+
+		out[i] = j
+	end
+	return out
+end
+
+table.add = function(src, list)
+	local len = #src
+	for i = 1, #list do
+		src[len + i] = list[i]
+	end
+end
+
+os.readFile = function(file)
+	local file = io.open(file, 'r')
+	if not file then return end
+	local content = file:read("*a")
+	file:close()
+	return content
 end
 
 local getPasswordHash = function(password)
@@ -288,42 +351,29 @@ local isValidDate = function(date)
 	return (nDay > 0 and nDay < 32 and nMonth > 0 and nMonth < 13), string.format("%02d/%02d" .. (year and "/%04d" or ""), nDay, nMonth, tonumber(year))
 end
 
-table.search = function(tbl, value, index)
-	local found = false
-	for k, v in next, tbl do
-		if index and type(v) == "table" then
-			found = (v[index] == value)
-		else
-			found = (v == value)
-		end
-		if found then
-			return k
+local getExtension = function(f)
+	local extension
+	for i = 1, #fileExtensions do
+		if string.find(f, "%." .. fileExtensions[i]) then
+			extension = fileExtensions[i]
+			break
 		end
 	end
-end
-
-table.createSet = function(tbl, index)
-	local out = { }
-
-	local j = true
-	for k, v in next, tbl do
-		local i
-		if index then
-			i = v[index]
-			j = v
-		else
-			i = v
-		end
-
-		out[i] = j
+	if extension == "jpg" then
+		extension = "jpeg"
 	end
-	return out
+	return extension
 end
 
-table.add = function(src, list)
-	local len = #src
-	for i = 1, #list do
-		src[len + i] = list[i]
+local getFile = function(f)
+	if string.find(f, "https?://") then
+		local head, body = http.request("GET", f)
+		return body
+	else
+		f = os.readFile(f)
+		if f then
+			return f
+		end
 	end
 end
 
@@ -392,7 +442,7 @@ return function()
 	end
 
 	-- Performs a post action on forums
-	this.performAction = function(this, uri, postData, ajaxUri)
+	this.performAction = function(this, uri, postData, ajaxUri, file)
 		local secretKeys = this:getSecretKeys(ajaxUri)
 		if #secretKeys == 0 then
 			return false, errorString.secret_key_not_found
@@ -405,7 +455,7 @@ return function()
 		if ajaxUri then
 			headers[3] = { "Accept", "application/json, text/javascript, */*; q=0.01" }
 			headers[4] = { "X-Requested-With", "XMLHttpRequest" }
-			headers[5] = { "Content-Type", "application/x-www-form-urlencoded; charset=UTF-8" }
+			headers[5] = { "Content-Type", (file and ("multipart/form-data; boundary=" .. boundaries[1]) or "application/x-www-form-urlencoded; charset=UTF-8") }
 			headers[6] = { "Referer", forumLink .. ajaxUri }
 			headers[7] = { "Connection", "keep-alive" }
 		end
@@ -414,7 +464,9 @@ return function()
 		for index, data in next, postData do
 			body[index] = data[1] .. "=" .. encodeUrl(data[2])
 		end
-		head, body = http.request("POST", forumLink .. uri, headers, table.concat(body, '&'))
+		head, body = http.request("POST", forumLink .. uri, headers, (file and (string.gsub(file, "/KEY(%d)/", function(id)
+			return secretKeys[tonumber(id)] 
+		end)) or (table.concat(body, '&'))))
 
 		this:setCookies(head)
 
@@ -728,6 +780,47 @@ return function()
 			avatarUrl = avatar,
 			presentation = presentation
 		}
+	end
+	--[[@
+		@desc Updates the client's account profile picture.
+		@param image<string> The new image. An URL or file name.
+		@returns boolean Whether the new avatar was set or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.updateAvatar = function(self, image)
+		assertion("updateAvatar", "string", 1, image)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local extension = getExtension(image)
+		if not extension then
+			return false, errorString.invalid_extension
+		end
+
+		image = getFile(image)
+		if not image then
+			return false, errorString.invalid_file
+		end
+
+		local file = {
+			boundaries[2],
+			'Content-Disposition: form-data; name="pr"',
+			separator.file,
+			this.userId,
+			boundaries[2],
+			'Content-Disposition: form-data; name="fichier"; filename="Lautenschlager_id.' .. extension .. '"',
+			"Content-Type: image/" .. extension,
+			separator.file,
+			image,
+			boundaries[2],
+			'Content-Disposition: form-data; name="/KEY1/"',
+			separator.file,
+			"/KEY2/",
+			boundaries[3]
+		}
+		return this:performAction(forumUri.uAvatar, nil, forumUri.profile .. "?pr=" .. this.userId, table.concat(file, separator.file))
 	end
 	--[[@
 		@desc Updates the account parameters.
@@ -1234,6 +1327,7 @@ return function()
 				id = tonumber(id),
 				prestige = tonumber(prestige),
 				content = content,
+				isEdited = not not editTimestamp,
 				edit_timestamp = tonumber(editTimestamp),
 				isModerated = isModerated,
 				moderatedBy = moderatedBy,
@@ -1262,49 +1356,6 @@ return function()
 				content = content
 			}
 		end
-	end
-	--[[@
-		@desc Gets the edition logs of a message, if possible.
-		@param messageId<int,string> The message id. Use `string` if it's the post number.
-		@param location<table> The message location. Fields 'f' and 't' are needed.
-		@returns table|nil The edition logs
-		@returns nil|string The message error, if any occurred
-	]]
-	self.getMessageHistory = function(self, messageId, location)
-		assertion("getMessageHistory", { "number", "string" }, 1, messageId)
-		assertion("getMessageHistory", "table", 2, location)
-
-		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
-		end
-
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
-
-		if type(messageId) == "string" then
-			local err
-			messageId, err = self:getMessage(messageId, location)
-			if messageId then
-				messageId = messageId.id
-			else
-				return false, err
-			end
-		end
-
-		local head, body = this:getPage(forumUri.messageHistory .. "?forum=" .. location.f .. "&message=" .. messageId)
-
-		local history, counter = { }, 0
-
-		string.gsub(body, htmlChunk.messageHistory .. ".-" .. htmlChunk.msTime, function(bbcode, timestamp)
-			counter = counter + 1
-			history[counter] = {
-				bbcode = bbcode,
-				timestamp = tonumber(timestamp)
-			}
-		end)
-
-		return history
 	end
 	--[[@
 		@desc Gets the data of a topic.
@@ -1523,6 +1574,196 @@ return function()
 			community = (community and enums.community[community] or nil),
 			icon = icon
 		}
+	end
+	--@ Private function
+	local getTopicMessages
+	getTopicMessages = function(self, location, pageNumber, getAllInfo, _getTotalPages, _totalPages)
+		local head, body = this:getPage(forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t .. "&p=" ..  math.max(1, pageNumber))
+
+		if _getTotalPages then
+			_totalPages = tonumber(string.match(body, htmlChunk.totalPages)) or 1
+		end
+
+		local messages = { }
+		if pageNumber == 0 then
+			local tmp, err
+			for i = 1, totalPages do
+				tmp, err = getTopicMessages(location, i, getAllInfo, false, _totalPages)
+				if err then
+					return false, err
+				end
+
+				table.add(messages, tmp)
+			end
+
+			return messages
+		end
+
+		local post = math.ceil(pageNumber / 20)
+		local counter = 0
+		if getAllInfo then
+			for i = post, (post + 20) do
+				local msg = self:getMessage(post, location)
+				if not msg then
+					break -- End of the page
+				end
+				counter = counter + 1
+				messages[counter] = msg
+			end
+		else
+			string.gsub(body, string.format(htmlChunk.hidden, 'm'), function(id)
+				counter = counter + 1
+				messages[counter] = {
+					f = location.f,
+					t = location.t,
+					p = pageNumber,
+					post = tostring(post + counter),
+					id = tonumber(id)
+				}
+			end)
+		end
+
+		return messages
+	end
+	--[[@
+		@desc Gets the messages of a topic.
+		@param location<table> The topic location. Fields 'f' and 't' are needed.
+		@param pageNumber?<int> The topic page. To list ALL messages, use `0`. (default = 1)
+		@param getAllInfo?<boolean> Whether the message data should be simple (ids only) or complete (getMessage). (default = true)
+	]]
+	self.getTopicMessages = function(self, location, pageNumber, getAllInfo)
+		assertion("getTopicMessages", "table", 1, location)
+		assertion("getTopicMessages", { "number", "nil" }, 2, pageNumber)
+		assertion("getTopicMessages", { "boolean", "nil" }, 3, getAllInfo)
+
+		pageNumber = pageNumber or 1
+		getAllInfo = (getAllInfo == nil and true or getAllInfo)
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		return getTopicMessages(location, pageNumber, getAllInfo, true)
+	end
+	--@ Private function
+	local getSectionTopics
+	getSectionTopics = function(self, location, pageNumber, getAllInfo, _getTotalPages, _totalPages)
+		local head, body = this:getPage(forumUri.section .. "?f=" .. location.f .. "&s=" .. location.s .. "&p=" .. math.max(1, pageNumber))
+
+		if _getTotalPages then
+			_totalPages = tonumber(string.match(body, htmlChunk.totalPages)) or 1
+		end
+
+		local topics = { }
+		if pageNumber == 0 then
+			local tmp, err
+			for i = 1, totalPages do
+				tmp, err = getSectionTopics(location, i, getAllInfo, false, _totalPages)
+				if err then
+					return false, err
+				end
+
+				table.add(topics, tmp)
+			end
+
+			return topics
+		end
+
+		local counter = 0
+		string.gsub(body, htmlChunk.topicName .. ".-" .. htmlChunk.msTime, function(id, title, timestamp)
+			id = tonumber(id)
+
+			counter = counter + 1
+			if getAllInfo then
+				local tpc, err = self:getTopic({ f = location.f, t = id }, true)
+				if not tpc then
+					return false, err
+				end
+
+				topics[counter] = tpc
+			else
+				topics[counter] = {
+					f = location.f,
+					s = location.s,
+					t = id,
+					title = title,
+					timestamp = tonumber(timestamp)
+				}
+			end
+		end)
+
+		return topics
+	end
+	--[[@
+		@desc Gets the messages of a topic.
+		@param location<table> The topic location. Fields 'f' and 't' are needed.
+		@param pageNumber?<int> The topic page. To list ALL messages, use `0`. (default = 1)
+		@param getAllInfo?<boolean> Whether the message data should be simple (ids only) or complete (getMessage). (default = true)
+	]]
+	self.getSectionTopics = function(self, location, pageNumber, getAllInfo)
+		assertion("getSectionTopics", "table", 1, location)
+		assertion("getSectionTopics", { "number", "nil" }, 2, pageNumber)
+		assertion("getSectionTopics", { "boolean", "nil" }, 3, getAllInfo)
+
+		pageNumber = pageNumber or 1
+		getAllInfo = (getAllInfo == nil and true or getAllInfo)
+
+		if not location.f or not location.s then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		return getSectionTopics(location, pageNumber, getAllInfo, true)
+	end
+	--[[@
+		@desc Gets the edition logs of a message, if possible.
+		@param messageId<int,string> The message id. Use `string` if it's the post number.
+		@param location<table> The message location. Fields 'f' and 't' are needed.
+		@returns table|nil The edition logs
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getMessageHistory = function(self, messageId, location)
+		assertion("getMessageHistory", { "number", "string" }, 1, messageId)
+		assertion("getMessageHistory", "table", 2, location)
+
+		if not location.f or not location.t then
+			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		end
+
+		if not this.isConnected then
+			return nil, errorString.not_connected
+		end
+
+		if type(messageId) == "string" then
+			local err
+			messageId, err = self:getMessage(messageId, location)
+			if messageId then
+				messageId = messageId.id
+			else
+				return false, err
+			end
+		end
+
+		local head, body = this:getPage(forumUri.messageHistory .. "?forum=" .. location.f .. "&message=" .. messageId)
+
+		local history, counter = { }, 0
+
+		string.gsub(body, htmlChunk.messageHistory .. ".-" .. htmlChunk.msTime, function(bbcode, timestamp)
+			counter = counter + 1
+			history[counter] = {
+				bbcode = bbcode,
+				timestamp = tonumber(timestamp)
+			}
+		end)
+
+		return history
 	end
 	--[[@
 		@desc Creates a topic.
@@ -2284,11 +2525,11 @@ return function()
 	end
 	--@ Private function
 	local getTribeHistory
-	getTribeHistory = function(self, tribeId, pageNumber, _getPageNumber)
+	getTribeHistory = function(self, tribeId, pageNumber, _getTotalPages)
 		local head, body = this:getPage(forumUri.tribeHistory .. "?tr=" .. tribeId .. "&p=" .. math.max(1, pageNumber))
 
 		local totalPages
-		if _getPageNumber then
+		if _getTotalPages then
 			totalPages = tonumber(string.match(body, htmlChunk.totalPages)) or 1
 		end
 
@@ -2686,11 +2927,11 @@ return function()
 	-- > Micepix
 	--@ Private function
 	local getAccountImages
-	getAccountImages = function(self, pageNumber, _getPageNumber)
+	getAccountImages = function(self, pageNumber, _getTotalPages)
 		local head, body = this:getPage(forumUri.clientGallery .. "?pr=" .. this.userId .. "&p=" .. pageNumber)
 
 		local totalPages
-		if _getPageNumber then
+		if _getTotalPages then
 			totalPages = tonumber(string.match(body, htmlChunk.totalPages)) or 1
 		end
 
@@ -2711,7 +2952,7 @@ return function()
 			return images
 		end
 
-		local images, counter = { }, 0
+		local counter = { }, 0
 		string.gsub(body, htmlChunk.imageInfo .. ".-" .. htmlChunk.msTime, function(code, _, timestamp)
 			counter = counter + 1
 			images[counter] = {
@@ -2861,6 +3102,61 @@ return function()
 		return posts
 	end
 	--[[@
+		@desc Gets the client's account favorite topics.
+		@returns table|nil The list of topics, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getFavoriteTopics = function(self)
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local head, body = this:getPage(forumUri.favTopics)
+
+		local topics, counter = { }, 0
+
+		string.gsub(body, htmlChunk.msTime .. ".-" .. htmlChunk.favTopics, function(timestamp, navBar, favoriteId)
+			local navigation_bar, community = { }
+			local _counter = 0
+
+			local err
+			string.gsub(navBar, htmlChunk.navBarFragments, function(href, code)
+				href, err = self.parseUrlData(href)
+				if err then
+					return false, err
+				end
+				
+				_counter = _counter + 1
+				local html, name = string.match(code, htmlChunk.navBarSplitContent)
+				if html then
+					navigation_bar[_counter] = {
+						location = href,
+						name = name
+					}
+
+					if not community then
+						community = string.match(html, htmlChunk.commu)
+					end
+				else
+					navigation_bar[_counter] = {
+						location = href,
+						name = code
+					}
+				end
+			end)
+
+			counter = counter + 1
+			topics[counter] = {
+				favoriteId = tonumber(favoriteId),
+				timestamp = tonumber(timestamp),
+				navbar = navigation_bar,
+				community = (community and enums.community[community] or nil)
+			}
+		end)
+
+		return topics
+	end
+	--[[@
 		@desc Gets the account's friendlist.
 		@returns table|nil The friendlist, if there's any
 		@returns nil|string The message error, if any occurred
@@ -2901,6 +3197,30 @@ return function()
 		return blacklist
 	end
 	--[[@
+		@desc Gets the client's account favorite tribes.
+		@returns table|nil The list of tribes, if there's any
+		@returns nil|string The message error, if any occurred
+	]]
+	self.getFavoriteTribes = function(self)
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local head, body = this:getPage(forumUri.favTribes)
+
+		local tribes, counter = { }, 0
+
+		string.gsub(body, htmlChunk.profileTribe, function(name, tribeId)
+			counter = counter + 1
+			tribes[counter] = {
+				name = name,
+				id = tonumber(tribeId)
+			}
+		end)
+
+		return tribes
+	end
+	--[[@
 		@desc Gets the latest messages sent by admins.
 		@returns table|nil The list of posts, if there's any
 		@returns nil|string The message error, if any occurred
@@ -2915,7 +3235,7 @@ return function()
 				return nil, errorString.internal
 			end
 
-			local navigation_bar, community = { }
+			local navigation_bar = { }
 			local _counter = 0
 
 			local err
@@ -2932,10 +3252,6 @@ return function()
 						location = href,
 						name = name
 					}
-
-					if not community then
-						community = string.match(html, htmlChunk.commu)
-					end
 				else
 					navigation_bar[_counter] = {
 						location = href,
@@ -3118,4 +3434,4 @@ return function()
 	end
 
 	return self
-end, enums
+end
