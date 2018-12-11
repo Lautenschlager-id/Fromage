@@ -21,15 +21,13 @@
 - [x] [Invite guest to a Conversation](docs/a801api.md#selfconversationInvite--conversationId-userName-)
 - [x] [Leave Private Conversation](docs/a801api.md#selfleaveConversation--conversationId-)
 - [x] [Exclude guest from Conversation](docs/a801api.md#selfkickConversationMember--conversationId-userId-)
-- [ ] Get unread conversations
-- [ ] Get new conversations
 
 ## Forum
 - [x] [Get message](docs/a801api.md#selfgetMessage--postId-location-)
 - [x] [Get topic](docs/a801api.md#selfgetTopic--location-ignoreFirstMessage-)
 - [x] [Get section](docs/a801api.md#selfgetSection--location-)
-- [ ] Get topic messages
-- [ ] Get section topics
+- [x] [Get topic messages](docs/a801api.md#selfgetTopicMessages--location-pageNumber-getAllInfo-)
+- [x] [Get section topics](docs/a801api.md#selfgetSectionTopics--location-pageNumber-getAllInfo-)
 - [x] [Answer topic](docs/a801api.md#selfanswerTopic--message-location-)
 - [x] [Create topic](docs/a801api.md#selfcreateTopic--title-message-location-)
 - [x] [Create poll](docs/a801api.md#selfcreatePoll--title-message-pollResponses-location-settings-)
@@ -47,7 +45,7 @@
 - [x] [Unrestrict topic content](docs/a801api.md#selfchangeMessageContentState--messageId-contentState-location-)
 - [x] [Message history logs](docs/a801api.md#selfgetMessageHistory--messageId-location-)
 - [x] [Like post](docs/a801api.md#selflikeMessage--messageId-location-)
-
+	
 ## Report
 - [x] [Report Message](docs/a801api.md#selfreportElement--element-elementId-reason-location-)
 - [x] [Report Profile](docs/a801api.md#selfreportElement--element-elementId-reason-location-)
@@ -57,7 +55,7 @@
 
 
 ## Profile
-- [ ] Change avatar
+- [x] [Change avatar](docs/a801api.md#selfupdateAvatar--image-)
 - [x] [Remove avatar](docs/a801api.md#selfremoveAvatar---)
 - [x] [Display online status](docs/a801api.md#selfupdateParameters--parameters-)
 - [x] [Edit Profile](docs/a801api.md#selfupdateProfile--data-)
@@ -66,14 +64,14 @@
 ## Micepix
 - [x] [Get micepix images (self)](docs/a801api.md#selfgetAccountImages--pageNumber-)
 - [x] [Get last micepix images hosted by users](docs/a801api.md#selfgetLatestImages--quantity-)
-- [ ] Post image
+- [x] [Post image](docs/a801api.md#selfuploadImage--image-isPublic-)
 - [x] [Delete image](docs/a801api.md#selfdeleteMicepixImage--imageId-)
 
 ## Tribe
 - [x] [Get tribe profile](docs/a801api.md#selfgetTribe--tribeId-)
 - [x] [Get tribe members](docs/a801api.md#selfgetTribeMembers--tribeId-pageNumber-)
 - [x] [Get tribe history](docs/a801api.md#selfgetTribeHistory--tribeId-pageNumber-)
-- [ ] Change logo
+- [x] [Change logo](docs/a801api.md#selfupdateTribeLogo--image-)
 - [x] [Remove logo](docs/a801api.md#selfremoveTribeLogo---)
 - [x] [Edit profile](docs/a801api.md#selfupdateTribeProfile--data-)
 - [x] [Edit greeting message](docs/a801api.md#selfupdateTribeGreetingMessage--message-)
@@ -85,7 +83,7 @@
 - [x] [Get tribe ranks](docs/a801api.md#selfgetTribeRanks--tribeId-)
 
 ## Search
-- [ ] Search
+- [x] [Search](docs/a801api.md#selfsearch--searchType-search-pageNumber-data-)
 
 ## Misc
 - [x] [Get friendlist](docs/a801api.md#selfgetFriendlist---)
@@ -99,7 +97,7 @@
 - [x] [Favorite topic](docs/a801api.md#selffavoriteElement--element-elementId-location-)
 - [x] [Unfavorite topic](docs/a801api.md#selfunfavoriteElement--favoriteId-)
 - [x] [Favorite tribe](docs/a801api.md#selffavoriteElement--element-elementId-location-)
-- [x] [Unfavorite topic](docs/a801api.md#selfunfavoriteElement--favoriteId-)
-- [ ] Get favorite topics
-- [ ] Get favorite tribes
+- [x] [Unfavorite tribe](docs/a801api.md#selfunfavoriteElement--favoriteId-)
+- [x] [Get favorite topics](docs/a801api.md#selfgetFavoriteTopics---)
+- [x] [Get favorite tribes](docs/a801api.md#selfgetFavoriteTribes---)
 - [x] [List staff](docs/a801api.md#selfgetStaffList--role-)

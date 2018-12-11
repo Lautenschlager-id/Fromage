@@ -100,8 +100,10 @@ local forumUri = {
 	tracker = "dev-tracker",
 	uAvatar = "update-profile-avatar",
 	profile = "profile",
-	uploadImage = 'upload-user-image',
-	userGallery = 'user-images-home'
+	uploadImage = "upload-user-image",
+	userGallery = "user-images-home",
+	uploadLogo = "update-tribe-logo",
+	search = "search"
 }
 
 local htmlChunk = {
@@ -147,7 +149,7 @@ local htmlChunk = {
 	blacklistName = 'cadre%-ignore%-nom">(.-)</span>',
 	tribeRanks = '<h4>Ranks</h4>(.-)</div>%s+</div>',
 	tribeRank = '<div class="rang%-tribu"> (.-) </div>',
-	tribeMember = '/(..)%.png.-(%S+)<span class="nav%-header%-hashtag">(#%d+)',
+	nameList = '/(..)%.png.-(%S+)<span class="nav%-header%-hashtag">(#%d+)',
 	countMembers = '(%d+) entries',
 	moderatedMessage = 'cadre%-message%-modere%-texte">by ([^,]+)[^:]*:?(.*)%]<',
 	tribeHistory = '<td> (.-) </td>',
@@ -156,10 +158,13 @@ local htmlChunk = {
 	messageHref = 'href="(topic?.-)#m(%d+)">#%2</a>',
 	listedTopic = 'href="(topic?[^#]+)#?m?(%d*)">%s+(.-) </a>',
 	tracker = '<div class="row">(.-)</div>%s+</div>',
-	msgHtml = 'Message</a></span> :%s+(.-)</div>%s+</td>%s+</tr>',
+	msgHtml = 'Message</a></span> :%s+(.-)%s*</div>%s+</td>%s+</tr>',
 	adminName = 'cadre%-type%-auteur%-admin">(.-)</span>',
 	favTopics = '<td rowspan="2">(.-)</td>%s+<td rowspan="2">.-name="fa" value="(%d+)"',
-	topicName = 'href="topic.-t=(%d+).-">%s+(.-)%s+</a>%s+</td>%s+<td rowspan="2">'
+	topicName = 'href="topic.-t=(%d+).-">%s+(.-)%s+</a>%s+</td>%s+<td rowspan="2">',
+	tribeList = '>(.-)</li>.-href="tribe%?tr=(%d+)',
+	topicNameList = '/(..)%.png.-<li><a href="(topic.-)">%s+(.-)</a></li>',
+	messageList = '/(..).png.-href="(topic.-)">%s+(.-)%s+<.-#(%d+)'
 }
 
 local errorString = {
@@ -477,10 +482,47 @@ return function()
 
 	-- Gets a page using the headers of the account
 	this.getPage = function(this, url)
-		return http.request("GET", url, forumLink .. this:getHeaders())
+		return http.request("GET", forumLink .. url, this:getHeaders())
 	end
 
 	--[[ Static Functions ]]--
+	--> Private function
+	local getList, getBigList
+	getBigList = function(pageNumber, uri, f, getTotalPages, _totalPages)
+		local head, body = this:getPage(uri .. math.max(1, pageNumber))
+
+		if getTotalPages then
+			_totalPages = tonumber(string.match(body.htmlChunk.totalPages)) or 1
+		end
+
+		local out = {
+			_pages = _totalPages
+		}
+		if pageNumber == 0 then
+			local tmp, err
+			for i = 1, _totalPages do
+				tmp, err = getList(i, uri, f, false, _totalPages)
+				if err then
+					return false, err
+				end
+			end
+
+			table.add(out, tmp)
+		end
+
+		f(out, body, pageNumber, _totalPages)
+		return out
+	end
+	getList = function(pageNumber, uri, f, html)
+		return getBigList(pageNumber, uri, function(list, body)
+			local counter = 0
+			string.gsub(body, html, function(...)
+				counter = counter + 1
+				list[counter] = f(...)
+			end)
+		end, true)
+	end
+
 	-- > Tool
 	--[[@
 		@desc Parses the URL data.
@@ -825,30 +867,6 @@ return function()
 		return this:performAction(forumUri.uAvatar, nil, forumUri.profile .. "?pr=" .. this.userId, table.concat(file, separator.file))
 	end
 	--[[@
-		@desc Updates the account parameters.
-		@desc The available parameters are:
-		@desc boolean `online` -> Whether the account should display if it's online or not
-		@param parameters<table> The parameters.
-		@returns boolean Whether the new parameter settings were set or not
-		@returns string `Result string` or `Error message`
-	]]
-	self.updateParameters = function(self, parameters)
-		assertion("updateParameters", "table", 1, parameters)
-
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
-		local postData = {
-			{ "pr", this.userId }
-		}
-		if type(parameters.online) == "boolean" and parameters.online then
-			postData[#postData + 1] = { "afficher_en_ligne", "on" }
-		end
-
-		return this:performAction(forumUri.uParam, postData, forumUri.profile .. "?tr=" .. this.userId)
-	end
-	--[[@
 		@desc Updates the account's profile.
 		@desc The available data are:
 		@desc string|int `community` -> Account's community. An enum from `enums.community` (index or value)
@@ -925,6 +943,30 @@ return function()
 			{ "pr", this.userId }
 		}
 		return this:performAction(forumUri.remAvatar, postData, forumUri.profile .. "?tr=" .. this.userId)
+	end
+	--[[@
+		@desc Updates the account parameters.
+		@desc The available parameters are:
+		@desc boolean `online` -> Whether the account should display if it's online or not
+		@param parameters<table> The parameters.
+		@returns boolean Whether the new parameter settings were set or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.updateParameters = function(self, parameters)
+		assertion("updateParameters", "table", 1, parameters)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		local postData = {
+			{ "pr", this.userId }
+		}
+		if type(parameters.online) == "boolean" and parameters.online then
+			postData[#postData + 1] = { "afficher_en_ligne", "on" }
+		end
+
+		return this:performAction(forumUri.uParam, postData, forumUri.profile .. "?tr=" .. this.userId)
 	end
 
 	-- > Private
@@ -1577,56 +1619,6 @@ return function()
 			icon = icon
 		}
 	end
-	--@ Private function
-	local getTopicMessages
-	getTopicMessages = function(self, location, pageNumber, getAllInfo, _getTotalPages, _totalPages)
-		local head, body = this:getPage(forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t .. "&p=" ..  math.max(1, pageNumber))
-
-		if _getTotalPages then
-			_totalPages = tonumber(string.match(body, htmlChunk.totalPages)) or 1
-		end
-
-		local messages = { }
-		if pageNumber == 0 then
-			local tmp, err
-			for i = 1, totalPages do
-				tmp, err = getTopicMessages(location, i, getAllInfo, false, _totalPages)
-				if err then
-					return false, err
-				end
-
-				table.add(messages, tmp)
-			end
-
-			return messages
-		end
-
-		local post = math.ceil(pageNumber / 20)
-		local counter = 0
-		if getAllInfo then
-			for i = post, (post + 20) do
-				local msg = self:getMessage(post, location)
-				if not msg then
-					break -- End of the page
-				end
-				counter = counter + 1
-				messages[counter] = msg
-			end
-		else
-			string.gsub(body, string.format(htmlChunk.hidden, 'm'), function(id)
-				counter = counter + 1
-				messages[counter] = {
-					f = location.f,
-					t = location.t,
-					p = pageNumber,
-					post = tostring(post + counter),
-					id = tonumber(id)
-				}
-			end)
-		end
-
-		return messages
-	end
 	--[[@
 		@desc Gets the messages of a topic.
 		@param location<table> The topic location. Fields 'f' and 't' are needed.
@@ -1649,56 +1641,31 @@ return function()
 			return false, errorString.not_connected
 		end
 
-		return getTopicMessages(location, pageNumber, getAllInfo, true)
-	end
-	--@ Private function
-	local getSectionTopics
-	getSectionTopics = function(self, location, pageNumber, getAllInfo, _getTotalPages, _totalPages)
-		local head, body = this:getPage(forumUri.section .. "?f=" .. location.f .. "&s=" .. location.s .. "&p=" .. math.max(1, pageNumber))
-
-		if _getTotalPages then
-			_totalPages = tonumber(string.match(body, htmlChunk.totalPages)) or 1
-		end
-
-		local topics = { }
-		if pageNumber == 0 then
-			local tmp, err
-			for i = 1, totalPages do
-				tmp, err = getSectionTopics(location, i, getAllInfo, false, _totalPages)
-				if err then
-					return false, err
-				end
-
-				table.add(topics, tmp)
-			end
-
-			return topics
-		end
-
-		local counter = 0
-		string.gsub(body, htmlChunk.topicName .. ".-" .. htmlChunk.msTime, function(id, title, timestamp)
-			id = tonumber(id)
-
-			counter = counter + 1
+		return getBigList(pageNumber, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t, function(messages, body, pageNumber, totalPages)
+			local post = (pageNumber - 1) * 20
+			local counter = 0
 			if getAllInfo then
-				local tpc, err = self:getTopic({ f = location.f, t = id }, true)
-				if not tpc then
-					return false, err
+				for i = post, (post + 20) do
+					local msg = self:getMessage(post, location)
+					if not msg then
+						break -- End of the page
+					end
+					counter = counter + 1
+					messages[counter] = msg
 				end
-
-				topics[counter] = tpc
 			else
-				topics[counter] = {
-					f = location.f,
-					s = location.s,
-					t = id,
-					title = title,
-					timestamp = tonumber(timestamp)
-				}
+				string.gsub(body, string.format(htmlChunk.hidden, 'm'), function(id)
+					counter = counter + 1
+					messages[counter] = {
+						f = location.f,
+						t = location.t,
+						p = pageNumber,
+						post = tostring(post + counter),
+						id = tonumber(id)
+					}
+				end)
 			end
-		end)
-
-		return topics
+		end, true)
 	end
 	--[[@
 		@desc Gets the messages of a topic.
@@ -1722,7 +1689,26 @@ return function()
 			return false, errorString.not_connected
 		end
 
-		return getSectionTopics(location, pageNumber, getAllInfo, true)
+		return getList(pageNumber, forumUri.section .. "?f=" .. location.f .. "&s=" .. location.s, function(id, title, timestamp)
+			id = tonumber(id)
+
+			if getAllInfo then
+				local tpc, err = self:getTopic({ f = location.f, t = id }, true)
+				if not tpc then
+					return false, err
+				end
+
+				return tpc
+			else
+				return {
+					f = location.f,
+					s = location.s,
+					t = id,
+					title = title,
+					timestamp = tonumber(timestamp)
+				}
+			end
+		end, htmlChunk.topicName .. ".-" .. htmlChunk.msTime)
 	end
 	--[[@
 		@desc Gets the edition logs of a message, if possible.
@@ -2386,84 +2372,6 @@ return function()
 			favoriteId = fa
 		}
 	end
-	--@ Private function
-	local getTribeMembers
-	getTribeMembers = function(self, tribeId, pageNumber, _countMembers)
-		local head, body = this:getPage(forumUri.tribeMembers .. "?tr=" .. tribeId .. "&p=" .. math.max(1, pageNumber))
-
-		local count, totalPages
-		if _countMembers then
-			count, totalPages = tonumber(string.match(body, htmlChunk.countMembers)), 1
-			if not count then
-				return false, errorString.internal
-			end
-
-			if count == 30 then
-				totalPages = tonumber(string.match(body, htmlChunk.totalPages)) or 1
-				if totalPages > 1 then
-					local _, data = this:getPage(forumUri.tribeMembers .. "?tr=" .. tribeId .. "&p=" .. totalPages)
-					count = tonumber(string.match(body, htmlChunk.countMembers))
-					if not count then
-						return false, errorString.internal
-					end
-					count = count + ((totalPages - 1) * 30)
-				end
-			end
-		end
-
-		local members = {
-			_pages = totalPages,
-			_count = count
-		}
-		if pageNumber == 0 then
-			local tmp, err
-			for i = 1, totalPages do
-				tmp, err = getTribeMembers(tribeId, i)
-				if err then
-					return false, err
-				end
-
-				table.add(members, tmp)
-			end
-
-			return members
-		end
-
-		local counter = 0
-		if tribeId == this.tribeId then
-			string.gsub(body, htmlChunk.tribeMember .. ".-" .. htmlChunk.tribeRank .. ".-" .. htmlChunk.msTime, function(community, name, discriminator, rank, jointDate)
-				counter = counter + 1
-				members[counter] = {
-					name = name .. discriminator,
-					community = enums.community[community],
-					rank = rank,
-					jointTime = jointDate
-				}
-			end)
-		else
-			local displaysRanks = not not string.find(body, htmlChunk.tribeRanks)
-			if displaysRanks then
-				string.gsub(body, htmlChunk.tribeMember .. ".-" .. htmlChunk.tribeRank, function(community, name, discriminator, rank)
-					counter = counter + 1
-					members[counter] = {
-						name = name .. discriminator,
-						community = enums.community[community],
-						rank = rank
-					}
-				end)
-			else
-				string.gsub(body, htmlChunk.tribeMember, function(community, name, discriminator)
-					counter = counter + 1
-					members[counter] = {
-						name = name .. discriminator,
-						community = enums.community[community]
-					}
-				end)
-			end
-		end
-
-		return members
-	end
 	--[[@
 		@desc Gets the members of a tribe.
 		@param tribeId?<int> The tribe id. (default = Client's tribe id)
@@ -2488,7 +2396,63 @@ return function()
 			tribeId = this.tribeId
 		end
 
-		return getTribeMembers(self, tribeId, pageNumber, true)
+		local uri = forumUri.tribeMembers .. "?tr=" .. tribeId
+		local totalPages, lastPageQuantity
+		local members  = getBigList(pageNumber, uri, function(members, body, _pageNumber, _totalPages)
+			local counter = 0
+			if tribeId == this.tribeId then
+				string.gsub(body, htmlChunk.nameList .. ".-" .. htmlChunk.tribeRank .. ".-" .. htmlChunk.msTime, function(community, name, discriminator, rank, jointDate)
+					counter = counter + 1
+					members[counter] = {
+						name = name .. discriminator,
+						community = enums.community[community],
+						rank = rank,
+						jointTime = jointDate
+					}
+				end)
+			else
+				local displaysRanks = not not string.find(body, htmlChunk.tribeRanks)
+				if displaysRanks then
+					string.gsub(body, htmlChunk.nameList .. ".-" .. htmlChunk.tribeRank, function(community, name, discriminator, rank)
+						counter = counter + 1
+						members[counter] = {
+							name = name .. discriminator,
+							community = enums.community[community],
+							rank = rank
+						}
+					end)
+				else
+					string.gsub(body, htmlChunk.nameList, function(community, name, discriminator)
+						counter = counter + 1
+						members[counter] = {
+							name = name .. discriminator,
+							community = enums.community[community]
+						}
+					end)
+				end
+			end
+
+			if not totalPages then
+				totalPages = _totalPages
+			end
+			if _pageNumber == _totalPages then
+				lastPageQuantity = counter
+			end
+		end, true)
+
+		totalPages = totalPages or 1
+
+		-- Get total of members
+		if not lastPageQuantity then
+			local head, body = this:getPage(uri .. "&p=" .. totalPages)
+			lastPageQuantity = tonumber(string.match(body, htmlChunk.countMembers))
+			if not lastPageQuantity then
+				return false, errorString.internal
+			end
+		end
+
+		members._count = ((totalPages - 1) * 30) + lastPageQuantity
+		return members
 	end
 	--[[@
 		@desc Gets the ranks of a tribe, if possible.
@@ -2525,44 +2489,6 @@ return function()
 
 		return ranks
 	end
-	--@ Private function
-	local getTribeHistory
-	getTribeHistory = function(self, tribeId, pageNumber, _getTotalPages)
-		local head, body = this:getPage(forumUri.tribeHistory .. "?tr=" .. tribeId .. "&p=" .. math.max(1, pageNumber))
-
-		local totalPages
-		if _getTotalPages then
-			totalPages = tonumber(string.match(body, htmlChunk.totalPages)) or 1
-		end
-
-		local history = {
-			_pages = totalPages
-		}
-		if pageNumber == 0 then
-			local tmp, err
-			for i = 1, totalPages do
-				tmp, err = getTribeHistory(tribeId, i)
-				if err then
-					return false, err
-				end
-
-				table.add(history, tmp)
-			end
-
-			return history
-		end
-
-		local counter = 0
-		string.gsub(body, htmlChunk.msTime .. ".-" .. htmlChunk.tribeHistory, function(timestamp, log)
-			counter = counter + 1
-			history[counter] = {
-				log = log,
-				timestamp = tonumber(timestamp)
-			}
-		end)
-
-		return history
-	end
 	--[[@
 		@desc Gets the history logs of a tribe, if possible.
 		@param tribeId?<int> The tribe id. (default = Client's tribe id)
@@ -2587,7 +2513,12 @@ return function()
 			tribeId = this.tribeId
 		end
 
-		return getTribeHistory(self, tribeId, pageNumber, true)
+		return getList(pageNumber, "?tr=" .. tribeId, htmlChunk.msTime .. ".-" .. htmlChunk.tribeHistory, function(timestamp, log)
+			return {
+				log = log,
+				timestamp = tonumber(timestamp)
+			}
+		end, true)
 	end
 	--[[@
 		@desc Updates the account's tribe greeting message.
@@ -2707,6 +2638,51 @@ return function()
 	end
 	--[[@
 		@desc Removes the logo of the account's tribe.
+		@param image<string> The new image. An URL or file name.
+		@returns boolean Whether the new logo was set or not
+		@returns string `Result string` or `Error message`
+	]]
+	self.updateTribeLogo = function(self, image)
+		assertion("updateTribeLogo", "string", 1, image)
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		if not this.tribeId then
+			return false, errorString.no_tribe
+		end
+
+		local extension = getExtension(image)
+		if not extension then
+			return false, errorString.invalid_extension
+		end
+
+		image = getFile(image)
+		if not image then
+			return false, errorString.invalid_file
+		end
+
+		local file = {
+			boundaries[2],
+			'Content-Disposition: form-data; name="tr"',
+			separator.file,
+			this.tribeId,
+			boundaries[2],
+			'Content-Disposition: form-data; name="fichier"; filename="Lautenschlager_id.' .. extension .. '"',
+			"Content-Type: image/" .. extension,
+			separator.file,
+			image,
+			boundaries[2],
+			'Content-Disposition: form-data; name="/KEY1/"',
+			separator.file,
+			"/KEY2/",
+			boundaries[3]
+		}
+		return this:performAction(forumUri.uploadLogo, nil, forumUri.tribe .. "?tr=" .. this.tribeId, table.concat(file, separator.file))
+	end
+	--[[@
+		@desc Removes the logo of the account's tribe.
 		@returns boolean Whether the logo was removed or not
 		@returns string `Result string` or `Error message`
 	]]
@@ -2748,10 +2724,6 @@ return function()
 			return false, string.format(errorString.no_required_fields, "data { 'name', 'icon', 'description', 'min_characters' }")
 		end
 
-		if not this.isConnected then
-			return false, errorString.not_connected
-		end
-
 		if type(data.icon) == "string" then
 			if not enums.sectionIcon[data.icon] then
 				return false, errorString.invalid_enum
@@ -2761,6 +2733,14 @@ return function()
 			if not table.search(enums.sectionIcon, data.icon) then
 				return false, errorString.enum_out_of_range
 			end
+		end
+
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
+		if not this.tribeId then
+			return false, errorString.no_tribe
 		end
 
 		local postData = {
@@ -2827,6 +2807,10 @@ return function()
 
 		if not this.isConnected then
 			return false, errorString.not_connected
+		end
+
+		if not this.tribeId then
+			return false, errorString.no_tribe
 		end
 
 		local section = self:getSection(location)
@@ -2926,45 +2910,95 @@ return function()
 		return this:performAction(forumUri.uSectionPerm, postData, forumUri.eSectionPerm .. "?f=" .. location.f .. "&s=" .. location.s)
 	end
 
-	-- > Micepix
-	--@ Private function
-	local getAccountImages
-	getAccountImages = function(self, pageNumber, _getTotalPages)
-		local head, body = this:getPage(forumUri.clientGallery .. "?pr=" .. this.userId .. "&p=" .. pageNumber)
-
-		local totalPages
-		if _getTotalPages then
-			totalPages = tonumber(string.match(body, htmlChunk.totalPages)) or 1
+	-- > Search
+	--[[@
+		@desc Performs a deep search on forums.
+		@param searchType<string,int> The type of the search (e.g.: player, message). An enum from `enums.searchType` (index or value)
+		@param search<string> The value to be found in the search
+		@param pageNumber?<int> The page number of the search results. To list ALL the matches, use `0`. (default = 1)
+		@param data?<table> Additional data to be used in the `message_topic` search type. Fields `searchLocation`(enum) and `f` are needed. Fields `author`, `community`(enum), and `s` are optional.
+		@returns table|nil The search matches. Total pages at `_pages`.
+		@returns nil|string The message error, if any occurred
+	]]
+	self.search = function (self, searchType, search, pageNumber, data)
+		if type(search) == "number" then
+			search = tostring(search)
 		end
 
-		local images = {
-			_pages = totalPages
-		}
-		if pageNumber == 0 then
-			local tmp, err
-			for i = 1, totalPages do
-				tmp, err = getAccountImages(i)
-				if err then
-					return false, err
-				end
+		assertion("search", { "string", "number" }, 1, searchType)
+		assertion("search", "string", 2, search)
+		assertion("search", { "number", "nil" }, 4, pageNumber)
 
-				table.add(images, tmp)
+		pageNumber = pageNumber or 1
+
+		if type(searchType) == "string" then
+			if not enums.searchType[searchType] then
+				return false, errorString.invalid_enum .. " (searchType)"
+			end
+			searchType = enums.searchType[searchType]
+		else
+			if not table.search(enums.searchType, searchType) then
+				return false, errorString.enum_out_of_range .. " (searchType)"
+			end
+		end
+
+		local d, html, f = ''
+		if searchType == enums.searchType.message_topic then
+			assertion("search", "table", 3, data)
+
+			if not data.searchLocation or not data.f then
+				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "data { 'searchLocation', 'f' }")
+			end
+			data.author = data.author or ''
+			data.community = data.community or 0
+			data.s = data.s or 0
+
+			if data.searchLocation == enums.searchLocation.titles then
+				html = htmlChunk.topicNameList .. htmlChunk.msTime
+				f = function(community, post, title, timestamp)
+					location = self.parseUrlData(post),
+					community = enums.community[community],
+					title = title,
+					timestamp = tonumber(timestamp)
+				end
+			else
+				html = htmlChunk.messageList .. ".-" .. htmlChunk.msgHtml .. ".-" .. htmlChunk.msTime
+				f = function(community, post, postId, msgHtml, timestamp)
+					return {
+						location = self.parseUrlData(post),
+						post = postId,
+						community = enums.community[community],
+						messageHtml = msgHtml,
+						timestamp = tonumber(timestamp)
+					}
+				end
 			end
 
-			return images
+			d = "&ou=" .. data.searchLocation .. "&pr=" .. data.author .. "&f=" .. data.f .. "&c=" .. data.community .. "&s=" .. data.s, pageNumber
+		else
+			if searchType == enums.searchType.tribe then
+				html = htmlChunk.tribeList
+				f = function(name, id)
+					return {
+						name = name,
+						id = tonumber(id)
+					}
+				end
+			else
+				html = htmlChunk.nameList
+				f = function(community, name, discriminator)
+					return {
+						community = enums.community[community],
+						name = name .. discriminator
+					}
+				end
+			end
 		end
 
-		local counter = { }, 0
-		string.gsub(body, htmlChunk.imageInfo .. ".-" .. htmlChunk.msTime, function(code, _, timestamp)
-			counter = counter + 1
-			images[counter] = {
-				imageId = code,
-				timestamp = tonumber(timestamp)
-			}
-		end)
-
-		return images
+		return getList(pageNumber, forumUri.search .. "?te=" .. searchType .. "&se=" .. search .. d, html, f, true)
 	end
+
+	-- > Micepix
 	--[[@
 		@desc Gets the images that were hosted in your account.
 		@param pageNumber?<int> The page number of the gallery. To list ALL the gallery, use `0`. (default = 1)
@@ -2980,7 +3014,12 @@ return function()
 			return false, errorString.not_connected
 		end
 
-		return getAccountImages(self, pageNumber, true)
+		return return getList(pageNumber, "?pr=" .. this.userId, htmlChunk.imageInfo .. ".-" .. htmlChunk.msTime, function(code, _, timestamp)
+			return {
+				imageId = code,
+				timestamp = tonumber(timestamp)
+			}
+		end, true)
 	end
 	--[[@
 		@desc Gets the latest images that were hosted on Micepix.

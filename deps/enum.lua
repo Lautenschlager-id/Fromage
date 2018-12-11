@@ -1,4 +1,4 @@
-return function(list)
+return function(list, __index)
 	local reversed = { }
 
 	for k, v in next, list do
@@ -9,9 +9,9 @@ return function(list)
 	end
 
 	return setmetatable({ }, {
-		__index = function(_, index)
+		__index = (__index or (function(_, index)
 			return list[index]
-		end,
+		end)),
 		__call = function(_, value)
 			return reversed[value]
 		end,

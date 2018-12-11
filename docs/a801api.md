@@ -13,6 +13,22 @@
 >| `string` | Formated nickname |
 >
 
+>### getLocation ( forum, community, section )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| forum | `int`, `string` | ✔ | The forum of the location. An enum from `enums.forum` (index or value) |
+>| community | `string`, `int` | ✔ | The location community. An enum from `enums.community` (index or value) |
+>| section | `string`, `int` | ✔ | The section of the location. An enum from `enums.section` (index or value) |
+>
+>Gets the location of a section on forums based on its community.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table` | The location table. Fields `f` and `s`. |
+>
+
 >### parseUrlData ( href )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -429,6 +445,28 @@
 >| `nil`, `string` | The message error, if any occurred |
 >
 
+>### self:getFavoriteTopics (  )
+>Gets the client's account favorite topics.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The list of topics, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+>### self:getFavoriteTribes (  )
+>Gets the client's account favorite tribes.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The list of tribes, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
 >### self:getFriendlist (  )
 >Gets the account's friendlist.
 >
@@ -548,6 +586,16 @@
 >| `nil`, `string` | The message error, if any occurred |
 >
 
+>### self:getSectionTopics ( location, pageNumber, getAllInfo )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
+>| pageNumber | `int` | ✕ | The topic page. To list ALL messages, use `0`. (default = 1) |
+>| getAllInfo | `boolean` | ✕ | Whether the message data should be simple (ids only) or complete (getMessage). (default = true) |
+>
+>Gets the messages of a topic.
+
+
 >### self:getStaffList ( role )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -578,6 +626,16 @@
 >| `table`, `nil` | The topic data, if there's any |
 >| `nil`, `string` | The message error, if any occurred |
 >
+
+>### self:getTopicMessages ( location, pageNumber, getAllInfo )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
+>| pageNumber | `int` | ✕ | The topic page. To list ALL messages, use `0`. (default = 1) |
+>| getAllInfo | `boolean` | ✕ | Whether the message data should be simple (ids only) or complete (getMessage). (default = true) |
+>
+>Gets the messages of a topic.
+
 
 >### self:getTribe ( tribeId )
 >| Parameter | Type | Required | Description |
@@ -756,6 +814,24 @@
 >| `string` | `Result string` or `Error message` |
 >
 
+>### self:search ( searchType, search, pageNumber, data )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| searchType | `string`, `int` | ✔ | The type of the search (e.g.: player, message). An enum from `enums.searchType` (index or value) |
+>| search | `string` | ✔ | The value to be found in the search |
+>| pageNumber | `int` | ✕ | The page number of the search results. To list ALL the matches, use `0`. (default = 1) |
+>| data | `table` | ✕ | Additional data to be used in the `message_topic` search type. Fields `searchLocation`(enum) and `f` are needed. Fields `author`, `community`(enum), and `s` are optional. |
+>
+>Performs a deep search on forums.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The search matches. Total pages at `_pages`. |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
 >### self:setEmail ( email )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -848,6 +924,21 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the element was unfavorited or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+>### self:updateAvatar ( image )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| image | `string` | ✔ | The new image. An URL or file name. |
+>
+>Updates the client's account profile picture.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the new avatar was set or not |
 >| `string` | `Result string` or `Error message` |
 >
 
@@ -947,6 +1038,21 @@
 >| `string` | `Result string` or `Error message` |
 >
 
+>### self:updateTribeLogo ( image )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| image | `string` | ✔ | The new image. An URL or file name. |
+>
+>Removes the logo of the account's tribe.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the new logo was set or not |
+>| `string` | `Result string` or `Error message` |
+>
+
 >### self:updateTribeParameters ( parameters )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -984,4 +1090,20 @@
 >| :-: | - |
 >| `boolean` | Whether the tribe's profile was updated or not |
 >| `string` | `Result string` or `Error message` |
+>
+
+>### self:uploadImage ( image, isPublic )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| image | `string` | ✔ | The new image. An URL or file name. |
+>| isPublic | `boolean` | ✕ | Whether the image should appear in the gallery or not. (default = false) |
+>
+>Uploads an image in Micepix.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the image was hosted or not |
+>| `string` | if #1, `image's url`, else `Result string` or `Error message` |
 >

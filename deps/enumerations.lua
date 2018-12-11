@@ -18,7 +18,7 @@ enum.element = e {
 --[[@
 
 ]]
-enum.community = e {
+enum.community = e({
 	xx	=	01,
 	fr	=	02,
 	br	=	04,
@@ -46,7 +46,16 @@ enum.community = e {
 	it	=	28,
 	ee	=	29,
 	az	=	30
-}
+}, function(list, index)
+	if index == "gb" then
+		return list.en
+	elseif index == "sa" then
+		return list.ar
+	elseif index == "il" then
+		return list.he
+	end
+	return list[index]
+end)
 --[[@
 
 ]]
@@ -308,6 +317,22 @@ enum.role = e {
 	moderator		=	1,
 	sentinel		=	15,
 	mapcrew			=	20
+}
+--[[@
+
+]]
+enum.searchType = e {
+	message_topic	=	04,
+	tribe			=	09,
+	player			=	10
+}
+--[[@
+
+]]
+enum.searchLocation = e {
+	posts	=	1,
+	titles	=	2,
+	both	=	3
 }
 --[[@
 
