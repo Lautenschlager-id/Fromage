@@ -313,8 +313,8 @@ enum.contentState = e {
 
 ]]
 enum.role = e {
-	administrator	=	1,
-	moderator		=	1,
+	administrator	=	01,
+	moderator		=	10,
 	sentinel		=	15,
 	mapcrew			=	20
 }
