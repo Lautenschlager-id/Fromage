@@ -14,19 +14,7 @@
 >| `nil`, `string` | The message error, if any occurred |
 >
 
-
->### removeAvatar (  )
->Removes the account's avatar.
->
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `boolean` | Whether the avatar was removed or not |
->| `string` | `Result string` or `Error message` |
->
-
-
+ 
 >### updateAvatar ( image )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -42,25 +30,7 @@
 >| `string` | `Result string` or `Error message` |
 >
 
-
->### updateParameters ( parameters )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| parameters | `table` | ✔ | The parameters. |
->
->Updates the account parameters.<br>
->The available parameters are:<br>
->boolean `online` -> Whether the account should display if it's online or not
->
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `boolean` | Whether the new parameter settings were set or not |
->| `string` | `Result string` or `Error message` |
->
-
-
+ 
 >### updateProfile ( data )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -79,5 +49,35 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the profile was updated or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+ 
+>### removeAvatar (  )
+>Removes the account's avatar.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the avatar was removed or not |
+>| `string` | `Result string` or `Error message` |
+>
+
+ 
+>### updateParameters ( parameters )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| parameters | `table` | ✔ | The parameters. |
+>
+>Updates the account parameters.<br>
+>The available parameters are:<br>
+>boolean `online` -> Whether the account should display if it's online or not
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the new parameter settings were set or not |
 >| `string` | `Result string` or `Error message` |
 >

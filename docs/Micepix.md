@@ -1,20 +1,4 @@
 ## Methods
->### deleteMicepixImage ( imageId )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| imageId | `string` | ✔ | The image id |
->
->Deletes an image from the account's micepix.
->
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `boolean` | Whether the image was deleted or not |
->| `string` | `Result string` or `Error message` |
->
-
-
 >### getAccountImages ( pageNumber )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -30,7 +14,7 @@
 >| `nil`, `string` | The message error, if any occurred |
 >
 
-
+ 
 >### getLatestImages ( quantity )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -46,7 +30,7 @@
 >| `nil`, `string` | The message error, if any occurred |
 >
 
-
+ 
 >### uploadImage ( image, isPublic )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -61,4 +45,20 @@
 >| :-: | - |
 >| `boolean` | Whether the image was hosted or not |
 >| `string` | if #1, `image's url`, else `Result string` or `Error message` |
+>
+
+ 
+>### deleteMicepixImage ( imageId )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| imageId | `string` | ✔ | The image id |
+>
+>Deletes an image from the account's micepix.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the image was deleted or not |
+>| `string` | `Result string` or `Error message` |
 >

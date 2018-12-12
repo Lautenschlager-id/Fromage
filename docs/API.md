@@ -1,19 +1,20 @@
 ## Methods
->### formatNickname ( nickname )
+>### parseUrlData ( href )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| nickname | `string` | ✔ | The nickname to be formated |
+>| href | `string` | ✔ | The uri and data to be parsed |
 >
->Formats a nickname.
+>Parses the URL data.
 >
 >**Returns**
 >
 >| Type | Description |
 >| :-: | - |
->| `string` | Formated nickname |
+>| `table`, `nil` | Parsed data. The available indexes are: `uri`, `raw_data` and `data` |
+>| `nil`, `string` | Error message |
 >
 
-
+ 
 >### getLocation ( forum, community, section )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -30,18 +31,17 @@
 >| `table` | The location table. Fields `f` and `s`. |
 >
 
-
->### parseUrlData ( href )
+ 
+>### formatNickname ( nickname )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| href | `string` | ✔ | The uri and data to be parsed |
+>| nickname | `string` | ✔ | The nickname to be formated |
 >
->Parses the URL data.
+>Formats a nickname.
 >
 >**Returns**
 >
 >| Type | Description |
 >| :-: | - |
->| `table`, `nil` | Parsed data. The available indexes are: `uri`, `raw_data` and `data` |
->| `nil`, `string` | Error message |
+>| `string` | Formated nickname |
 >

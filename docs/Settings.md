@@ -15,7 +15,7 @@
 >| `string` | Result string |
 >
 
-
+ 
 >### disconnect (  )
 >Disconnects from an account on Atelier801's forums.
 >
@@ -27,7 +27,7 @@
 >| `string` | Result string |
 >
 
-
+ 
 >### requestValidationCode (  )
 >Sends a validation code to the account's e-mail.
 >
@@ -39,7 +39,23 @@
 >| `string` | `Result string` or `Error message` |
 >
 
+ 
+>### submitValidationCode ( code )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| code | `string` | ✔ | The validation code. |
+>
+>Submits the validation code to the forum to be validated.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the validation code was sent to be validated or not |
+>| `string` | `Result string` (Empty for success) or `Error message` |
+>
 
+ 
 >### setEmail ( email )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -55,7 +71,7 @@
 >| `string` | `Result string` or `Error message` |
 >
 
-
+ 
 >### setPassword ( password, disconnect )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -70,20 +86,4 @@
 >| :-: | - |
 >| `boolean` | Whether the new password was set or not |
 >| `string` | `Result string` or `Error message` |
->
-
-
->### submitValidationCode ( code )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| code | `string` | ✔ | The validation code. |
->
->Submits the validation code to the forum to be validated.
->
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `boolean` | Whether the validation code was sent to be validated or not |
->| `string` | `Result string` (Empty for success) or `Error message` |
 >
