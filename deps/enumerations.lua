@@ -46,15 +46,15 @@ enum.community = e({
 	it = 28,
 	ee = 29,
 	az = 30
-}, function(list, index)
+}, function(index)
 	if index == "gb" then
-		return list.en
+		return "en"
 	elseif index == "sa" then
-		return list.ar
+		return "ar"
 	elseif index == "il" then
-		return list.he
+		return "he"
 	end
-	return list[index]
+	return index
 end)
 --[[@
 
@@ -162,9 +162,7 @@ local section_ID = {
 	en = {
 		atelier801   = 60,
 		transformice = 95,
-		bouboum		=	14,
-		fortoresse	=	14,
-		nekodancer	=	14
+		others       = 14
 	},
 	ar = {
 		atelier801   = 077,
@@ -237,10 +235,10 @@ local section_ID = {
 ]]
 enum.location = { }
 for community, ids in next, section_ID do
-	enum.section[community] = { }
+	enum.location[community] = { }
 
 	for forum, data in pairs(enum.section) do
-		enum.section[community][forum] = { }
+		enum.location[community][forum] = { }
 
 		local id = ids[forum]
 		if not id then
@@ -249,14 +247,14 @@ for community, ids in next, section_ID do
 
 		for name, value in next, data do
 			if value >= 0 then
-				enum.section[community][forum][name] = value + id
+				enum.location[community][forum][name] = value + id
 			end
 		end
 
-		enum.section[community][forum] = e(enum.section[community][forum])
+		enum.location[community][forum] = e(enum.location[community][forum])
 	end
 
-	enum.section[community] = e(enum.section[community])
+	enum.location[community] = e(enum.location[community])
 end
 enum.location.xx = e {
 	atelier801 = e {
@@ -268,7 +266,7 @@ enum.location.xx = e {
 }
 --[[ Structure
 enum
-	section
+	location
 		en
 			atelier801
 				discussions

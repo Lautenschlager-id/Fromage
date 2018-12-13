@@ -1,6 +1,6 @@
 local chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 return {
-	encode = encode = function(code)
+	encode = function(code)
 		if not code then return end
 		code = string.gsub(code, "\r\n", "\n")
 
@@ -27,7 +27,7 @@ return {
 		end) .. ({'', '==', '='})[#code%3 + 1])
 	end,
 
-	decode = decode = function(code)
+	decode = function(code)
 		if not code then return end
 
 		code = string.gsub(code, "[^" .. chars .. "=]", '')

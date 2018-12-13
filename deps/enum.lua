@@ -9,9 +9,12 @@ return function(list, __index)
 	end
 
 	return setmetatable({ }, {
-		__index = (__index or (function(_, index)
+		__index = function(_, index)
+			if __index then
+				index = __index(index)
+			end
 			return list[index]
-		end)),
+		end,
 		__call = function(_, value)
 			return reversed[value]
 		end,

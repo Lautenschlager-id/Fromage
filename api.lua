@@ -2,9 +2,9 @@
 -- Performs HTTP(S) requests
 local http = require("coro-http")
 -- Encoding
-local base64 = require("deps/base64")
+local base64 = require("base64")
 -- Necessary enumerations
-local enumerations = require("deps/enumerations")
+local enumerations = require("enumerations")
 
 --[[ Private Enumerations ]]--
 local cookieState = {
@@ -20,7 +20,7 @@ local nonActionCookie = {
 }
 
 local separator = {
-	cookie     = ", ",
+	cookie     = "; ",
 	forum_data = "§#§",
 	file       = "\r\n"
 }
@@ -128,13 +128,15 @@ local htmlChunk = {
     navigaton_bar_sec_content = '^<(.+)>%s*(.+)%s*$',
     total_pages               = '"input%-pagination".-max="(%d+)"',
     date                      = '(%d+/%d+/%d+)',
-    profile_data              = 'Messages: </span>(%d+).-Prestige: </span>(%d+).-Level: </span>(%d+)',
+    profile_data              = 'Messages: </span>(%-?%d+).-Prestige: </span>(%d+).-Level: </span>(%d+)',
     profile_gender            = 'Gender :.- (%S+)%s+<br>',
     profile_birthday          = 'Birthday :</span> ',
-    profile_location          = 'Location :</span> (.-)  <br>'
+    profile_location          = 'Location :</span> (.-)  <br>',
     profile_tribe             = 'cadre%-tribu%-nom">(.-)</span>.-tr=(%d+)',
     profile_avatar            = 'http://avatars%.atelier801%.com/%d+/%d+%.%a+%?%d+',
+    profile_soulmate          = 'Soul mate :</span>.-',
     subsection                = '"cadre%-section%-titre%-mini.-(section.-)".- (.-) </a>',
+    profile_presentation      = 'cadre%-presentation">%s*(.-)%s*</div></div></div>',
     topic_div                 = '<div class="row">',
     section_icon              = 'sections/(.-)%.png',
     title                     = '<title>(.-)</title>',
@@ -142,7 +144,6 @@ local htmlChunk = {
     recruitment               = 'Recruitment : (.-)<',
     greeting_message          = '<h4>Greeting message</h4> (.-) </div>',
     tribe_presentation        = 'cadre%-presentation"> ([^>]+) </div>',
-    profile_presentation      = 'cadre-presentation"> (.-) </div>',
     blacklist_name            = 'cadre%-ignore%-nom">(.-)</span>',
     tribe_rank_list           = '<h4>Ranks</h4>(.-)</div>%s+</div>',
     tribe_rank                = '<div class="rang%-tribu"> (.-) </div>',
@@ -186,7 +187,8 @@ local errorString = {
     no_tribe                = "This instance does not have a tribe.",
     no_right                = "You don't have rights to see this info.",
     invalid_file            = "Provided file does not exist.",
-    invalid_extension       = "Provided file url or name does not have a valid extension."
+    invalid_extension       = "Provided file url or name does not have a valid extension.",
+    invalid_user            = "The user does not exist or was not found."
 }
 
 local fileExtensions = { "png", "jpg", "jpeg", "gif" }
@@ -252,7 +254,7 @@ table.createSet = function(tbl, index)
 end
 table.search = function(tbl, value, index)
 	local found = false
-	for k, v in next, tbl do
+	for k, v in pairs(tbl) do -- Using 'pairs' because of the __pairs in 'enumerations'
 		if index and type(v) == "table" then
 			found = (v[index] == value)
 		else
@@ -278,7 +280,7 @@ local assertion = function(name, etype, id, value)
 		end
 		error("bad argument #" .. id .. " to '" .. name .. "' (" .. table.concat(names, " | ") .. " expected, got " .. t .. ")")
 	else
-		assert(t ~= etype, "bad argument #" .. id .. " to '" .. name .. "' (" .. etype .. " expected, got " .. t .. ")")
+		assert(t == etype, "bad argument #" .. id .. " to '" .. name .. "' (" .. etype .. " expected, got " .. t .. ")")
 	end
 end
 local cryptToSha256 
@@ -394,11 +396,11 @@ return function()
 		-- Whether the account is connected or not
 		isConnected = false,
 		-- The nickname of the account, if it's connected.
-		userName = '',
+		userName = nil,
 		userId = nil,
 		tribeId = nil,
 		cookieState = cookieState.login,
-		-- account cookies
+		-- Account cookies
 		cookies = { },
 		-- Whether the account has validated its account with a code
 		hasCertificate = false
@@ -444,7 +446,7 @@ return function()
 	end
 
 	-- Gets the secret keys to perform actions
-	this.getSecretKeys = function(uri, ajaxUri)
+	this.getSecretKeys = function(uri)
 		local head, body = http.request("GET", forumLink .. (uri or forumUri.index), this.getHeaders())
 
 		this.setCookies(head)
@@ -463,17 +465,18 @@ return function()
 
 		local headers = this.getHeaders()
 		if ajaxUri then
-			headers[3] = { "Accept", "application/json, text/javascript, */*; q=0.01" }
-			headers[4] = { "X-Requested-With", "XMLHttpRequest" }
-			headers[5] = { "Content-Type", (file and ("multipart/form-data; boundary=" .. boundaries[1]) or "application/x-www-form-urlencoded; charset=UTF-8") }
-			headers[6] = { "Referer", forumLink .. ajaxUri }
-			headers[7] = { "Connection", "keep-alive" }
+			headers[4] = { "Accept", "application/json, text/javascript, */*; q=0.01" }
+			headers[5] = { "X-Requested-With", "XMLHttpRequest" }
+			headers[6] = { "Content-Type", (file and ("multipart/form-data; boundary=" .. boundaries[1]) or "application/x-www-form-urlencoded; charset=UTF-8") }
+			headers[7] = { "Referer", forumLink .. ajaxUri }
+			headers[8] = { "Connection", "keep-alive" }
 		end
 
 		local body, head = { }
 		for index, data in next, postData do
 			body[index] = data[1] .. "=" .. encodeUrl(data[2])
 		end
+
 		head, body = http.request("POST", forumLink .. uri, headers, (file and (string.gsub(file, "/KEY(%d)/", function(id)
 			return secretKeys[tonumber(id)] 
 		end)) or (table.concat(body, '&'))))
@@ -591,6 +594,15 @@ return function()
 		nickname = string.gsub(nickname, "%a", string.upper, 1)
 		return nickname
 	end
+	--[[@
+		@desc Checks whether the instance is connected to an account or not.
+		@returns boolean Whether there's already a connection or not.
+		@returns string|nil If #1, the user name
+		@returns int|nil If #1, the user id
+	]]
+	self.isConnected = function()
+		return this.isConnected, this.userName, this.userId
+	end
 
 	--[[ Methods ]]
 	-- > Settings
@@ -617,15 +629,13 @@ return function()
 			{ "redirect", string.sub(forumLink, 1, -2) }
 		}, forumUri.login)
 
-		if success then
-			if string.sub(data, 2, 15) == '"supprime":"*"' then
-				this.isConnected = true
-				this.userName = userName
-				this.cookieState = cookieState.after_login
-				local pr = self.getProfile()
-				this.userId = pr.id
-				this.tribeId = pr.tribeId
-			end
+		if success and string.sub(data, 2, 15) == '"supprime":"*"' then
+			this.isConnected = true
+			this.userName = userName
+			this.cookieState = cookieState.after_login
+			local pr = self.getProfile()
+			this.userId = pr.id
+			this.tribeId = pr.tribeId
 		end
 
 		return success, data
@@ -643,9 +653,9 @@ return function()
 
 		local success, data = this.performAction(forumUri.disconnection, nil, forumUri.acc)
 
-		if string.sub(body, 3, 13) == "redirection" then
+		if success and string.sub(data, 2, 15) == '"supprime":"*"' then
 			this.isConnected = false
-			this.userName = ''
+			this.userName = nil
 			this.cookieState = cookieState.login
 			this.cookies = { }
 			this.userId = nil
@@ -754,13 +764,19 @@ return function()
 		assertion("getProfile", { "string", "number", "nil" }, 1, userName)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			if not userName then
+				return false, errorString.not_connected
+			end
 		end
 
 		userName = userName or this.userName
-		local head, body = this.getPage(forumUri.profile .. "?pr=" .. userName)
+		local head, body = this.getPage(forumUri.profile .. "?pr=" .. encodeUrl(userName))
 
 		local id = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.element_id))) -- Element id
+		if not id then
+			return false, errorString.invalid_user
+		end
+
 		local name, hashtag, discriminator = string.match(body, htmlChunk.nickname)
 		
 		local highestRole = tonumber(discriminator)
@@ -772,7 +788,7 @@ return function()
 		level = tonumber(level)
 		
 		local gender = string.match(body, htmlChunk.profile_gender)
-		gender = gender and (enumerations.gender[string.lower(gender)]) or enumerations.gender.none
+		gender = gender and string.lower(gender) or "none"
 		
 		local location = string.match(body, htmlChunk.profile_location)
 
@@ -780,7 +796,7 @@ return function()
 
 		local presentation = string.match(body, htmlChunk.profile_presentation)
 		
-		local soulmate, soulmateDiscriminator = string.match(body, htmlChunk.nickname)
+		local soulmate, soulmateDiscriminator = string.match(body, htmlChunk.profile_soulmate .. htmlChunk.nickname)
 		if soulmate then
 			soulmate = soulmate .. soulmateDiscriminator
 		end
@@ -791,6 +807,7 @@ return function()
 
 		return {
 			id = tonumber(id),
+			name = name .. hashtag,
 			highestRole = highestRole,
 			registrationDate = registrationDate,
 			community = enumerations.community[community],
@@ -798,7 +815,7 @@ return function()
 			totalPrestige = tonumber(prestige),
 			level = level,
 			title = enumerations.forumTitle[level],
-			gender = gender,
+			gender = enumerations.gender[gender],
 			birthday = birthday,
 			location = location,
 			soulmate = soulmate,
@@ -835,16 +852,16 @@ return function()
 		local file = {
 			boundaries[2],
 			'Content-Disposition: form-data; name="pr"',
-			separator.file,
+			'',
 			this.userId,
 			boundaries[2],
 			'Content-Disposition: form-data; name="fichier"; filename="Lautenschlager_id.' .. extension .. '"',
 			"Content-Type: image/" .. extension,
-			separator.file,
+			'',
 			image,
 			boundaries[2],
 			'Content-Disposition: form-data; name="/KEY1/"',
-			separator.file,
+			'',
 			"/KEY2/",
 			boundaries[3]
 		}
@@ -859,12 +876,12 @@ return function()
 		@desc string `location` -> The location
 		@desc string|int `gender` -> Account's gender. An enum from `enumerations.gender` (index or value)
 		@desc string `presentation` -> Profile's presentation
-		@param data<table> The data
+		@param data?<table> The data
 		@returns boolean Whether the profile was updated or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.updateProfile = function(data)
-		assertion("updateProfile", "table", 1, data)
+		assertion("updateProfile", { "table", "nil" }, 1, data)
 
 		if not this.isConnected then
 			return false, errorString.not_connected
@@ -874,34 +891,36 @@ return function()
 			{ "pr", this.userId }
 		}
 
-		local err
-		if data.community then
-			data.community, err = isEnum(data.community, "community", "data.community")
-			if err then return false, err end
-			postData[#postData + 1] = { "communaute", data.community }
-		else
-			postData[#postData + 1] = { "communaute", enums.community.xx }
-		end
-		if data.birthday then
-			if not isValidDate(data.birthday) then
-				return false, errorString.invalid_date .. " (data.birthday)"
+		if data then
+			local err
+			if data.community then
+				data.community, err = isEnum(data.community, "community", "data.community")
+				if err then return false, err end
+				postData[#postData + 1] = { "communaute", data.community }
+			else
+				postData[#postData + 1] = { "communaute", enumerations.community.xx }
 			end
-			postData[#postData + 1] = { "b_anniversaire", "on" }
-			postData[#postData + 1] = { "anniversaire", data.birthday }
-		end
-		if data.location then
-			postData[#postData + 1] = { "b_localisation", "on" }
-			postData[#postData + 1] = { "localisation", data.location }
-		end
-		if data.gender then
-			data.gender, err = isEnum(data.gender, "gender", "data.gender")
-			if err then return false, err end
-			postData[#postData + 1] = { "b_genre", "on" }
-			postData[#postData + 1] = { "genre", data.gender }
-		end
-		if data.presentation then
-			postData[#postData + 1] = { "b_presentation", "on" }
-			postData[#postData + 1] = { "presentation", data.presentation }
+			if data.birthday then
+				if not isValidDate(data.birthday) then
+					return false, errorString.invalid_date .. " (data.birthday)"
+				end
+				postData[#postData + 1] = { "b_anniversaire", "on" }
+				postData[#postData + 1] = { "anniversaire", data.birthday }
+			end
+			if data.location then
+				postData[#postData + 1] = { "b_localisation", "on" }
+				postData[#postData + 1] = { "localisation", data.location }
+			end
+			if data.gender then
+				data.gender, err = isEnum(data.gender, "gender", "data.gender")
+				if err then return false, err end
+				postData[#postData + 1] = { "b_genre", "on" }
+				postData[#postData + 1] = { "genre", data.gender }
+			end
+			if data.presentation then
+				postData[#postData + 1] = { "b_presentation", "on" }
+				postData[#postData + 1] = { "presentation", data.presentation }
+			end
 		end
 
 		return this.performAction(forumUri.update_profile, postData, forumUri.profile .. "?pr=" .. this.userId)
@@ -926,12 +945,12 @@ return function()
 		@desc Updates the account parameters.
 		@desc The available parameters are:
 		@desc boolean `online` -> Whether the account should display if it's online or not
-		@param parameters<table> The parameters.
+		@param parameters?<table> The parameters.
 		@returns boolean Whether the new parameter settings were set or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.updateParameters = function(parameters)
-		assertion("updateParameters", "table", 1, parameters)
+		assertion("updateParameters", { "table", "nil" }, 1, parameters)
 
 		if not this.isConnected then
 			return false, errorString.not_connected
@@ -940,11 +959,11 @@ return function()
 		local postData = {
 			{ "pr", this.userId }
 		}
-		if type(parameters.online) == "boolean" and parameters.online then
+		if parameters and type(parameters.online) == "boolean" and parameters.online then
 			postData[#postData + 1] = { "afficher_en_ligne", "on" }
 		end
 
-		return this.performAction(forumUri.update_parameters, postData, forumUri.profile .. "?tr=" .. this.userId)
+		return this.performAction(forumUri.update_parameters, postData, forumUri.profile .. "?pr=" .. this.userId)
 	end
 
 	-- > Private
@@ -1157,7 +1176,7 @@ return function()
 	]]
 	self.movePrivateConversation = function(inboxLocale, conversationId)
 		conversationId = tonumber(conversationId) or conversationId
-		assertion("movePrivateConversation", { "string", "number" }, 1 inboxLocale)
+		assertion("movePrivateConversation", { "string", "number" }, 1, inboxLocale)
 
 		local err
 		inboxLocale, err = isEnum(inboxLocale, "inboxLocale", "#1")
@@ -1194,7 +1213,7 @@ return function()
 		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
 	]]
 	self.changeConversationState = function(displayState, conversationId)
-		assertion("changeConversationState", { "string", "number" }, 1 displayState)
+		assertion("changeConversationState", { "string", "number" }, 1, displayState)
 		assertion("changeConversationState", { "number", "string" }, 2, conversationId)
 
 		local err
@@ -1899,7 +1918,7 @@ return function()
 				if t == "radio" or t == "checkbox" then
 					counter = counter + 1
 					options[counter] = {
-						id = id
+						id = id,
 						value = value
 					}
 				end
@@ -1962,7 +1981,7 @@ return function()
 		if not pollId then
 			local head, body = this.getPage(pollId)
 
-			pollId = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.poll_id))
+			pollId = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.poll_id)))
 			if not pollId then
 				return false, errorString.not_poll
 			end
@@ -2065,7 +2084,7 @@ return function()
 			{ 'f', location.f },
 			{ 't', location.t },
 			{ "titre", (data.title or topic.title) },
-			{ "postit", (postit and "on" or '') }
+			{ "postit", (postit and "on" or '') },
 			{ "etat", (data.state or topic.state) },
 			{ 's', (data.s or topic.s) }
 		}, forumUri.edit_topic .. "?f=" .. location.f .. "&t=" .. location.t)
@@ -2525,7 +2544,7 @@ return function()
 			postData[#postData + 1] = { "chefs_publics", "on" }
 		end
 
-		return this.performAction(forumUri.update_tribe_parameters, postData, forumUri.profile .. "?tr=" .. this.tribeId)
+		return this.performAction(forumUri.update_tribe_parameters, postData, forumUri.profile .. "?pr=" .. this.tribeId)
 	end
 	--[[@
 		@file Tribe
@@ -2606,16 +2625,16 @@ return function()
 		local file = {
 			boundaries[2],
 			'Content-Disposition: form-data; name="tr"',
-			separator.file,
+			'',
 			this.tribeId,
 			boundaries[2],
 			'Content-Disposition: form-data; name="fichier"; filename="Lautenschlager_id.' .. extension .. '"',
 			"Content-Type: image/" .. extension,
-			separator.file,
+			'',
 			image,
 			boundaries[2],
 			'Content-Disposition: form-data; name="/KEY1/"',
-			separator.file,
+			'',
 			"/KEY2/",
 			boundaries[3]
 		}
@@ -2680,7 +2699,7 @@ return function()
 		local success, data = this.performAction(forumUri.create_section, {
 			{ 'f', location.f },
 			{ 's', (location.s or '') },
-			{ "tr" (location.s and '' or this.tribeId) },
+			{ "tr", (location.s and '' or this.tribeId) },
 			{ "nom", data.name },
 			{ "icone", data.icon },
 			{ "description", data.description },
@@ -2867,10 +2886,12 @@ return function()
 			if data.searchLocation == enumerations.searchLocation.titles then
 				html = htmlChunk.community .. ".-" .. htmlChunk.topic_list .. htmlChunk.ms_time
 				f = function(community, post, title, timestamp)
-					location = self.parseUrlData(post),
-					community = enumerations.community[community],
-					title = title,
-					timestamp = tonumber(timestamp)
+					return {
+						location = self.parseUrlData(post),
+						community = enumerations.community[community],
+						title = title,
+						timestamp = tonumber(timestamp)
+					}
 				end
 			else
 				html = htmlChunk.community .. ".-" .. htmlChunk.message_list .. ".-" .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time
@@ -3003,12 +3024,12 @@ return function()
 		local file = {
 			boundaries[2],
 			'Content-Disposition: form-data; name="/KEY1/"',
-			separator.file,
+			'',
 			"/KEY2/",
 			boundaries[2],
 			'Content-Disposition: form-data; name="fichier"; filename="Lautenschlager_id.' .. extension .. '"',
 			"Content-Type: image/" .. extension,
-			separator.file,
+			'',
 			image,
 			(isPublic and boundaries[2] or nil),
 			(isPublic and 'Content-Disposition: form-data; name="enGalerie"' or nil),
