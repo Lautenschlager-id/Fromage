@@ -56,10 +56,11 @@
 >
 
  
->### setEmail ( email )
+>### setEmail ( email, registration )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| email | `string` | ✔ | The e-mail |
+>| email | `string` | ✔ | The e-mail to be linked to your account |
+>| registration | `boolean` | ✕ | Whether this is the first e-mail assigned to the account or not |
 >
 >Sets the new account's e-mail.
 >

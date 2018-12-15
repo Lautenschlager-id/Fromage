@@ -93,10 +93,9 @@
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| inboxLocale | `string`, `int` | ✔ | Where the conversation will be located. An enum from `enumerations.inboxLocale` (index or value) |
->| conversationId | `int`, `table` | ✕ | The id or IDs of the conversation(s) to be moved |
+>| conversationId | `int`, `table` | ✕ | The id or IDs of the conversation(s) to be moved. `nil` for all. |
 >
->Moves private conversations to the inbox or bin.<br>
->To empty trash, `@conversationId` must be `nil` and `@location` must be `bin`
+>Moves private conversations to the inbox or bin.
 >
 >**Returns**
 >

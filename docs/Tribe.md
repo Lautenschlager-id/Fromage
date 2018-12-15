@@ -214,22 +214,3 @@
 >| `boolean` | Whether the new permissions were set or not |
 >| `string` | `Result string` or `Error message` |
 >
-
- 
->### search ( searchType, search, pageNumber, data )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| searchType | `string`, `int` | ✔ | The type of the search (e.g.: player, message). An enum from `enumerations.searchType` (index or value) |
->| search | `string` | ✔ | The value to be found in the search |
->| pageNumber | `int` | ✕ | The page number of the search results. To list ALL the matches, use `0`. (default = 1) |
->| data | `table` | ✕ | Additional data to be used in the `message_topic` search type. Fields `searchLocation`(enum) and `f` are needed. Fields `author`, `community`(enum), and `s` are optional. |
->
->Performs a deep search on forums.
->
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `table`, `nil` | The search matches. Total pages at `_pages`. |
->| `nil`, `string` | The message error, if any occurred |
->
