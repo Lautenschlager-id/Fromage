@@ -45,3 +45,16 @@
 >| :-: | - |
 >| `string` | Formated nickname |
 >
+
+ 
+>### isConnected (  )
+>Checks whether the instance is connected to an account or not.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether there's already a connection or not. |
+>| `string`, `nil` | If #1, the user name |
+>| `int`, `nil` | If #1, the user id |
+>

@@ -168,7 +168,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the section was created or not |
->| `string` | if #1, `section's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `section's location`, else `Result string` or `Error message` |
 >
 
  

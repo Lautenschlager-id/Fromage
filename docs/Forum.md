@@ -102,7 +102,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the topic was created or not |
->| `string` | if #1, `topic's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `topic's location`, else `Result string` or `Error message` |
 >
 
  
@@ -119,7 +119,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the post was created or not |
->| `string` | if #1, `post's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `post's location`, else `Result string` or `Error message` |
 >
 
  
@@ -137,7 +137,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the message content was edited or not |
->| `string` | if #1, `post's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `post's location`, else `Result string` or `Error message` |
 >
 
  
@@ -157,7 +157,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the poll was created or not |
->| `string` | if #1, `poll's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `poll's location`, else `Result string` or `Error message` |
 >
 
  
@@ -191,7 +191,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the poll option was recorded or not |
->| `string` | if #1, `poll's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `poll's location`, else `Result string` or `Error message` |
 >
 
  

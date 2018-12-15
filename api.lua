@@ -118,15 +118,16 @@ local htmlChunk = {
     community                 = 'pays/(..)%.png',
     ms_time                   = 'data%-afficher%-secondes.->(%d+)',
     nickname                  = '(%S+)<span class="nav%-header%-hashtag">(#(%d+))',
+    total_pages               = '"input%-pagination".-max="(%d+)"',
     post                      = '<div id="m%d',
     message                   = 'cadre_message_sujet_(%%d+).-id="m%d"(.-"%%s_message.-</div>)',
     message_data              = 'class="coeur".-(%d+).-message_%d+">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>.-edit_message_%d+.->(.-)</div>',
     edition_timestamp         = 'cadre%-message%-dates.-(%d+)',
+    private_message           = '<div id="m%d" (.-</div>%%s+</div>%%s+</div>%%s+</td>%%s+</tr>)',
     private_message_data      = 'citer_message_(%d+).->(.-)<.-id="message_%d+">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>',
     navigation_bar            = 'barre%-navigation.->(.-)</ul>',
     navigaton_bar_sections    = '<a.-href="(.-)".->%s*(.-)%s*</a>',
     navigaton_bar_sec_content = '^<(.+)>%s*(.+)%s*$',
-    total_pages               = '"input%-pagination".-max="(%d+)"',
     date                      = '(%d+/%d+/%d+)',
     profile_data              = 'Messages: </span>(%-?%d+).-Prestige: </span>(%d+).-Level: </span>(%d+)',
     profile_gender            = 'Gender :.- (%S+)%s+<br>',
@@ -140,7 +141,7 @@ local htmlChunk = {
     topic_div                 = '<div class="row">',
     section_icon              = 'sections/(.-)%.png',
     title                     = '<title>(.-)</title>',
-    conversation_icon         = '<img (.+)> %s',
+    conversation_icon         = 'class=" active"><img src="(.-)".->%s*',
     recruitment               = 'Recruitment : (.-)<',
     greeting_message          = '<h4>Greeting message</h4> (.-) </div>',
     tribe_presentation        = 'cadre%-presentation"> ([^>]+) </div>',
@@ -254,7 +255,7 @@ table.createSet = function(tbl, index)
 end
 table.search = function(tbl, value, index)
 	local found = false
-	for k, v in pairs(tbl) do -- Using 'pairs' because of the __pairs in 'enumerations'
+	for k, v in next, tbl do
 		if index and type(v) == "table" then
 			found = (v[index] == value)
 		else
@@ -354,7 +355,7 @@ local isEnum = function(value, enum, showName, getIndex)
 			return enumerations[enum][value]
 		end
 	else
-		if not table.search(enumerations[enum], value) then
+		if not enumerations[enum](value) then
 			return nil, errorString.enum_out_of_range .. showName
 		end
 		if getIndex then
@@ -377,16 +378,6 @@ local isValidDate = function(date)
 
 	local nDay, nMonth = tonumber(day), tonumber(month)
 	return (nDay > 0 and nDay < 32 and nMonth > 0 and nMonth < 13), string.format("%02d/%02d" .. (year and "/%04d" or ""), nDay, nMonth, tonumber(year))
-end
-local returnRedirection = function(success, data)
-	if success then
-		local link = string.match(data, '"redirection":"(.-)"')
-		if link then
-			return true, link
-		end
-	end
-
-	return false, data
 end
 
 --[[ Class ]]--
@@ -528,6 +519,17 @@ return function()
 		end, true)
 	end
 
+	local returnRedirection = function(success, data)
+		if success then
+			local link = string.match(data, '"redirection":"(.-)"')
+			if link then
+				return self.parseUrlData(link)
+			end
+		end
+
+		return nil, data
+	end
+
 	-- > Tool
 	--[[@
 		@desc Parses the URL data.
@@ -538,7 +540,7 @@ return function()
 	self.parseUrlData = function(href)
 		assertion("parseUrlData", "string", 1, href)
 
-		local uri, data = string.match(url, "^/?([^%?]+)%??(.*)$")
+		local uri, data = string.match(href, "/?([^%?]+)%??(.*)$")
 		if not uri then
 			return nil, errorString.invalid_forum_url
 		end
@@ -975,8 +977,9 @@ return function()
 		@returns table|nil The conversation data, if there's any
 		@returns nil|string The message error, if any occurred
 	]]
-	self.getConversation = function(location)
+	self.getConversation = function(location, ignoreFirstMessage)
 		assertion("getConversation", "table", 1, location)
+		assertion("getConversation", { "table", "nil" }, 2, ignoreFirstMessage)
 
 		if not location.co then
 			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'co'")
@@ -1015,12 +1018,9 @@ return function()
 		end
 
 		-- Get total of pages and total of messages
-		local totalPages = tonumber(string.match(body, htmlChunk.total_pages))
-		if not totalPages then
-			return nil, errorString.internal
-		end
+		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
 
-		local _, lastPage = this.getPage(forumUri.topic .. path .. "&p=" .. totalPages)
+		local _, lastPage = this.getPage(forumUri.conversation .. path .. "&p=" .. totalPages)
 		local counter = 0
 		string.gsub(lastPage, htmlChunk.post, function()
 			counter = counter + 1
@@ -1030,12 +1030,15 @@ return function()
 
 		local firstMessage
 		if not ignoreFirstMessage then
-			firstMessage = self.getMessage('1', location)
+			local err
+			firstMessage, err = self.getMessage('1', location)
+			if not firstMessage then
+				return nil, err
+			end
 		end
 
 		return {
-			f = location.f,
-			t = location.t,
+			co = location.co,
 			title = title,
 			isPrivateMessage = isPrivateMessage,
 			isDiscussion = isDiscussion,
@@ -1055,7 +1058,7 @@ return function()
 		@param subject<string> The subject of the private message
 		@param message<string> The content of the private message
 		@returns boolean Whether the private message was created or not
-		@returns string if #1, `private message's url`, else `Result string` or `Error message`
+		@returns string if #1, `private message's location`, else `Result string` or `Error message`
 	]]
 	self.createPrivateMessage = function(destinatary, subject, message)
 		assertion("createPrivateMessage", "string", 1, destinatary)
@@ -1080,7 +1083,7 @@ return function()
 		@param subject<string> The subject of the private discussion
 		@param message<string> The content of the private discussion
 		@returns boolean Whether the private discussion was created or not
-		@returns string if #1, `private discussion's url`, else `Result string` or `Error message`
+		@returns string if #1, `private discussion's location`, else `Result string` or `Error message`
 	]]
 	self.createPrivateDiscussion = function(destinataries, subject, message)
 		assertion("createPrivateDiscussion", "table", 1, destinataries)
@@ -1092,7 +1095,7 @@ return function()
 		end
 
 		local success, data = this.performAction(forumUri.create_discussion, {
-			{ "destinataires", table.concat(destinatary, separator.forum_data) },
+			{ "destinataires", table.concat(destinataries, separator.forum_data) },
 			{ "objet", subject },
 			{ "message", message }
 		}, forumUri.new_discussion)
@@ -1107,7 +1110,7 @@ return function()
 		@param pollResponses<table> The poll response options
 		@param settings?<table> The poll settings. The available indexes are: `multiple` and `public`.
 		@returns boolean Whether the private poll was created or not
-		@returns string if #1, `private poll's url`, else `Result string` or `Error message`
+		@returns string if #1, `private poll's location`, else `Result string` or `Error message`
 	]]
 	self.createPrivatePoll = function(destinataries, subject, message, pollResponses, settings)
 		assertion("createPrivatePoll", "table", 1, destinataries)
@@ -1125,11 +1128,11 @@ return function()
 		end
 
 		local postData = {
-			{ "destinataires", table.concat(destinatary, separator.forum_data) },
+			{ "destinataires", table.concat(destinataries, separator.forum_data) },
 			{ "objet", subject },
 			{ "message", message },
 			{ "sondage", "on" },
-			{ "reponses", table.concat(destinatary, separator.forum_data) }
+			{ "reponses", table.concat(pollResponses, separator.forum_data) }
 		}
 		if settings then
 			if settings.multiple then
@@ -1149,7 +1152,7 @@ return function()
 		@param conversationId<int,string> The conversation id
 		@param answer<string> The answer
 		@returns boolean Whether the answer was posted or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
+		@returns string if #1, `post's location`, else `Result string` or `Error message`
 	]]
 	self.answerConversation = function(conversationId, answer)
 		assertion("answerConversation", { "number", "string" }, 1, conversationId)
@@ -1322,9 +1325,9 @@ return function()
 		postId = tonumber(postId)
 		local pageNumber = math.ceil(postId / 20)
 
-		local head, body = this.getPage(forumUri.topic .. (location.co and (forumUri.conversation .. "?co=" .. location.co) or ("?f=" .. location.f .. "&t=" .. location.t)) .. "&p=" .. pageNumber)
+		local head, body = this.getPage((location.co and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)) .. "&p=" .. pageNumber)
 
-		local post, id
+		local id, post
 		if not location.co then
 			-- Forum message
 			id, post = string.match(body, string.format(htmlChunk.message, postId, forumUri.edit))
@@ -1362,12 +1365,12 @@ return function()
 			}
 		else
 			-- Private message
-			id, post = string.match(body, string.format(htmlChunk.message, postId, forumUri.quote))
+			post = string.match(body, string.format(htmlChunk.private_message, postId))
 			if not post then
 				return nil, errorString.internal
 			end
 
-			local timestamp, author, authorDiscriminator, _, content, msgHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.private_message_data)
+			local timestamp, author, authorDiscriminator, _, id, content, msgHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.private_message_data)
 			if not timestamp then
 				return nil, errorString.internal
 			end
@@ -1376,7 +1379,7 @@ return function()
 				f = 0,
 				co = location.co,
  				p = pageNumber,
-				post = postId,
+				post = tostring(postId),
 				timestamp = tonumber(timestamp),
 				author = author .. authorDiscriminator,
 				id = tonumber(id),
@@ -1395,6 +1398,7 @@ return function()
 	]]
 	self.getTopic = function(location, ignoreFirstMessage)
 		assertion("getTopic", "table", 1, location)
+		assertion("getTopic", { "boolean", "nil" }, 2, ignoreFirstMessage)
 
 		if not location.f or not location.t then
 			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
@@ -1457,10 +1461,7 @@ return function()
 		local fa = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.favorite_id)))
 		
 		-- Get total of pages and total of messages
-		local totalPages = tonumber(string.match(body, htmlChunk.total_pages))
-		if not totalPages then
-			return nil, errorString.internal
-		end
+		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
 
 		local _, lastPage = this.getPage(forumUri.topic .. path .. "&p=" .. totalPages)
 		local counter = 0
@@ -1567,10 +1568,7 @@ return function()
 		end
 		local isSubsection = #navigation_bar > 3
 
-		local totalPages = tonumber(string.match(body, htmlChunk.total_pages))
-		if not totalPages then
-			return nil, errorString.internal
-		end
+		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
 
 		counter = 0
 		_, lastPage = this.getPage(forumUri.section .. path .. "&p=" .. totalPages)
@@ -1749,7 +1747,7 @@ return function()
 		@param message<string> The initial message of the topic
 		@param location<table> The location where the topic should be created. Fields 'f' and 's' are needed.
 		@returns boolean Whether the topic was created or not
-		@returns string if #1, `topic's url`, else `Result string` or `Error message`
+		@returns string if #1, `topic's location`, else `Result string` or `Error message`
 	]]
 	self.createTopic = function(title, message, location)
 		assertion("createTopic", "string", 1, title)
@@ -1778,7 +1776,7 @@ return function()
 		@param message<string> The answer
 		@param location<table> The location where the message is. Fields 'f' and 't' are needed.
 		@returns boolean Whether the post was created or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
+		@returns string if #1, `post's location`, else `Result string` or `Error message`
 	]]
 	self.answerTopic = function(message, location)
 		assertion("answerTopic", "string", 1, message)
@@ -1806,7 +1804,7 @@ return function()
 		@param message<string> The new message
 		@param location<table> The location where the message should be edited. Fields 'f' and 't' are needed.
 		@returns boolean Whether the message content was edited or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
+		@returns string if #1, `post's location`, else `Result string` or `Error message`
 	]]
 	self.editTopicAnswer = function(messageId, message, location)
 		assertion("editTopicAnswer", { "number", "string" }, 1, messageId)
@@ -1848,7 +1846,7 @@ return function()
 		@param location<table> The location where the topic should be created. Fields 'f' and 's' are needed.
 		@param settings?<table> The poll settings. The available indexes are: `multiple` and `public`.
 		@returns boolean Whether the poll was created or not
-		@returns string if #1, `poll's url`, else `Result string` or `Error message`
+		@returns string if #1, `poll's location`, else `Result string` or `Error message`
 	]]
 	self.createPoll = function(title, message, pollResponses, location, settings)
 		assertion("createPoll", "string", 1, title)
@@ -1935,7 +1933,7 @@ return function()
 		@param location<table> The location where the poll answer should be recorded. Fields 'f' and 't' are needed for forum poll, 'co' for private poll.
 		@param pollId?<int> The poll id. It's obtained automatically if no value is given.
 		@returns boolean Whether the poll option was recorded or not
-		@returns string if #1, `poll's url`, else `Result string` or `Error message`
+		@returns string if #1, `poll's location`, else `Result string` or `Error message`
 	]]
 	self.answerPoll = function(option, location, pollId)
 		assertion("answerPoll", { "number", "table", "string" }, 1, option)
@@ -2670,7 +2668,7 @@ return function()
 		@param data<table> The new section data
 		@param location<table> The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section.
 		@returns boolean Whether the section was created or not
-		@returns string if #1, `section's url`, else `Result string` or `Error message`
+		@returns string if #1, `section's location`, else `Result string` or `Error message`
 	]]
 	self.createSection = function(data, location)
 		assertion("createSection", "table", 1, data)
@@ -3001,7 +2999,7 @@ return function()
 		@param image<string> The new image. An URL or file name.
 		@param isPublic?<boolean> Whether the image should appear in the gallery or not. (default = false)
 		@returns boolean Whether the image was hosted or not
-		@returns string if #1, `image's url`, else `Result string` or `Error message`
+		@returns string if #1, `image's location`, else `Result string` or `Error message`
 	]]
 	self.uploadImage = function(image, isPublic)
 		assertion("uploadImage", "string", 1, image)

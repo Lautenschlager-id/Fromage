@@ -387,12 +387,12 @@ enum.forumTitle = e {
 
 ]]
 enum.topicIcon = e {
-	poll               = "sondage.png",
-	private_discussion = "bulle-pointillets.png",
-	private_message    = "enveloppe.png",
-	postit             = "postit.png",
-	locked             = "cadenas.png",
-	deleted            = "/no.png"
+	poll               = "sondage%.png",
+	private_discussion = "bulle%-pointillets%.png",
+	private_message    = "enveloppe%.png",
+	postit             = "postit%.png",
+	locked             = "cadenas%.png",
+	deleted            = "/no%.png"
 }
 --[[@
 

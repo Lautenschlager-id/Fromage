@@ -30,7 +30,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the private message was created or not |
->| `string` | if #1, `private message's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `private message's location`, else `Result string` or `Error message` |
 >
 
  
@@ -48,7 +48,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the private discussion was created or not |
->| `string` | if #1, `private discussion's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `private discussion's location`, else `Result string` or `Error message` |
 >
 
  
@@ -68,7 +68,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the private poll was created or not |
->| `string` | if #1, `private poll's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `private poll's location`, else `Result string` or `Error message` |
 >
 
  
@@ -85,7 +85,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the answer was posted or not |
->| `string` | if #1, `post's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `post's location`, else `Result string` or `Error message` |
 >
 
  

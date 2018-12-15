@@ -44,7 +44,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the image was hosted or not |
->| `string` | if #1, `image's url`, else `Result string` or `Error message` |
+>| `string` | if #1, `image's location`, else `Result string` or `Error message` |
 >
 
  

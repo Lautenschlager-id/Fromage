@@ -34,7 +34,7 @@
 >### updateProfile ( data )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| data | `table` | ✔ | The data |
+>| data | `table` | ✕ | The data |
 >
 >Updates the account's profile.<br>
 >The available data are:<br>
@@ -68,7 +68,7 @@
 >### updateParameters ( parameters )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| parameters | `table` | ✔ | The parameters. |
+>| parameters | `table` | ✕ | The parameters. |
 >
 >Updates the account parameters.<br>
 >The available parameters are:<br>
