@@ -8,6 +8,7 @@ coroutine.wrap(function()
 	client.connect(account.username, account.password)
 	
 	if client.isConnected() then
+		print("Editing profile:")
 		print(client.updateProfile({
 			community = enumerations.community.en,
 			birthday = "10/10/2010",
@@ -16,6 +17,7 @@ coroutine.wrap(function()
 			presentation = "[b]Heya![/b] I love [color=#FFFFFF]Malibu[/color]"
 		}))
 
+		print("Editing parameters:")
 		print(client.updateParameters({
 			online = true
 		}))

@@ -124,7 +124,8 @@ local htmlChunk = {
     message_data              = 'class="coeur".-(%d+).-message_%d+">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>.-edit_message_%d+.->(.-)</div>',
     edition_timestamp         = 'cadre%-message%-dates.-(%d+)',
     private_message           = '<div id="m%d" (.-</div>%%s+</div>%%s+</div>%%s+</td>%%s+</tr>)',
-    private_message_data      = 'citer_message_(%d+).->(.-)<.-id="message_%d+">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>',
+    message_content           = 'citer_message_%d+.->(.-)',
+    private_message_data      = '<.-id="message_(%d+)">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>',
     navigation_bar            = 'barre%-navigation.->(.-)</ul>',
     navigaton_bar_sections    = '<a.-href="(.-)".->%s*(.-)%s*</a>',
     navigaton_bar_sec_content = '^<(.+)>%s*(.+)%s*$',
@@ -141,7 +142,7 @@ local htmlChunk = {
     topic_div                 = '<div class="row">',
     section_icon              = 'sections/(.-)%.png',
     title                     = '<title>(.-)</title>',
-    conversation_icon         = 'class=" active"><img src="(.-)".->%s*',
+    conversation_icon         = 'cadre%-sujet%-titre"><img (.-)</span>',
     recruitment               = 'Recruitment : (.-)<',
     greeting_message          = '<h4>Greeting message</h4> (.-) </div>',
     tribe_presentation        = 'cadre%-presentation"> ([^>]+) </div>',
@@ -276,6 +277,7 @@ local assertion = function(name, etype, id, value)
 			if v == t then
 				return
 			else
+				counter = counter + 1
 				names[counter] = v
 			end
 		end
@@ -485,10 +487,10 @@ return function()
 	--> Private function
 	local getList, getBigList
 	getBigList = function(pageNumber, uri, f, getTotalPages, _totalPages)
-		local head, body = this.getPage(uri .. math.max(1, pageNumber))
+		local head, body = this.getPage(uri .. "&p=" .. math.max(1, pageNumber))
 
 		if getTotalPages then
-			_totalPages = tonumber(string.match(body.htmlChunk.total_pages)) or 1
+			_totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
 		end
 
 		local out = {
@@ -497,13 +499,14 @@ return function()
 		if pageNumber == 0 then
 			local tmp, err
 			for i = 1, _totalPages do
-				tmp, err = getList(i, uri, f, false, _totalPages)
+				tmp, err = getBigList(i, uri, f, false, _totalPages)
 				if err then
 					return false, err
 				end
+				table.add(out, tmp)
 			end
 
-			table.add(out, tmp)
+			return out
 		end
 
 		f(out, body, pageNumber, _totalPages)
@@ -706,19 +709,23 @@ return function()
 	--[[@
 		@file Settings
 		@desc Sets the new account's e-mail.
-		@param email<string> The e-mail
+		@param email<string> The e-mail to be linked to your account
+		@param registration?<boolean> Whether this is the first e-mail assigned to the account or not
 		@returns boolean Whether the validation code was sent or not
 		@returns string `Result string` or `Error message`
 	]]
-	self.setEmail = function(email)
+	self.setEmail = function(email, registration)
 		assertion("setEmail", "string", 1, email)
+		assertion("setEmail", { "boolean", "nil" }, 2, registration)
 
 		if not this.isConnected then
 			return false, errorString.not_connected
 		end
 
-		if not this.hasCertificate then
-			return false, errorString.not_verified
+		if not registration then
+			if not this.hasCertificate then
+				return false, errorString.not_verified
+			end
 		end
 
 		return this.performAction(forumUri.set_email, {
@@ -979,7 +986,7 @@ return function()
 	]]
 	self.getConversation = function(location, ignoreFirstMessage)
 		assertion("getConversation", "table", 1, location)
-		assertion("getConversation", { "table", "nil" }, 2, ignoreFirstMessage)
+		assertion("getConversation", { "boolean", "nil" }, 2, ignoreFirstMessage)
 
 		if not location.co then
 			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'co'")
@@ -1003,7 +1010,7 @@ return function()
 		end
 
 		local isPoll, isDiscussion, isPrivateMessage = not not po, false, false
-		local titleIcon = string.match(body, string.format(htmlChunk.conversation_icon, title))
+		local titleIcon = string.match(body, htmlChunk.conversation_icon)
 		if not titleIcon then
 			return nil, errorString.internal
 		end
@@ -1171,9 +1178,8 @@ return function()
 	--[[@
 		@file Private
 		@desc Moves private conversations to the inbox or bin.
-		@desc To empty trash, `@conversationId` must be `nil` and `@location` must be `bin`
 		@param inboxLocale<string,int> Where the conversation will be located. An enum from `enumerations.inboxLocale` (index or value)
-		@param conversationId?<int,table> The id or IDs of the conversation(s) to be moved
+		@param conversationId?<int,table> The id or IDs of the conversation(s) to be moved. `nil` for all.
 		@returns boolean Whether the conversation was moved or not
 		@returns string if #1, `location's url`, else `Result string` or `Error message`
 	]]
@@ -1202,10 +1208,10 @@ return function()
 		end
 
 		local postData = (not moveAll and {
-			{ "co", table.concat(conversationId, separator.forum_data) },
-			{ "inboxLocale", inboxLocale }
+			{ "conversations", table.concat(conversationId, separator.forum_data) },
+			{ "location", inboxLocale }
 		} or nil)
-		return this.performAction((moveAll and forumUri.move_all_conversations or forumUri.move_conversation), postData, forumUri.conversations .. "?inboxLocale=" .. inboxLocale)
+		return this.performAction((moveAll and forumUri.move_all_conversations or forumUri.move_conversation), postData, forumUri.conversations .. "?location=" .. inboxLocale)
 	end
 	--[[@
 		@file Private
@@ -1367,13 +1373,15 @@ return function()
 			-- Private message
 			post = string.match(body, string.format(htmlChunk.private_message, postId))
 			if not post then
-				return nil, errorString.internal
+				return nil, errorString.internal .. " (001)"
 			end
 
-			local timestamp, author, authorDiscriminator, _, id, content, msgHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.private_message_data)
+			local timestamp, author, authorDiscriminator, _, id, msgHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.private_message_data)
 			if not timestamp then
-				return nil, errorString.internal
+				return nil, errorString.internal .. " (002)"
 			end
+
+			local content = string.match(post, htmlChunk.message_content)
 
 			return {
 				f = 0,
@@ -2045,7 +2053,7 @@ return function()
 
 	-- > Moderation
 	--[[@
-		@file Forum
+		@file Moderation
 		@desc Updates a topic state, location and parameters.
 		@desc The available data are:
 		@desc string `title` -> Topic's title
@@ -2088,7 +2096,7 @@ return function()
 		}, forumUri.edit_topic .. "?f=" .. location.f .. "&t=" .. location.t)
 	end
 	--[[@
-		@file Forum
+		@file Moderation
 		@desc Reports an element. (e.g: message, profile)
 		@param element<string,int> The element type. An enum from `enumerations.element` (index or value)
 		@param elementId<int,string> The element id.
@@ -2182,7 +2190,7 @@ return function()
 		}, link)
 	end
 	--[[@
-		@file Forum
+		@file Moderation
 		@desc Changes the state of the message. (e.g: active, moderated)
 		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`.
 		@param messageState<string,int> The message state. An enum from `enumerations.messageState` (index or value)
@@ -2229,7 +2237,7 @@ return function()
 		}, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
 	end
 	--[[@
-		@file Forum
+		@file Moderation
 		@desc Changes the restriction state for a message.
 		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`.
 		@param contentState<string> An enum from `enumerations.contentState` (index or value)
@@ -2473,12 +2481,12 @@ return function()
 			tribeId = this.tribeId
 		end
 
-		return getList(pageNumber, forumUri.tribe_history .. "?tr=" .. tribeId, htmlChunk.ms_time .. ".-" .. htmlChunk.tribe_log, function(timestamp, log)
+		return getList(pageNumber, forumUri.tribe_history .. "?tr=" .. tribeId, function(timestamp, log)
 			return {
 				log = log,
 				timestamp = tonumber(timestamp)
 			}
-		end, true)
+		end, htmlChunk.ms_time .. ".-" .. htmlChunk.tribe_log)
 	end
 	--[[@
 		@file Tribe
@@ -2844,90 +2852,6 @@ return function()
 		}, forumUri.edit_section_permissions .. "?f=" .. location.f .. "&s=" .. location.s)
 	end
 
-	-- > Search
-	--[[@
-		@file Tribe
-		@desc Performs a deep search on forums.
-		@param searchType<string,int> The type of the search (e.g.: player, message). An enum from `enumerations.searchType` (index or value)
-		@param search<string> The value to be found in the search
-		@param pageNumber?<int> The page number of the search results. To list ALL the matches, use `0`. (default = 1)
-		@param data?<table> Additional data to be used in the `message_topic` search type. Fields `searchLocation`(enum) and `f` are needed. Fields `author`, `community`(enum), and `s` are optional.
-		@returns table|nil The search matches. Total pages at `_pages`.
-		@returns nil|string The message error, if any occurred
-	]]
-	self.search = function(searchType, search, pageNumber, data)
-		if type(search) == "number" then
-			search = tostring(search)
-		end
-
-		assertion("search", { "string", "number" }, 1, searchType)
-		assertion("search", "string", 2, search)
-		assertion("search", { "number", "nil" }, 4, pageNumber)
-
-		pageNumber = pageNumber or 1
-
-		local err
-		searchType, err = isEnum(searchType, "searchType", "searchType")
-		if err then return false, err end
-
-		local d, html, f = ''
-		if searchType == enumerations.searchType.message_topic then
-			assertion("search", "table", 3, data)
-
-			if not data.searchLocation or not data.f then
-				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "data { 'searchLocation', 'f' }")
-			end
-			data.author = data.author or ''
-			data.community = data.community or 0
-			data.s = data.s or 0
-
-			if data.searchLocation == enumerations.searchLocation.titles then
-				html = htmlChunk.community .. ".-" .. htmlChunk.topic_list .. htmlChunk.ms_time
-				f = function(community, post, title, timestamp)
-					return {
-						location = self.parseUrlData(post),
-						community = enumerations.community[community],
-						title = title,
-						timestamp = tonumber(timestamp)
-					}
-				end
-			else
-				html = htmlChunk.community .. ".-" .. htmlChunk.message_list .. ".-" .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time
-				f = function(community, post, postId, msgHtml, timestamp)
-					return {
-						location = self.parseUrlData(post),
-						post = postId,
-						community = enumerations.community[community],
-						messageHtml = msgHtml,
-						timestamp = tonumber(timestamp)
-					}
-				end
-			end
-
-			d = "&ou=" .. data.searchLocation .. "&pr=" .. data.author .. "&f=" .. data.f .. "&c=" .. data.community .. "&s=" .. data.s, pageNumber
-		else
-			if searchType == enumerations.searchType.tribe then
-				html = htmlChunk.tribe_list
-				f = function(name, id)
-					return {
-						name = name,
-						id = tonumber(id)
-					}
-				end
-			else
-				html = htmlChunk.community .. ".-" .. htmlChunk.nickname
-				f = function(community, name, discriminator)
-					return {
-						community = enumerations.community[community],
-						name = name .. discriminator
-					}
-				end
-			end
-		end
-
-		return getList(pageNumber, forumUri.search .. "?te=" .. searchType .. "&se=" .. search .. d, html, f, true)
-	end
-
 	-- > Micepix
 	--[[@
 		@file Micepix
@@ -2945,12 +2869,12 @@ return function()
 			return false, errorString.not_connected
 		end
 
-		return getList(pageNumber, forumUri.user_images_grid .. "?pr=" .. this.userId, htmlChunk.image_data .. ".-" .. htmlChunk.ms_time, function(code, _, timestamp)
+		return getList(pageNumber, forumUri.user_images_grid .. "?pr=" .. this.userId, function(code, _, timestamp)
 			return {
 				imageId = code,
 				timestamp = tonumber(timestamp)
 			}
-		end, true)
+		end, htmlChunk.image_data .. ".-" .. htmlChunk.ms_time)
 	end
 	--[[@
 		@file Micepix
@@ -3031,11 +2955,12 @@ return function()
 			image,
 			(isPublic and boundaries[2] or nil),
 			(isPublic and 'Content-Disposition: form-data; name="enGalerie"' or nil),
-			(isPublic and separator.file or nil),
+			(isPublic and '' or nil),
 			(isPublic and "on" or nil),
 			boundaries[3]
 		}
-		local sucess, data = this.performAction(forumUri.upload_image, nil, forumUri.user_images, table.concat(file, separator.file))
+
+		local success, data = this.performAction(forumUri.upload_image, nil, forumUri.user_images, table.concat(file, separator.file))
 		return returnRedirection(success, data)
 	end
 	--[[@
@@ -3058,6 +2983,88 @@ return function()
 	end
 
 	-- > Miscellaneous
+	--[[@
+		@file Miscellaneous
+		@desc Performs a deep search on forums.
+		@param searchType<string,int> The type of the search (e.g.: player, message). An enum from `enumerations.searchType` (index or value)
+		@param search<string> The value to be found in the search
+		@param pageNumber?<int> The page number of the search results. To list ALL the matches, use `0`. (default = 1)
+		@param data?<table> Additional data to be used in the `message_topic` search type. Fields `searchLocation`(enum) and `f` are needed. Fields `author`, `community`(enum), and `s` are optional.
+		@returns table|nil The search matches. Total pages at `_pages`.
+		@returns nil|string The message error, if any occurred
+	]]
+	self.search = function(searchType, search, pageNumber, data)
+		if type(search) == "number" then
+			search = tostring(search)
+		end
+
+		assertion("search", { "string", "number" }, 1, searchType)
+		assertion("search", "string", 2, search)
+		assertion("search", { "number", "nil" }, 4, pageNumber)
+
+		pageNumber = pageNumber or 1
+
+		local err
+		searchType, err = isEnum(searchType, "searchType", "searchType")
+		if err then return false, err end
+
+		local d, html, f = ''
+		if searchType == enumerations.searchType.message_topic then
+			assertion("search", "table", 3, data)
+
+			if not data.searchLocation or not data.f then
+				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "data { 'searchLocation', 'f' }")
+			end
+			data.author = data.author or ''
+			data.community = data.community or 0
+			data.s = data.s or 0
+
+			if data.searchLocation == enumerations.searchLocation.titles then
+				html = htmlChunk.community .. ".-" .. htmlChunk.topic_list .. htmlChunk.ms_time
+				f = function(community, post, title, timestamp)
+					return {
+						location = self.parseUrlData(post),
+						community = enumerations.community[community],
+						title = title,
+						timestamp = tonumber(timestamp)
+					}
+				end
+			else
+				html = htmlChunk.community .. ".-" .. htmlChunk.message_list .. ".-" .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time
+				f = function(community, post, postId, msgHtml, timestamp)
+					return {
+						location = self.parseUrlData(post),
+						post = postId,
+						community = enumerations.community[community],
+						messageHtml = msgHtml,
+						timestamp = tonumber(timestamp)
+					}
+				end
+			end
+
+			d = "&ou=" .. data.searchLocation .. "&pr=" .. data.author .. "&f=" .. data.f .. "&c=" .. data.community .. "&s=" .. data.s, pageNumber
+		else
+			if searchType == enumerations.searchType.tribe then
+				html = htmlChunk.tribe_list
+				f = function(name, id)
+					return {
+						name = name,
+						id = tonumber(id)
+					}
+				end
+			else
+				html = htmlChunk.community .. ".-" .. htmlChunk.nickname
+				f = function(community, name, discriminator)
+					return {
+						community = enumerations.community[community],
+						name = name .. discriminator
+					}
+				end
+			end
+		end
+
+		return getList(pageNumber, forumUri.search .. "?te=" .. searchType .. "&se=" .. search .. d, f, html)
+	end
 	--[[@
 		@file Miscellaneous
 		@desc Gets the topics created by a user.
