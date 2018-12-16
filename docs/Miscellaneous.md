@@ -164,7 +164,7 @@
 >| :-: | :-: | :-: | - |
 >| element | `string`, `int` | ✔ | The element type. An enum from `enumerations.element` (index or value) |
 >| elementId | `int` | ✔ | The element id. |
->| location | `table` | ✕ | The location of the report. If it's a forum topic the fields 'f' and 't' are needed. |
+>| location | `table` | ✕ | The location of the element. If it's a forum topic the fields 'f' and 't' are needed. |
 >
 >Favorites an element. (e.g: topic, tribe)
 >
@@ -177,10 +177,11 @@
 >
 
  
->### unfavoriteElement ( favoriteId )
+>### unfavoriteElement ( favoriteId, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| favoriteId | `int`, `string` | ✔ | The element favorite-id. |
+>| location | `table` | ✕ | The location of the element. If it's a forum topic the fields 'f' and 't' are needed. |
 >
 >Unfavorites an element.
 >
