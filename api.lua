@@ -153,17 +153,18 @@ local htmlChunk = {
     moderate_message          = 'cadre%-message%-modere%-texte">by ([^,]+)[^:]*:?(.*)%]<',
     tribe_log                 = '<td> (.-) </td>',
     message_history_log       = 'class="hidden"> (.-) </div>',
-    image_data                = '?im=(%w+)".-pr=(.-)"',
+    image_id                  = '?im=(%w+)"',
     last_post                 = '<a href="(topic%?.-)".->%s+(.-)%s+</a></li>.-%1.-#m(%d+)">',
     created_topic_data        = 'href="(topic%?f=%d+&t=%d+).-".->%s+([^>]+)%s+</a>.-%2.-m(%d+)',
-    tracker                   = '<div class="row">(.-)</div>%s+</div>',
+    tracker                   = '(.-)</div>%s+</div>',
     message_html              = 'Message</a></span> :%s+(.-)%s*</div>%s+</td>%s+</tr>',
     admin_name                = 'cadre%-type%-auteur%-admin">(.-)</span>',
     favorite_topics           = '<td rowspan="2">(.-)</td>%s+<td rowspan="2">',
     section_topic             = 'href="topic.-t=(%d+).-">%s+(.-)%s+</a>%s+</td>',
-    tribe_list                = '>(.-)</li>.-href="tribe%?tr=(%d+)',
-    topic_list                = '<li><a href="(topic.-)">%s+(.-)</a></li>',
-    message_list              = 'href="(topic.-)">%s+(.-)%s+<.-#(%d+)'
+    tribe_list                = '<li class="nav%-header">(.-)</li>.-%?tr=(%d+)"',
+    search_list               = '<a href="(topic%?.-)".->%s+(.-)%s+</a></li>',
+    message_post_id           = 'numero%-message".-#(%d+)',
+    profile_id                = 'profile%?pr=(.-)"'
 }
 
 local errorString = {
@@ -552,7 +553,7 @@ return function()
 
 		local data = { }
 		string.gsub(raw_data, "([^&]+)=([^&#]+)", function(name, value)
-			data[name] = value
+			data[name] = tonumber(value) or value
 		end)
 
 		return {
@@ -2874,7 +2875,7 @@ return function()
 				imageId = code,
 				timestamp = tonumber(timestamp)
 			}
-		end, htmlChunk.image_data .. ".-" .. htmlChunk.ms_time)
+		end, htmlChunk.image_id .. ".-" .. htmlChunk.profile_id .. ".-" .. htmlChunk.ms_time)
 	end
 	--[[@
 		@file Micepix
@@ -2898,7 +2899,7 @@ return function()
 		end
 
 		local head, body, lastImage
-		local pat = htmlChunk.image_data .. ".-" .. htmlChunk.ms_time
+		local pat = htmlChunk.image_id .. ".-" .. htmlChunk.profile_id .. ".-" .. htmlChunk.ms_time
 
 		local images, counter = { }, 0
 		for i = 1, quantity, 16 do
@@ -3008,6 +3009,10 @@ return function()
 		searchType, err = isEnum(searchType, "searchType", "searchType")
 		if err then return false, err end
 
+		if not this.isConnected then
+			return false, errorString.not_connected
+		end
+
 		local d, html, f = ''
 		if searchType == enumerations.searchType.message_topic then
 			assertion("search", "table", 3, data)
@@ -3020,24 +3025,27 @@ return function()
 			data.s = data.s or 0
 
 			if data.searchLocation == enumerations.searchLocation.titles then
-				html = htmlChunk.community .. ".-" .. htmlChunk.topic_list .. htmlChunk.ms_time
-				f = function(community, post, title, timestamp)
+				html = htmlChunk.topic_div .. ".-" .. htmlChunk.community .. ".-" .. htmlChunk.search_list .. ".-" .. htmlChunk.ms_time .. ".-" .. htmlChunk.profile_id
+				f = function(community, post, title, timestamp, author)
 					return {
 						location = self.parseUrlData(post),
 						community = enumerations.community[community],
 						title = title,
-						timestamp = tonumber(timestamp)
+						timestamp = tonumber(timestamp),
+						author = self.formatNickname(author)
 					}
 				end
 			else
-				html = htmlChunk.community .. ".-" .. htmlChunk.message_list .. ".-" .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time
-				f = function(community, post, postId, msgHtml, timestamp)
+				html = htmlChunk.topic_div .. ".-" .. htmlChunk.community .. ".-" .. htmlChunk.search_list .. ".-" .. htmlChunk.message_post_id .. ".-" .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time .. ".-" .. htmlChunk.profile_id
+				f = function(community, post, title, postId, msgHtml, timestamp, author)
 					return {
 						location = self.parseUrlData(post),
 						post = postId,
+						topicTitle = title,
 						community = enumerations.community[community],
 						messageHtml = msgHtml,
-						timestamp = tonumber(timestamp)
+						timestamp = tonumber(timestamp),
+						author = self.formatNickname(author)
 					}
 				end
 			end
@@ -3063,7 +3071,7 @@ return function()
 			end
 		end
 
-		return getList(pageNumber, forumUri.search .. "?te=" .. searchType .. "&se=" .. search .. d, f, html)
+		return getList(pageNumber, forumUri.search .. "?te=" .. searchType .. "&se=" .. encodeUrl(search) .. d, f, html)
 	end
 	--[[@
 		@file Miscellaneous
@@ -3122,7 +3130,7 @@ return function()
 			counter = counter + 1
 			posts[counter] = {
 				location = self.parseUrlData(post),
-				post = tonumber(postId),
+				post = postId,
 				timestamp = tonumber(timestamp),
 				topicTitle = topicTitle,
 				messageHtml = messageHtml
@@ -3264,7 +3272,7 @@ return function()
 		local head, body = this.getPage(forumUri.tracker)
 
 		local posts, counter = { }, 0
-		string.gsub(body, htmlChunk.tracker, function(content)
+		string.gsub(body, htmlChunk.topic_div .. htmlChunk.tracker, function(content)
 			local navBar = string.match(content, htmlChunk.navigation_bar)
 			if not navBar then
 				return nil, errorString.internal

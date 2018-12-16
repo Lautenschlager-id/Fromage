@@ -233,7 +233,7 @@ local section_ID = {
 --[[@
 
 ]]
-enum.location = { }
+enum.location = { } 
 for community, ids in next, section_ID do
 	enum.location[community] = { }
 
@@ -245,7 +245,7 @@ for community, ids in next, section_ID do
 			id = ids.others
 		end
 
-		for name, value in next, data do
+		for name, value in pairs(data) do
 			if value >= 0 then
 				enum.location[community][forum][name] = value + id
 			end

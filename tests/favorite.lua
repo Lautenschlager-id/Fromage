@@ -8,6 +8,10 @@ coroutine.wrap(function()
 	client.connect(account.username, account.password)
 	
 	if client.isConnected() then
+		local bolosTopic = client.getCreatedTopics("Bolodefchoco#0000")[1].location.data -- Gets the topics created by someone, then its location
+		print("Favoriting a topic:")
+		print(client.favoriteElement(enumerations.element.topic, bolosTopic.t, bolosTopic)) -- Favorites a topic
+
 		print("Favorite topics:")
 		local favoriteTopics, err = client.getFavoriteTopics() -- Gets the favorite topics of the account
 		if favoriteTopics then
@@ -17,6 +21,10 @@ coroutine.wrap(function()
 		else
 			print(err)
 		end
+
+		print("Unfavoriting a topic:")
+		local bolosTopicFavId = client.getTopic(bolosTopic).favoriteId
+		print(client.unfavoriteElement(bolosTopicFavId, bolosTopic)) -- Unfavorites a topic
 
 		local bolosTribeId = client.getProfile("Bolodefchoco#0000").tribeId -- Gets someone profile, and the value tribeId
 		print("Favorites a tribe:")
@@ -33,9 +41,9 @@ coroutine.wrap(function()
 			print(err)
 		end
 
-		local bolosTribe = client.getTribe(bolosTribeId).favoriteId -- Gets someone tribe, and the value favoriteId
+		local bolosTribeFavId = client.getTribe(bolosTribeId).favoriteId -- Gets someone tribe, and the value favoriteId
 		print("Removes tribe favorite:")
-		print(client.unfavoriteElement(bolosTribe)) -- Unfavorites a tribe
+		print(client.unfavoriteElement(bolosTribeFavId)) -- Unfavorites a tribe
 	end
 
 	client.disconnect()
