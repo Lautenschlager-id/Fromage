@@ -7,26 +7,26 @@ coroutine.wrap(function()
 	client.connect(account.username, account.password)
 	
 	if client.isConnected() then
-		--print("Account's images:")
---		--local images, err = client.getAccountImages(0) -- Gets all images hosted by the account
---		--if images then
---		--	print("Pages: " .. images._pages)
---		--	for i = 1, #images do
---		--		print("Image " .. images[i].imageId .. " created in " .. os.date("%c", images[i].timestamp / 1000))
---		--	end
---		--else
---		--	print(err)
---		--end
---
-		--print("Latest images:")
-		--images, err = client.getLatestImages() -- Gets the last 16 images hosted on micepix
-		--if images then
-		--	for i = 1, #images do
-		--		print("Image " .. images[i].imageId .. " created by " .. images[i].author .. " in " .. os.date("%c", images[i].timestamp / 1000))
-		--	end
-		--else
-		--	print(err)
-		--end
+		print("Account's images:")
+		local images, err = client.getAccountImages(0) -- Gets all images hosted by the account
+		if images then
+			print("Pages: " .. images._pages)
+			for i = 1, #images do
+				print("Image " .. images[i].imageId .. " created on " .. os.date("%c", images[i].timestamp / 1000))
+			end
+		else
+			print(err)
+		end
+
+		print("Latest images:")
+		images, err = client.getLatestImages() -- Gets the last 16 images hosted on micepix
+		if images then
+			for i = 1, #images do
+				print("Image " .. images[i].imageId .. " created by " .. images[i].author .. " on " .. os.date("%c", images[i].timestamp / 1000))
+			end
+		else
+			print(err)
+		end
 
 		local image
 		image, err = client.uploadImage("http://images.atelier801.com/167b32d18e3.png", true) -- Uploads an image on micepix

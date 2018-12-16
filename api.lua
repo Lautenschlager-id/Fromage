@@ -154,10 +154,10 @@ local htmlChunk = {
     tribe_log                 = '<td> (.-) </td>',
     message_history_log       = 'class="hidden"> (.-) </div>',
     image_data                = '?im=(%w+)".-pr=(.-)"',
-    message_post_number       = 'href="(topic?.-)#m(%d+)">#%2</a>',
-    created_topic_data        = 'href="(topic%?.-)&p.-m(%d+)".+>%s+(.-)%s+</a>%s+</td>.- on ',
+    last_post                 = '<a href="(topic%?.-)".->%s+(.-)%s+</a></li>.-%1.-#m(%d+)">',
+    created_topic_data        = 'href="(topic%?f=%d+&t=%d+).-".->%s+([^>]+)%s+</a>.-%2.-m(%d+)',
     tracker                   = '<div class="row">(.-)</div>%s+</div>',
-    message_html              = 'Message</a></span> :%s+(.-)%s*</div>%s+</div>%s+</div>%s+</td>%s+</tr>',
+    message_html              = 'Message</a></span> :%s+(.-)%s*</div>%s+</td>%s+</tr>',
     admin_name                = 'cadre%-type%-auteur%-admin">(.-)</span>',
     favorite_topics           = '<td rowspan="2">(.-)</td>%s+<td rowspan="2">',
     section_topic             = 'href="topic.-t=(%d+).-">%s+(.-)%s+</a>%s+</td>',
@@ -1425,7 +1425,7 @@ return function()
 			pollOptions = self.getPollOptions(location)
 		end
 
-		local navBar = string.match(body, htmlChunk.navigaton_bar)
+		local navBar = string.match(body, htmlChunk.navigation_bar)
 		if not navBar then
 			return nil, errorString.internal
 		end
@@ -1525,7 +1525,7 @@ return function()
 		local path = "?f=" .. location.f .. "&s=" .. location.s
 		local head, body = this.getPage(forumUri.section .. path)
 
-		local navBar = string.match(body, htmlChunk.navigaton_bar)
+		local navBar = string.match(body, htmlChunk.navigation_bar)
 		if not navBar then
 			return nil, errorString.internal
 		end
@@ -3082,7 +3082,7 @@ return function()
 		local head, body = this.getPage(forumUri.topics_started .. "?pr=" .. (userName or this.userId))
 
 		local topics, counter = { }, 0
-		string.gsub(body, htmlChunk.community .. ".-" .. htmlChunk.created_topic_data .. ".-" .. htmlChunk.ms_time, function(community, topic, messages, title, timestamp)
+		string.gsub(body, htmlChunk.topic_div .. ".-" .. htmlChunk.community .. ".-" .. htmlChunk.created_topic_data .. ".- on .-" .. htmlChunk.ms_time, function(community, topic, title, messages, timestamp)
 			counter = counter + 1
 			topics[counter] = {
 				location = self.parseUrlData(topic),
@@ -3118,12 +3118,14 @@ return function()
 		local posts, counter = {
 			_pages = totalPages
 		}, 0
-		string.gsub(body, htmlChunk.message_post_number .. htmlChunk.ms_time, function(post, postId, timestamp)
+		string.gsub(body, htmlChunk.last_post .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time, function(post, topicTitle, postId, messageHtml, timestamp)
 			counter = counter + 1
 			posts[counter] = {
 				location = self.parseUrlData(post),
 				post = tonumber(postId),
-				timestamp = tonumber(timestamp)
+				timestamp = tonumber(timestamp),
+				topicTitle = topicTitle,
+				messageHtml = messageHtml
 			}
 		end)
 
@@ -3144,7 +3146,7 @@ return function()
 
 		local topics, counter = { }, 0
 
-		string.gsub(body, htmlChunk.ms_time .. ".-" .. htmlChunk.favorite_topics .. string.format(htmlChunk.hidden_value, forumUri.favorite_id), function(timestamp, navBar, favoriteId)
+		string.gsub(body, htmlChunk.favorite_topics .. ".-" .. string.format(htmlChunk.hidden_value, "fa") .. ".- on .-" .. htmlChunk.ms_time, function(navBar, favoriteId, timestamp)
 			local navigation_bar, community = { }
 			local _counter = 0
 
@@ -3220,9 +3222,9 @@ return function()
 		local head, body = this.getPage(forumUri.blacklist .. "?pr=" .. this.userId)
 
 		local blacklist, counter = { }, 0
-		string.gsub(body, htmlChunk.blacklist_name, function(name, discriminator)
+		string.gsub(body, htmlChunk.blacklist_name, function(name)
 			counter = counter + 1
-			blacklist[counter] = name .. discriminator
+			blacklist[counter] = name
 		end)
 
 		return blacklist
@@ -3263,7 +3265,7 @@ return function()
 
 		local posts, counter = { }, 0
 		string.gsub(body, htmlChunk.tracker, function(content)
-			local navBar = string.match(content, htmlChunk.navigaton_bar)
+			local navBar = string.match(content, htmlChunk.navigation_bar)
 			if not navBar then
 				return nil, errorString.internal
 			end
@@ -3297,6 +3299,9 @@ return function()
 			navigation_bar[_counter] = nil
 
 			local messageHtml, timestamp, admin = string.match(content, htmlChunk.message_html .. ".-" .. htmlChunk.ms_time .. ".-" .. htmlChunk.admin_name)
+			if not messageHtml then
+				return nil, errorString.internal
+			end
 
 			counter = counter + 1
 			posts[counter] = {
@@ -3369,18 +3374,20 @@ return function()
 		@desc Favorites an element. (e.g: topic, tribe)
 		@param element<string,int> The element type. An enum from `enumerations.element` (index or value)
 		@param elementId<int> The element id.
-		@param location?<table> The location of the report. If it's a forum topic the fields 'f' and 't' are needed.
+		@param location?<table> The location of the element. If it's a forum topic the fields 'f' and 't' are needed.
 		@returns boolean Whether the element was favorited or not
 		@returns string `Result string` or `Error message`
 	]]
 	self.favoriteElement = function(element, elementId, location)
 		assertion("favoriteElement", { "string", "number" }, 1, element)
 		assertion("favoriteElement", "number", 2, elementId)
-		assertion("favoriteElement", "table", 3, location)
+		assertion("favoriteElement", { "table", "nil" }, 3, location)
 
 		local err
 		element, err = isEnum(element, "element")
 		if err then return false, err end
+
+		location = location or { }
 
 		if not this.isConnected then
 			return false, errorString.not_connected
@@ -3392,10 +3399,10 @@ return function()
 			if not location.f or not location.t then
 				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 			end
-			link = forumUri.topic .. forumUri.favorite_topics
+			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
 		elseif element == enumerations.element.tribe then
 			-- Tribe ID
-			link = forumUri.tribe .. forumUri.favorite_tribes
+			link = forumUri.tribe .. "?tr=" .. elementId
 		else
 			return false, errorString.unaivalable_enum
 		end
@@ -3410,19 +3417,32 @@ return function()
 		@file Miscellaneous
 		@desc Unfavorites an element.
 		@param favoriteId<int,string> The element favorite-id.
+		@param location?<table> The location of the element. If it's a forum topic the fields 'f' and 't' are needed.
 		@returns boolean Whether the element was unfavorited or not
 		@returns string `Result string` or `Error message`
 	]]
-	self.unfavoriteElement = function(favoriteId)
+	self.unfavoriteElement = function(favoriteId, location)
 		assertion("unfavoriteElement", { "number", "string" }, 1, favoriteId)
+		assertion("unfavoriteElement", { "table", "nil" }, 2, location)
 
 		if not this.isConnected then
 			return false, errorString.not_connected
 		end
 
+		local link
+		if location then
+			-- Forum topic
+			if not location or not location.f or not location.t then
+				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			end
+			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
+		else
+			link = forumUri.tribe .. "?tr=" .. favoriteId
+		end
+
 		return this.performAction(forumUri.remove_favorite, {
 			{ "fa", favoriteId }
-		}, forumLink .. forumUri.favorite_topics)
+		}, link)
 	end
 	--[[@
 		@file Miscellaneous
@@ -3437,10 +3457,6 @@ return function()
 		local err
 		role, err = isEnum(role, "listRole")
 		if err then return false, err end
-
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
 
 		local sucess, result = this.getPage(forumUri.staff .. "?role=" .. role)
 		local data, counter = { }, 0

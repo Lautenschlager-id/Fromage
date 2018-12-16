@@ -83,7 +83,7 @@ coroutine.wrap(function()
 			print(result)
 		end
 
-		local boloProfile, result = client.getProfile("Bolodefchoco#0000") -- Gets Tigrounette's profile
+		local boloProfile, result = client.getProfile("Bolodefchoco#0000") -- Gets Bolodefchoco's profile
 		if boloProfile then
 			print("Bolo's profile:")
 			print_profileData(boloProfile)

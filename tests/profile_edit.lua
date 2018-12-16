@@ -15,12 +15,12 @@ coroutine.wrap(function()
 			location = "Burning in hell",
 			gender = enumerations.gender.male,
 			presentation = "[b]Heya![/b] I love [color=#FFFFFF]Malibu[/color]"
-		}))
+		})) -- Updates the account's profile
 
 		print("Editing parameters:")
 		print(client.updateParameters({
 			online = true
-		}))
+		})) -- Updates the parameters of the profile
 	end
 
 	client.disconnect()
