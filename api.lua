@@ -144,8 +144,8 @@ local htmlChunk = {
     title                     = '<title>(.-)</title>',
     conversation_icon         = 'cadre%-sujet%-titre"><img (.-)</span>',
     recruitment               = 'Recruitment : (.-)<',
-    greeting_message          = '<h4>Greeting message</h4> (.-) </div>',
-    tribe_presentation        = 'cadre%-presentation"> ([^>]+) </div>',
+    greeting_message          = '<h4>Greeting message</h4> (.+)$',
+    tribe_presentation        = 'cadre%-presentation"> (.-) </div>',
     blacklist_name            = 'cadre%-ignore%-nom">(.-)</span>',
     tribe_rank_list           = '<h4>Ranks</h4>(.-)</div>%s+</div>',
     tribe_rank                = '<div class="rang%-tribu"> (.-) </div>',
@@ -842,8 +842,8 @@ return function()
 		@returns boolean Whether the new avatar was set or not
 		@returns string `Result string` or `Error message`
 	]]
-	self.updateAvatar = function(image)
-		assertion("updateAvatar", "string", 1, image)
+	self.changeAvatar = function(image)
+		assertion("changeAvatar", "string", 1, image)
 
 		if not this.isConnected then
 			return false, errorString.not_connected
@@ -2319,11 +2319,23 @@ return function()
 			leaders[counter] = name .. discriminator
 		end)
 
-		local greetingMessage = string.match(body, htmlChunk.greeting_message)
-		if greetingMessage then
-			greetingMessage = string.gsub(greetingMessage, "<br ?/?>", '\n')
+		counter = 0
+		local tmp, greetingMessage, presentation = { }
+		string.gsub(body, htmlChunk.tribe_presentation, function(data)
+			counter = counter + 1
+			tmp[counter] = data
+		end)
+		if counter == 2 then
+			greetingMessage = string.match(tmp[1], htmlChunk.greeting_message)
+			presentation = tmp[2]
+		elseif counter == 1 then
+			local data = string.match(tmp[1], htmlChunk.greeting_message)
+			if data then
+				greetingMessage = data
+			else
+				presentation = tmp[1]
+			end
 		end
-		local presentation = string.match(body, htmlChunk.tribe_presentation)
 
 		return {
 			id = tribeId,
@@ -2368,19 +2380,19 @@ return function()
 		local members  = getBigList(pageNumber, uri, function(members, body, _pageNumber, _totalPages)
 			local counter = 0
 			if tribeId == this.tribeId then
-				string.gsub(body, htmlChunk.community .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.tribe_rank .. ".-" .. htmlChunk.ms_time, function(community, name, discriminator, rank, jointDate)
+				string.gsub(body, htmlChunk.community .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.tribe_rank .. ".-" .. htmlChunk.ms_time, function(community, name, discriminator, _, rank, jointDate)
 					counter = counter + 1
 					members[counter] = {
 						name = name .. discriminator,
 						community = enumerations.community[community],
 						rank = rank,
-						jointTime = jointDate
+						timestamp = tonumber(jointDate)
 					}
 				end)
 			else
 				local displaysRanks = not not string.find(body, htmlChunk.tribe_rank_list)
 				if displaysRanks then
-					string.gsub(body, htmlChunk.community .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.tribe_rank, function(community, name, discriminator, rank)
+					string.gsub(body, htmlChunk.community .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.tribe_rank, function(community, name, discriminator, _, rank)
 						counter = counter + 1
 						members[counter] = {
 							name = name .. discriminator,
@@ -2551,7 +2563,7 @@ return function()
 			postData[#postData + 1] = { "chefs_publics", "on" }
 		end
 
-		return this.performAction(forumUri.update_tribe_parameters, postData, forumUri.profile .. "?pr=" .. this.tribeId)
+		return this.performAction(forumUri.update_tribe_parameters, postData, forumUri.tribe .. "?tr=" .. this.tribeId)
 	end
 	--[[@
 		@file Tribe
@@ -2589,7 +2601,7 @@ return function()
 		end
 		if data.recruitment then
 			local err
-			data.recruitment, err = isEnum(data.recruitment, "forecruitmentStaterum", "data.recruitment")
+			data.recruitment, err = isEnum(data.recruitment, "recruitmentState", "data.recruitment")
 			if err then return false, err end
 
 			postData[#postData + 1] = { "recrutement", data.recruitment }
@@ -2603,13 +2615,13 @@ return function()
 	end
 	--[[@
 		@file Tribe
-		@desc Removes the logo of the account's tribe.
+		@desc Changes the logo of the account's tribe.
 		@param image<string> The new image. An URL or file name.
 		@returns boolean Whether the new logo was set or not
 		@returns string `Result string` or `Error message`
 	]]
-	self.updateTribeLogo = function(image)
-		assertion("updateTribeLogo", "string", 1, image)
+	self.changeTribeLogo = function(image)
+		assertion("changeTribeLogo", "string", 1, image)
 
 		if not this.isConnected then
 			return false, errorString.not_connected

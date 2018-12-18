@@ -55,14 +55,14 @@ coroutine.wrap(function()
 		local location, result, err
 
 		location, result = client.createPrivateMessage("Bolodefchoco#0000", "PM", "[b]hahaha[/b]ha!") -- Creates a private message
+		print("Answering private message:")
 		if location then
-			print("Answering private message:")
 			print(client.answerConversation(location.data.co, "Nice forum!?")) -- Answers the private message
 
+			print("Private message:")
 			local pm
 			pm, err = client.getConversation(location.data) -- Gets the private message data
 			if pm then
-				print("Private message:")
 				print_conversationData(pm)
 			else
 				print(err)
@@ -91,10 +91,10 @@ coroutine.wrap(function()
 			print("Moving the conversation:")
 			print(client.movePrivateConversation(enumerations.inboxLocale.archives, location.data.co)) -- Puts the discussion in the archives
 
+			print("Private conversation:")
 			local conv
 			conv, err = client.getConversation(location.data) -- Gets the private conversation data
 			if conv then
-				print("Private conversation:")
 				print_conversationData(conv)
 			else
 				print(err)

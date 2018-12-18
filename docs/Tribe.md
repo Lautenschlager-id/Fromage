@@ -122,12 +122,12 @@
 >
 
  
->### updateTribeLogo ( image )
+>### changeTribeLogo ( image )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| image | `string` | ✔ | The new image. An URL or file name. |
 >
->Removes the logo of the account's tribe.
+>Changes the logo of the account's tribe.
 >
 >**Returns**
 >

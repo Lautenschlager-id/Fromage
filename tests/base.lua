@@ -1,6 +1,7 @@
 local account = load(io.open("account", 'r'):read("*a"))()
 
 local api = require("../api")
+local enumerations = require("../deps/enumerations")
 
 coroutine.wrap(function()
 	local client = api()

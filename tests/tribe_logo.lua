@@ -7,11 +7,11 @@ coroutine.wrap(function()
 	client.connect(account.username, account.password)
 	
 	if client.isConnected() then
-		print("Updating avatar:")
-		print(client.changeAvatar("http://avatars.atelier801.com/3955/7903955.jpg?1544677221208")) -- Changes the avatar picture
+		print("Updating tribe logo:")
+		print(client.changeTribeLogo("http://avatars.atelier801.com/3955/7903955.jpg?1544677221208")) -- Changes the tribe logo
 
-		print("Removing avatar:")
-		print(client.removeAvatar()) -- Removes the avatar picture
+		print("Removing logo:")
+		print(client.removeTribeLogo()) -- Removes the tribe logo
 	end
 
 	client.disconnect()

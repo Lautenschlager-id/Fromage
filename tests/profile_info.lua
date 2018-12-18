@@ -75,17 +75,17 @@ coroutine.wrap(function()
 	client.connect(account.username, account.password) -- Needs a connection for 'getProfile(nil)'
 	
 	if client.isConnected() then
+		print("Account's profile:")
 		local myProfile, result = client.getProfile() -- Gets account's profile
 		if myProfile then
-			print("Account's profile:")
 			print_profileData(myProfile)
 		else
 			print(result)
 		end
 
+		print("Bolo's profile:")
 		local boloProfile, result = client.getProfile("Bolodefchoco#0000") -- Gets Bolodefchoco's profile
 		if boloProfile then
-			print("Bolo's profile:")
 			print_profileData(boloProfile)
 		else
 			print(result)

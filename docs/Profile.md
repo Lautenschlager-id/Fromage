@@ -15,7 +15,7 @@
 >
 
  
->### updateAvatar ( image )
+>### changeAvatar ( image )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| image | `string` | ✔ | The new image. An URL or file name. |
