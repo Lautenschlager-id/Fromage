@@ -40,6 +40,17 @@ coroutine.wrap(function()
 		else
 			print(err)
 		end
+
+		print("Tribe forum sections:")
+		local sections
+		sections, err = client.getTribeForum() -- Gets the data of the tribe forum
+		if sections then
+			for i = 1, #sections do
+				print((sections[i].tr and ("[" .. sections[i].tr .. "]") or "") .. (sections[i].f and ("[" .. sections[i].f .. ", " .. sections[i].s .. "]") or "") .. " " .. sections[i].name)
+			end
+		else
+			print(err)
+		end
 	end
 
 	client.disconnect()
