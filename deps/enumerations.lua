@@ -281,7 +281,7 @@ enum.location = e(enum.location)
 
 ]]
 enum.displayState = e {
-	open    = 0,
+	active  = 0,
 	locked  = 1,
 	deleted = 2
 }

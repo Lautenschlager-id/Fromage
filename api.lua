@@ -108,7 +108,8 @@ local forumUri = {
     quote                      = "citer",
     element_id                 = "ie",
     poll_id                    = "po",
-    favorite_id                = "fa"
+    favorite_id                = "fa",
+    tribe_forum                = "tribe-forum"
 }
 
 local htmlChunk = {
@@ -164,7 +165,9 @@ local htmlChunk = {
     tribe_list                = '<li class="nav%-header">(.-)</li>.-%?tr=(%d+)"',
     search_list               = '<a href="(topic%?.-)".->%s+(.-)%s+</a></li>',
     message_post_id           = 'numero%-message".-#(%d+)',
-    profile_id                = 'profile%?pr=(.-)"'
+    profile_id                = 'profile%?pr=(.-)"',
+    tribe_section_id          = '"section%?f=(%d+)&s=(%d+)"',
+    empty_section             = '<div class="aucun%-resultat">Empty</div>'
 }
 
 local errorString = {
@@ -300,6 +303,8 @@ do
 	end
 end
 local encodeUrl = function(url)
+	if url == "" then return "" end
+
 	local out = {}
 
 	string.gsub(url, '.', function(letter)
@@ -345,26 +350,44 @@ local getPasswordHash = function(password)
 
 	return base64.encode(table.concat(out))
 end
-local isEnum = function(value, enum, showName, getIndex)
+local isEnum = function(value, enum, showName, getIndex, stringValues)
 	showName = showName and (" (" .. showName .. ")") or ''
 
-	if type(value) == "string" then
-		if not enumerations[enum][value] then
-			return nil, errorString.invalid_enum .. showName
-		end
-		if getIndex then
-			return value
+	if not stringValues then
+		if type(value) == "string" then
+			if not enumerations[enum][value] then
+				return nil, errorString.invalid_enum .. showName
+			end
+			if getIndex then
+				return value
+			else
+				return enumerations[enum][value]
+			end
 		else
-			return enumerations[enum][value]
+			if not enumerations[enum](value) then
+				return nil, errorString.enum_out_of_range .. showName
+			end
+			if getIndex then
+				return enumerations[enum](value)
+			else
+				return value
+			end
 		end
 	else
-		if not enumerations[enum](value) then
-			return nil, errorString.enum_out_of_range .. showName
-		end
-		if getIndex then
-			return enumerations[enum](value)
+		if enumerations[enum][value] then
+			if getIndex then
+				return value
+			else
+				return enumerations[enum][value]
+			end
+		elseif enumerations[enum](value) then
+			if getIndex then
+				return enumerations[enum](value)
+			else
+				return value
+			end
 		else
-			return value
+			return nil, errorString.invalid_enum .. showName
 		end
 	end
 end
@@ -381,6 +404,30 @@ local isValidDate = function(date)
 
 	local nDay, nMonth = tonumber(day), tonumber(month)
 	return (nDay > 0 and nDay < 32 and nMonth > 0 and nMonth < 13), string.format("%02d/%02d" .. (year and "/%04d" or ""), nDay, nMonth, tonumber(year))
+end
+
+-- Debug function
+table.tostring = function(list, depth, stop)
+	depth = depth or 1
+	stop = stop or 0
+
+	local out = {}
+	
+	for k, v in next, list do
+		out[#out + 1] = string.rep("\t", depth) .. ("["..(type(k) == "number" and k or "'" .. k .. "'").."]") .. "="
+		local t = type(v)
+		if t == "table" then
+			out[#out] = out[#out] .. ((stop > 0 and depth > stop) and tostring(v) or table.tostring(v, depth + 1, stop - 1))
+		elseif t == "number" or t == "boolean" then
+			out[#out] = out[#out] .. tostring(v)
+		elseif t == "string" then
+			out[#out] = out[#out] .. string.format("%q", v)
+		else
+			out[#out] = out[#out] .. "nil"
+		end
+	end
+	
+	return "{\r\n" .. table.concat(out, ",\r\n") .. "\r\n" .. string.rep("\t", depth - 1) .. "}"
 end
 
 --[[ Class ]]--
@@ -451,7 +498,7 @@ return function()
 	this.performAction = function(uri, postData, ajaxUri, file)
 		local secretKeys = this.getSecretKeys(ajaxUri)
 		if #secretKeys == 0 then
-			return false, errorString.secret_key_not_found
+			return nil, errorString.secret_key_not_found
 		end
 
 		postData = postData or { }
@@ -502,7 +549,7 @@ return function()
 			for i = 1, _totalPages do
 				tmp, err = getBigList(i, uri, f, false, _totalPages)
 				if err then
-					return false, err
+					return nil, err
 				end
 				table.add(out, tmp)
 			end
@@ -576,11 +623,11 @@ return function()
 
 		local err
 		forum, err = isEnum(forum, "forum", "#1")
-		if err then return false, err end
+		if err then return nil, err end
 		community, err = isEnum(community, "community", "#2", true)
-		if err then return false, err end
+		if err then return nil, err end
 		section, err = isEnum(section, "section", "#3", true)
-		if err then return false, err end
+		if err then return nil, err end
 
 		return {
 			f = forum,
@@ -625,7 +672,7 @@ return function()
 		assertion("connect", "string", 2, userPassword)
 
 		if this.isConnected then
-			return false, errorString.already_connected
+			return nil, errorString.already_connected
 		end
 
 		local success, data = this.performAction(forumUri.identification, {
@@ -654,7 +701,7 @@ return function()
 	]]
 	self.disconnect = function()
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local success, data = this.performAction(forumUri.disconnection, nil, forumUri.acc)
@@ -678,7 +725,7 @@ return function()
 	]]
 	self.requestValidationCode = function()
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return this.performAction(forumUri.get_cert, nil, forumUri.acc)
@@ -694,7 +741,7 @@ return function()
 		assertion("submitValidationCode", "string", 1, code)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local success, data = this.performAction(forumUri.set_cert, {
@@ -720,12 +767,12 @@ return function()
 		assertion("setEmail", { "boolean", "nil" }, 2, registration)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not registration then
 			if not this.hasCertificate then
-				return false, errorString.not_verified
+				return nil, errorString.not_verified
 			end
 		end
 
@@ -745,11 +792,11 @@ return function()
 		assertion("setPassword", "string", 1, password)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not this.hasCertificate then
-			return false, errorString.not_verified
+			return nil, errorString.not_verified
 		end
 
 		local postData = {
@@ -775,7 +822,7 @@ return function()
 
 		if not this.isConnected then
 			if not userName then
-				return false, errorString.not_connected
+				return nil, errorString.not_connected
 			end
 		end
 
@@ -784,7 +831,7 @@ return function()
 
 		local id = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.element_id))) -- Element id
 		if not id then
-			return false, errorString.invalid_user
+			return nil, errorString.invalid_user
 		end
 
 		local name, hashtag, discriminator = string.match(body, htmlChunk.nickname)
@@ -846,17 +893,17 @@ return function()
 		assertion("changeAvatar", "string", 1, image)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local extension = getExtension(image)
 		if not extension then
-			return false, errorString.invalid_extension
+			return nil, errorString.invalid_extension
 		end
 
 		image = getFile(image)
 		if not image then
-			return false, errorString.invalid_file
+			return nil, errorString.invalid_file
 		end
 
 		local file = {
@@ -894,7 +941,7 @@ return function()
 		assertion("updateProfile", { "table", "nil" }, 1, data)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local postData = {
@@ -905,14 +952,14 @@ return function()
 			local err
 			if data.community then
 				data.community, err = isEnum(data.community, "community", "data.community")
-				if err then return false, err end
+				if err then return nil, err end
 				postData[#postData + 1] = { "communaute", data.community }
 			else
 				postData[#postData + 1] = { "communaute", enumerations.community.xx }
 			end
 			if data.birthday then
 				if not isValidDate(data.birthday) then
-					return false, errorString.invalid_date .. " (data.birthday)"
+					return nil, errorString.invalid_date .. " (data.birthday)"
 				end
 				postData[#postData + 1] = { "b_anniversaire", "on" }
 				postData[#postData + 1] = { "anniversaire", data.birthday }
@@ -923,7 +970,7 @@ return function()
 			end
 			if data.gender then
 				data.gender, err = isEnum(data.gender, "gender", "data.gender")
-				if err then return false, err end
+				if err then return nil, err end
 				postData[#postData + 1] = { "b_genre", "on" }
 				postData[#postData + 1] = { "genre", data.gender }
 			end
@@ -943,7 +990,7 @@ return function()
 	]]
 	self.removeAvatar = function()
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return this.performAction(forumUri.remove_avatar, {
@@ -963,7 +1010,7 @@ return function()
 		assertion("updateParameters", { "table", "nil" }, 1, parameters)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local postData = {
@@ -990,7 +1037,7 @@ return function()
 		assertion("getConversation", { "boolean", "nil" }, 2, ignoreFirstMessage)
 
 		if not location.co then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'co'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'co'")
 		end
 
 		if not this.isConnected then
@@ -1074,7 +1121,7 @@ return function()
 		assertion("createPrivateMessage", "string", 3, message)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local success, data = this.performAction(forumUri.create_dialog, {
@@ -1099,7 +1146,7 @@ return function()
 		assertion("createPrivateDiscussion", "string", 3, message)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local success, data = this.performAction(forumUri.create_discussion, {
@@ -1128,11 +1175,11 @@ return function()
 		assertion("createPrivatePoll", { "table", "nil" }, 5, settings)
 
 		if #pollResponses < 2 then
-			return false, errorString.no_poll_responses
+			return nil, errorString.no_poll_responses
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local postData = {
@@ -1167,7 +1214,7 @@ return function()
 		assertion("answerConversation", "string", 2, answer)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local success, data = this.performAction(forumUri.answer_conversation, {
@@ -1190,7 +1237,7 @@ return function()
 
 		local err
 		inboxLocale, err = isEnum(inboxLocale, "inboxLocale", "#1")
-		if err then return false, err end
+		if err then return nil, err end
 
 		local moveAll = false
 		if inboxLocale == enumerations.inboxLocale.bin and not conversationId then
@@ -1201,7 +1248,7 @@ return function()
 		assertion("movePrivateConversation", { "number", "table" }, 2, conversationId)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if type(conversationId) == "number" then
@@ -1227,18 +1274,18 @@ return function()
 		assertion("changeConversationState", { "number", "string" }, 2, conversationId)
 
 		local err
-		displayState, err = isEnum(displayState, "displayState", "#1")
-		if err then return false, err end
+		displayState, err = isEnum(displayState, "displayState", "#1", nil, true)
+		if err then return nil, err end
 
 		if displayState == enumerations.contentState.deleted then
-			return false, errorString.unaivalable_enum
+			return nil, errorString.unaivalable_enum
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
-		return this.performAction((displayState == enumerations.displayState.open and forumUri.reopen_discussion or forumUri.close_discussion), {
+		return this.performAction((displayState == enumerations.displayState.active and forumUri.reopen_discussion or forumUri.close_discussion), {
 			{ "co", conversationId }
 		}, forumUri.conversation .. "?co=" .. conversationId)
 	end
@@ -1253,7 +1300,7 @@ return function()
 		assertion("leaveConversation", { "number", "string" }, 1, conversationId)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return this.performAction(forumUri.leave_discussion, {
@@ -1273,7 +1320,7 @@ return function()
 		assertion("conversationInvite", "string", 2, userName)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return this.performAction(forumUri.invite_discussion, {
@@ -1294,14 +1341,14 @@ return function()
 		assertion("kickConversationMember", { "number", "string" }, 1, userId)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if type(userId) == "string" then
 			local err
 			userId, err = self.getProfile(userId)
 			if err then
-				return false, err
+				return nil, err
 			end
 			userId = userId.id
 		end
@@ -1410,7 +1457,7 @@ return function()
 		assertion("getTopic", { "boolean", "nil" }, 2, ignoreFirstMessage)
 
 		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
@@ -1440,7 +1487,7 @@ return function()
 		string.gsub(navBar, htmlChunk.navigaton_bar_sections, function(href, code)
 			href, err = self.parseUrlData(href)
 			if err then
-				return false, err
+				return nil, err
 			end
 			
 			counter = counter + 1
@@ -1516,11 +1563,11 @@ return function()
 		assertion("getSection", "table", 1, location)
 
 		if not location.f or not location.s then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local path = "?f=" .. location.f .. "&s=" .. location.s
@@ -1538,7 +1585,7 @@ return function()
 		string.gsub(navBar, htmlChunk.navigaton_bar_sections, function(href, code)
 			href, err = self.parseUrlData(href)
 			if err then
-				return false, err
+				return nil, err
 			end
 
 			counter = counter + 1
@@ -1560,12 +1607,28 @@ return function()
 			end
 		end)
 
-		local subsections, counter, totalSubsections = { }, 0
+		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
+
+		local counter, totalTopics = 0
+		_, lastPage = this.getPage(forumUri.section .. path .. "&p=" .. totalPages)
+		if string.find(lastPage, htmlChunk.empty_section) then
+			totalTopics = 0
+		else
+			string.gsub(lastPage, htmlChunk.topic_div, function()
+				counter = counter + 1
+			end)
+
+			local totalTopics = ((totalPages - 1) * 30) + (counter - (totalSubsections and 1 or 0))
+
+			counter = 0
+		end
+
+		local subsections, totalSubsections = { }
 		string.gsub(lastPage, htmlChunk.subsection, function(href, name)
 			counter = counter + 1
 			href, err = self.parseUrlData(href)
 			if err then
-				return false, err
+				return nil, err
 			end
 
 			subsections[counter] = { href, name }
@@ -1576,16 +1639,6 @@ return function()
 			totalSubsections = counter
 		end
 		local isSubsection = #navigation_bar > 3
-
-		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
-
-		counter = 0
-		_, lastPage = this.getPage(forumUri.section .. path .. "&p=" .. totalPages)
-		string.gsub(lastPage, htmlChunk.topic_div, function()
-			counter = counter + 1
-		end)
-
-		local totalTopics = ((totalPages - 1) * 30) + (counter - (totalSubsections and 1 or 0))
 
 		local fixedTopics = 0
 		string.gsub(lastPage, enumerations.topicIcon.postit, function()
@@ -1599,7 +1652,7 @@ return function()
 			f = location.f,
 			s = location.s,
 			navbar = navigation_bar,
-			name = navigation_bar[#navigation_bar][2],
+			name = navigation_bar[#navigation_bar].name,
 			hasSubsections = not not totalSubsections,
 			totalSubsections = totalSubsections,
 			subsections = subsections,
@@ -1628,11 +1681,11 @@ return function()
 		getAllInfo = (getAllInfo == nil and true or getAllInfo)
 
 		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return getBigList(pageNumber, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t, function(messages, body, pageNumber, totalPages)
@@ -1677,11 +1730,11 @@ return function()
 		getAllInfo = (getAllInfo == nil and true or getAllInfo)
 
 		if not location.f or not location.s then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return getList(pageNumber, forumUri.section .. "?f=" .. location.f .. "&s=" .. location.s, function(id, title, timestamp)
@@ -1690,7 +1743,7 @@ return function()
 			if getAllInfo then
 				local tpc, err = self.getTopic({ f = location.f, t = id }, true)
 				if not tpc then
-					return false, err
+					return nil, err
 				end
 
 				return tpc
@@ -1718,7 +1771,7 @@ return function()
 		assertion("getMessageHistory", "table", 2, location)
 
 		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
@@ -1731,7 +1784,7 @@ return function()
 			if messageId then
 				messageId = messageId.id
 			else
-				return false, err
+				return nil, err
 			end
 		end
 
@@ -1764,11 +1817,11 @@ return function()
 		assertion("createTopic", "table", 3, location)
 
 		if not location.f or not location.s then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local success, data = this.performAction(forumUri.create_topic, {
@@ -1792,11 +1845,11 @@ return function()
 		assertion("answerTopic", "table", 2, location)
 
 		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local success, data = this.performAction(forumUri.create_topic, {
@@ -1821,11 +1874,11 @@ return function()
 		assertion("editTopicAnswer", "table", 3, location)
 
 		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if type(messageId) == "string" then
@@ -1834,7 +1887,7 @@ return function()
 			if messageId then
 				messageId = messageId.id
 			else
-				return false, err
+				return nil, err
 			end
 		end
 
@@ -1865,15 +1918,15 @@ return function()
 		assertion("createPoll", { "table", "nil" }, 5, settings)
 
 		if #pollResponses < 2 then
-			return false, errorString.no_poll_responses
+			return nil, errorString.no_poll_responses
 		end
 
 		if not location.f or not location.s then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local postData = {
@@ -1951,11 +2004,11 @@ return function()
 
 		local isPrivatePoll = not not location.co
 		if not isPrivatePoll and (not location.f or not location.t) then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_required_fields_private, "'co'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_required_fields_private, "'co'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local url = (isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or ("?f=" .. location.f .. "&t=" .. location.t))
@@ -1964,13 +2017,13 @@ return function()
 		if optionIsString or (type(option) == "table" and type(option[1]) == "string") then
 			local options, err = self.getPollOptions(location)
 			if err then
-				return false, err
+				return nil, err
 			end
 
 			if optionIsString then
 				local index = table.search(options, option, "value")
 				if not index then
-					return false, errorString.poll_option_not_found
+					return nil, errorString.poll_option_not_found
 				end
 				option = options[index].id
 			else
@@ -1979,7 +2032,7 @@ return function()
 					if tmpSet[options[i]] then
 						options[i] = tmpSet[options[i]].id
 					else
-						return false, errorString.poll_option_not_found
+						return nil, errorString.poll_option_not_found
 					end
 				end
 			end
@@ -1990,7 +2043,7 @@ return function()
 
 			pollId = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.poll_id)))
 			if not pollId then
-				return false, errorString.not_poll
+				return nil, errorString.not_poll
 			end
 		end
 
@@ -2028,11 +2081,11 @@ return function()
 		assertion("likeMessage", "table", 2, location)
 
 		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if type(messageId) == "string" then
@@ -2041,7 +2094,7 @@ return function()
 			if messageId then
 				messageId = messageId.id
 			else
-				return false, err
+				return nil, err
 			end
 		end
 
@@ -2070,11 +2123,11 @@ return function()
 		assertion("updateTopic", "table", 2, location)
 
 		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local topic = this.getTopic(location)
@@ -2085,7 +2138,7 @@ return function()
 
 		local err
 		data.state, err = isEnum(data.state, "displayState", "data.state")
-		if err then return false, err end
+		if err then return nil, err end
 
 		return this.performAction(forumUri.update_topic, {
 			{ 'f', location.f },
@@ -2114,10 +2167,10 @@ return function()
 
 		local err
 		element, err = isEnum(element, "element")
-		if err then return false, err end
+		if err then return nil, err end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		location = location or { }
@@ -2125,14 +2178,14 @@ return function()
 		if element == enumerations.element.message then
 			-- Message ID
 			if not location.f or not location.t then
-				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+				return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 			end
 			if type(elementId) == "string" then
 				elementId, err = self.getMessage(elementId, location)
 				if elementId then
 					elementId = elementId.id
 				else
-					return false, err
+					return nil, err
 				end
 			end
 			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
@@ -2145,7 +2198,7 @@ return function()
 				local err
 				elementId, err = self.getProfile(elementId)
 				if err then
-					return false, err
+					return nil, err
 				end
 				elementId = elementId.id
 			end
@@ -2153,34 +2206,34 @@ return function()
 		elseif element == enumerations.element.private_message then
 			-- Private Message, Message ID
 			if not location.co then
-				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'co'")
+				return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'co'")
 			end
 			if type(elementId) == "string" then
 				elementId, err = self.getMessage(elementId, location)
 				if elementId then
 					elementId = elementId.id
 				else
-					return false, err
+					return nil, err
 				end
 			end
 			link = forumUri.conversation .. "?co=" .. location.co
 		elseif element == enumerations.element.poll then
 			-- Poll ID
 			if not location.f then
-				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+				return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 			end
 			if type(elementId) == "string" then
-				return false, errorString.poll_id
+				return nil, errorString.poll_id
 			end
 			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
 		elseif element == enumerations.element.image then
 			-- Image ID
 			if type(elementId) == "number" then
-				return false, errorString.image_id
+				return nil, errorString.image_id
 			end
 			link = forumUri.view_user_image .. "?im=" .. elementId
 		else
-			return false, errorString.unaivalable_enum 
+			return nil, errorString.unaivalable_enum 
 		end
 
 		return this.performAction(forumUri.report, {
@@ -2208,14 +2261,14 @@ return function()
 
 		local err
 		messageState, err = isEnum(messageState, "messageState")
-		if err then return false, err end
+		if err then return nil, err end
 
 		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local messageIdIsString = type(messageId) == "string"
@@ -2252,15 +2305,15 @@ return function()
 		assertion("changeMessageContentState", "table", 3, location)
 
 		local err
-		contentState, err = isEnum(contentState, "contentState")
-		if err then return false, err end
+		contentState, err = isEnum(contentState, "contentState", nil, true)
+		if err then return nil, err end
 
 		if not location.f or not location.t then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local messageIdIsString = type(messageId) == "string"
@@ -2294,12 +2347,12 @@ return function()
 		assertion("getTribe", { "number", "nil" }, 1, tribeId)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not tribeId then
 			if not this.tribeId then
-				return false, errorString.no_tribe
+				return nil, errorString.no_tribe
 			end
 			tribeId = this.tribeId
 		end
@@ -2365,12 +2418,12 @@ return function()
 		pageNumber = pageNumber or 1
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not tribeId then
 			if not this.tribeId then
-				return false, errorString.no_tribe
+				return nil, errorString.no_tribe
 			end
 			tribeId = this.tribeId
 		end
@@ -2426,7 +2479,7 @@ return function()
 			local head, body = this.getPage(uri .. "&p=" .. totalPages)
 			lastPageQuantity = tonumber(string.match(body, htmlChunk.total_entries))
 			if not lastPageQuantity then
-				return false, errorString.internal
+				return nil, errorString.internal
 			end
 		end
 
@@ -2444,12 +2497,12 @@ return function()
 		assertion("getTribeRanks", { "number", "nil" }, 1, tribeId)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not tribeId then
 			if not this.tribeId then
-				return false, errorString.no_tribe
+				return nil, errorString.no_tribe
 			end
 			tribeId = this.tribeId
 		end
@@ -2458,7 +2511,7 @@ return function()
 
 		local data = string.match(body, htmlChunk.tribe_rank_list)
 		if not data then
-			return false, errorString.no_right
+			return nil, errorString.no_right
 		end
 
 		local ranks, counter = { }, 0
@@ -2484,12 +2537,12 @@ return function()
 		pageNumber = pageNumber or 1
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not tribeId then
 			if not this.tribeId then
-				return false, errorString.no_tribe
+				return nil, errorString.no_tribe
 			end
 			tribeId = this.tribeId
 		end
@@ -2502,6 +2555,35 @@ return function()
 		end, htmlChunk.ms_time .. ".-" .. htmlChunk.tribe_log)
 	end
 	--[[@
+		@desc Gets the sections of a tribe forum.
+		@param location?<table> The location of the tribe forum. Field 'tr' (tribeId) is needed if it's a forum, fields 'f' and 's' are needed if it's a sub-forum. (default = Client's tribe forum)
+		@returns table|nil The data of each section.
+		@returns nil|string Error message, if any occurred.
+	]]
+	self.getTribeForum = function(location)
+		assertion("getTribeForum", { "table", "nil" }, 1, location)
+
+		location = location or { tr = this.tribeId }
+
+		if not location.tr and (not location.f or not location.s) then
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's' / 'tr'")
+		end
+
+		local head, body = this.getPage(forumUri.tribe_forum .. (location.s and ("?f=" .. location.f .. "&s=" .. location.s) or ("?tr=" .. location.tr)))
+
+		local sections, counter = { }, 0
+		string.gsub(body, htmlChunk.tribe_section_id, function(f, s)
+			counter = counter + 1
+			sections[counter] = {
+				f = tonumber(f),
+				s = tonumber(s),
+				tr = location.tr
+			}
+		end)
+
+		return sections
+	end
+	--[[@
 		@file Tribe
 		@desc Updates the account's tribe greeting message.
 		@param message<string> The new message
@@ -2512,11 +2594,11 @@ return function()
 		assertion("updateTribeGreetingMessage", "string", 1, message)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not this.tribeId then
-			return false, errorString.no_tribe
+			return nil, errorString.no_tribe
 		end
 
 		return this.performAction(forumUri.update_tribe_message, {
@@ -2540,11 +2622,11 @@ return function()
 		assertion("updateTribeParameters", "table", 1, parameters)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not this.tribeId then
-			return false, errorString.no_tribe
+			return nil, errorString.no_tribe
 		end
 
 		local postData = {
@@ -2580,11 +2662,11 @@ return function()
 		assertion("updateTribeProfile", "table", 1, data)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not this.tribeId then
-			return false, errorString.no_tribe
+			return nil, errorString.no_tribe
 		end
 
 		local postData = {
@@ -2602,7 +2684,7 @@ return function()
 		if data.recruitment then
 			local err
 			data.recruitment, err = isEnum(data.recruitment, "recruitmentState", "data.recruitment")
-			if err then return false, err end
+			if err then return nil, err end
 
 			postData[#postData + 1] = { "recrutement", data.recruitment }
 		end
@@ -2624,21 +2706,21 @@ return function()
 		assertion("changeTribeLogo", "string", 1, image)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not this.tribeId then
-			return false, errorString.no_tribe
+			return nil, errorString.no_tribe
 		end
 
 		local extension = getExtension(image)
 		if not extension then
-			return false, errorString.invalid_extension
+			return nil, errorString.invalid_extension
 		end
 
 		image = getFile(image)
 		if not image then
-			return false, errorString.invalid_file
+			return nil, errorString.invalid_file
 		end
 
 		local file = {
@@ -2667,11 +2749,11 @@ return function()
 	]]
 	self.removeTribeLogo = function()
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not this.tribeId then
-			return false, errorString.no_tribe
+			return nil, errorString.no_tribe
 		end
 
 		return this.performAction(forumUri.remove_logo, {
@@ -2687,44 +2769,88 @@ return function()
 		@desc string `description` -> Section's description
 		@desc int `min_characters` -> Minimum characters needed for a message in the new section
 		@param data<table> The new section data
-		@param location<table> The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section.
+		@param location?<table> The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section.
 		@returns boolean Whether the section was created or not
 		@returns string if #1, `section's location`, else `Result string` or `Error message`
 	]]
 	self.createSection = function(data, location)
 		assertion("createSection", "table", 1, data)
-		assertion("createSection", "table", 2, location)
+		assertion("createSection", { "table", "nil" }, 2, location)
 
-		if not location.f then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f'")
-		end
-
-		if not data.name or not data.icon or not data.description or not data.min_characters then
-			return false, string.format(errorString.no_required_fields, "data { 'name', 'icon', 'description', 'min_characters' }")
+		if not data.name or not data.icon then
+			return nil, string.format(errorString.no_required_fields, "data { 'name', 'icon' }")
 		end
 
 		local err
-		data.icon, err = isEnum(data.icon, "sectionIcon", "data.icon")
-		if err then return false, err end
+		data.icon, err = isEnum(data.icon, "sectionIcon", "data.icon", nil, true)
+		if err then return nil, err end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not this.tribeId then
-			return false, errorString.no_tribe
+			return nil, errorString.no_tribe
 		end
+
+		if not location then
+			local head, body = this.getPage(forumUri.tribe_forum .. "?tr=" .. this.tribeId)
+			location = {
+				f = tonumber(string.match(body, "%?f=(%d+)"))
+			}
+		end
+
+		if not location.f then
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f'")
+		end
+
+		-- Gets all the ids, then create the section, then get again all the ids and get the only one that did not appear in oldSections
+		local oldSections, err = self.getTribeForum({
+			f = location.f,
+			s = location.s,
+			tr = this.tribeId
+		})
+		if not oldSections then
+			return nil, errorString.internal
+		end
+		oldSections = table.createSet(oldSections, 's')
 
 		local success, data = this.performAction(forumUri.create_section, {
 			{ 'f', location.f },
-			{ 's', (location.s or '') },
-			{ "tr", (location.s and '' or this.tribeId) },
+			{ 's', (location.s or 0) },
+			{ "tr", (location.s and 0 or this.tribeId) },
 			{ "nom", data.name },
 			{ "icone", data.icon },
-			{ "description", data.description },
-			{ "caracteres", data.min_characters }
+			{ "description", (data.description or data.name) },
+			{ "caracteres", (data.min_characters or 4) }
 		}, forumUri.new_section .. "?f=" .. location.f .. (location.s and ("&s=" .. location.s) or ("&tr=" .. this.tribeId)))
-		return returnRedirection(success, data)
+		
+		if success then
+			local currentSections
+			currentSections, err = self.getTribeForum({
+				f = location.f,
+				s = location.s,
+				tr = this.tribeId
+			})
+			if not currentSections then
+				return nil, errorString.internal
+			end
+
+			local id
+			for i = 1, #currentSections do
+				if not oldSections[currentSections[i].s] then
+					id = currentSections[i].s
+					break
+				end
+			end
+
+			return {
+				f = location.f,
+				s = id
+			}
+		else
+			return success, data
+		end
 	end
 	--[[@
 		@file Tribe
@@ -2746,28 +2872,28 @@ return function()
 		assertion("updateSection", "table", 2, location)
 
 		if not location.f or not location.s then
-			return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
-		if not data.min_characters or not data.state then
-			return false, string.format(errorString.no_required_fields, "data { 'min_characters', 'state' }")
+		if not data.state then
+			return nil, string.format(errorString.no_required_fields, "'data.state'")
 		end
 
 		local err
 		if data.icon then
-			data.icon, err = isEnum(data.icon, "sectionIcon", "data.icon")
-			if err then return false, err end
+			data.icon, err = isEnum(data.icon, "sectionIcon", "data.icon", nil, true)
+			if err then return nil, err end
 		end
 		
 		data.state, err = isEnum(data.state, "displayState", "data.state")
-		if err then return false, err end
+		if err then return nil, err end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not this.tribeId then
-			return false, errorString.no_tribe
+			return nil, errorString.no_tribe
 		end
 
 		local section = self.getSection(location)
@@ -2776,10 +2902,10 @@ return function()
 			{ 's', location.s },
 			{ "nom", (data.name or section.name) },
 			{ "icone", (data.icon or section.icon) },
-			{ "description", data.description },
-			{ "caracteres", data.min_characters },
+			{ "description", (data.description or '') },
+			{ "caracteres", (data.min_characters or 4) },
 			{ "etat", data.state },
-			{ "parent", (data.parent or section.parent.location.s or location.s) }
+			{ "parent", (data.parent or (section.parent and section.parent.location.s) or 0) }
 		}, forumUri.edit_section .. "?f=" .. location.f .. "&s=" .. location.s)
 	end
 	--[[@
@@ -2798,11 +2924,11 @@ return function()
 		assertion("setTribeSectionPermissions", "table", 2, location)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		if not this.tribeId then
-			return false, errorString.no_tribe
+			return nil, errorString.no_tribe
 		end
 
 		local ranks = this.getTribeRank(location) -- [i] = { id, name }
@@ -2827,7 +2953,7 @@ return function()
 							permissions[indexes[i]][j] = ranks_by_name[permissions[indexes[i]][j]][1]
 						end
 						if not permissions[indexes[i]][j] then
-							return false, errorString.invalid_id .. " (in #" .. j .. " at '" .. indexes[i] .. "')"
+							return nil, errorString.invalid_id .. " (in #" .. j .. " at '" .. indexes[i] .. "')"
 						end
 					end
 
@@ -2837,7 +2963,7 @@ return function()
 
 					if not ranks_by_id[permissions[indexes[i]][j]] then
 						if permissions[indexes[i]][j] ~= enumerations.misc.non_member then
-							return false, errorString.invalid_id .. " (in #" .. j .. " at '" .. indexes[i] .. "')"
+							return nil, errorString.invalid_id .. " (in #" .. j .. " at '" .. indexes[i] .. "')"
 						end
 					end
 					if not permsSet[permissions[indexes[i]][j]] then
@@ -2879,7 +3005,7 @@ return function()
 		pageNumber = pageNumber or 1
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return getList(pageNumber, forumUri.user_images_grid .. "?pr=" .. this.userId, function(code, _, timestamp)
@@ -2902,7 +3028,7 @@ return function()
 		quantity = quantity or 16
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local r = quantity % 16
@@ -2943,17 +3069,17 @@ return function()
 		assertion("uploadImage", { "boolean", "nil" }, 2, isPublic)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local extension = getExtension(image)
 		if not extension then
-			return false, errorString.invalid_extension
+			return nil, errorString.invalid_extension
 		end
 
 		image = getFile(image)
 		if not image then
-			return false, errorString.invalid_file
+			return nil, errorString.invalid_file
 		end
 
 		local file = {
@@ -2987,7 +3113,7 @@ return function()
 		assertion("deleteMicepixImage", "string", 1, imageId)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return this.performAction(forumUri.remove_image, {
@@ -3019,10 +3145,10 @@ return function()
 
 		local err
 		searchType, err = isEnum(searchType, "searchType", "searchType")
-		if err then return false, err end
+		if err then return nil, err end
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local d, html, f = ''
@@ -3030,7 +3156,7 @@ return function()
 			assertion("search", "table", 3, data)
 
 			if not data.searchLocation or not data.f then
-				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "data { 'searchLocation', 'f' }")
+				return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "data { 'searchLocation', 'f' }")
 			end
 			data.author = data.author or ''
 			data.community = data.community or 0
@@ -3096,7 +3222,7 @@ return function()
 		assertion("getCreatedTopics", { "string", "number", "nil" }, 1, userName)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local head, body = this.getPage(forumUri.topics_started .. "?pr=" .. (userName or this.userId))
@@ -3128,7 +3254,7 @@ return function()
 		assertion("getLastPosts", { "string", "number", "nil" }, 2, userName)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local head, body = this.getPage(forumUri.posts .. "?pr=" .. (userName or this.userId) .. "&p=" .. (pageNumber or 1))
@@ -3159,7 +3285,7 @@ return function()
 	]]
 	self.getFavoriteTopics = function()
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local head, body = this.getPage(forumUri.favorite_topics)
@@ -3174,7 +3300,7 @@ return function()
 			string.gsub(navBar, htmlChunk.navigaton_bar_sections, function(href, code)
 				href, err = self.parseUrlData(href)
 				if err then
-					return false, err
+					return nil, err
 				end
 				
 				_counter = _counter + 1
@@ -3215,7 +3341,7 @@ return function()
 	]]
 	self.getFriendlist = function()
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local head, body = this.getPage(forumUri.friends .. "?pr=" .. this.userId)
@@ -3236,7 +3362,7 @@ return function()
 	]]
 	self.getBlacklist = function()
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local head, body = this.getPage(forumUri.blacklist .. "?pr=" .. this.userId)
@@ -3257,7 +3383,7 @@ return function()
 	]]
 	self.getFavoriteTribes = function()
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local head, body = this.getPage(forumUri.favorite_tribes)
@@ -3297,7 +3423,7 @@ return function()
 			string.gsub(navBar, htmlChunk.navigaton_bar_sections, function(href, code)
 				href, err = self.parseUrlData(href)
 				if err then
-					return false, err
+					return nil, err
 				end
 				
 				_counter = _counter + 1
@@ -3346,7 +3472,7 @@ return function()
 		assertion("addFriend", "string", 1, userName)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return this.performAction(forumUri.add_friend, {
@@ -3364,7 +3490,7 @@ return function()
 		assertion("blacklistUser", "string", 1, userName)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return this.performAction(forumUri.ignore_user, {
@@ -3382,7 +3508,7 @@ return function()
 		assertion("unblacklistUser", "string", 1, userName)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		return this.performAction(forumUri.remove_blacklisted, {
@@ -3405,26 +3531,26 @@ return function()
 
 		local err
 		element, err = isEnum(element, "element")
-		if err then return false, err end
+		if err then return nil, err end
 
 		location = location or { }
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local link
 		if element == enumerations.element.topic then
 			-- Topic ID
 			if not location.f or not location.t then
-				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+				return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 			end
 			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
 		elseif element == enumerations.element.tribe then
 			-- Tribe ID
 			link = forumUri.tribe .. "?tr=" .. elementId
 		else
-			return false, errorString.unaivalable_enum
+			return nil, errorString.unaivalable_enum
 		end
 
 		return this.performAction(forumUri.add_favorite, {
@@ -3446,14 +3572,14 @@ return function()
 		assertion("unfavoriteElement", { "table", "nil" }, 2, location)
 
 		if not this.isConnected then
-			return false, errorString.not_connected
+			return nil, errorString.not_connected
 		end
 
 		local link
 		if location then
 			-- Forum topic
 			if not location or not location.f or not location.t then
-				return false, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+				return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 			end
 			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
 		else
@@ -3476,9 +3602,9 @@ return function()
 
 		local err
 		role, err = isEnum(role, "listRole")
-		if err then return false, err end
+		if err then return nil, err end
 
-		local sucess, result = this.getPage(forumUri.staff .. "?role=" .. role)
+		local success, result = this.getPage(forumUri.staff .. "?role=" .. role)
 		local data, counter = { }, 0
 		string.gsub(result, htmlChunk.nickname, function(name, discriminator)
 			counter = counter + 1
