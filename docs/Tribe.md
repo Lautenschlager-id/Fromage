@@ -154,7 +154,7 @@
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| data | `table` | ✔ | The new section data |
->| location | `table` | ✔ | The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section. |
+>| location | `table` | ✕ | The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section. |
 >
 >Creates a section.<br>
 >The available data are:<br>

@@ -58,3 +58,19 @@
 >| `string`, `nil` | If #1, the user name |
 >| `int`, `nil` | If #1, the user id |
 >
+
+ 
+>### getTribeForum ( location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| location | `table` | ✕ | The location of the tribe forum. Field 'tr' (tribeId) is needed if it's a forum, fields 'f' and 's' are needed if it's a sub-forum. (default = Client's tribe forum) |
+>
+>Gets the sections of a tribe forum.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The data of each section. |
+>| `nil`, `string` | Error message, if any occurred. |
+>

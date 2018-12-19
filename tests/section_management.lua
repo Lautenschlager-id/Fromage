@@ -12,8 +12,8 @@ coroutine.wrap(function()
 		local section, err = client.createSection({
 			name = "API",
 			icon = enumerations.sectionIcon.cogwheel,
-			min_characters = 5
-		}) -- Creates a section in your tribe forum
+		}) -- Creates a section in your tribe forum			min_characters = 5
+
 		if section then
 			print("New section id: " .. section.f .. ", " .. section.s)
 
