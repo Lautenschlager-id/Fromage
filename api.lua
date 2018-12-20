@@ -109,7 +109,8 @@ local forumUri = {
     element_id                 = "ie",
     poll_id                    = "po",
     favorite_id                = "fa",
-    tribe_forum                = "tribe-forum"
+    tribe_forum                = "tribe-forum",
+    answer_topic               = "answer-topic"
 }
 
 local htmlChunk = {
@@ -121,8 +122,8 @@ local htmlChunk = {
     nickname                  = '(%S+)<span class="nav%-header%-hashtag">(#(%d+))',
     total_pages               = '"input%-pagination".-max="(%d+)"',
     post                      = '<div id="m%d',
-    message                   = 'cadre_message_sujet_(%%d+).-id="m%d"(.-"%%s_message.-</div>)',
-    message_data              = 'class="coeur".-(%d+).-message_%d+">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>.-edit_message_%d+.->(.-)</div>',
+    message                   = 'cadre_message_sujet_(%%d+)">%%s+<div id="m%d"(.-</div>%%s+</div>%%s+</div>)',
+    message_data              = 'class="coeur".-(%d+).-message_%d+">(.-)</div>%s+</div>%s+</div>',
     edition_timestamp         = 'cadre%-message%-dates.-(%d+)',
     private_message           = '<div id="m%d" (.-</div>%%s+</div>%%s+</div>%%s+</td>%%s+</tr>)',
     message_content           = 'citer_message_%d+.->(.-)',
@@ -151,7 +152,7 @@ local htmlChunk = {
     tribe_rank_list           = '<h4>Ranks</h4>(.-)</div>%s+</div>',
     tribe_rank                = '<div class="rang%-tribu"> (.-) </div>',
     total_entries             = '(%d+) entries',
-    moderate_message          = 'cadre%-message%-modere%-texte">by ([^,]+)[^:]*:?(.*)%]<',
+    moderate_messaged         = 'cadre%-message%-modere%-texte">by ([^,]+)[^:]*:?(.*)%]<',
     tribe_log                 = '<td> (.-) </td>',
     message_history_log       = 'class="hidden"> (.-) </div>',
     image_id                  = '?im=(%w+)"',
@@ -166,8 +167,9 @@ local htmlChunk = {
     search_list               = '<a href="(topic%?.-)".->%s+(.-)%s+</a></li>',
     message_post_id           = 'numero%-message".-#(%d+)',
     profile_id                = 'profile%?pr=(.-)"',
-    tribe_section_id          = '"section%?f=(%d+)&s=(%d+)"',
-    empty_section             = '<div class="aucun%-resultat">Empty</div>'
+    tribe_section_id          = '"section%?f=(%d+)&s=(%d+)".-/>%s*(.-)%s*</a>',
+    empty_section             = '<div class="aucun%-resultat">Empty</div>',
+    tribe_rank_id             = '<tr id="(%d+)"> <td>(.-)</td>'
 }
 
 local errorString = {
@@ -606,7 +608,9 @@ return function()
 		return {
 			uri = uri,
 			raw_data = raw_data,
-			data = data
+			data = data,
+			id = string.match(raw_data, "#(.-)$"),
+			num_id = string.match(raw_data, "#.*(%d+).*$")
 		}
 	end
 	--[[@
@@ -1384,21 +1388,24 @@ return function()
 		local id, post
 		if not location.co then
 			-- Forum message
-			id, post = string.match(body, string.format(htmlChunk.message, postId, forumUri.edit))
+			id, post = string.match(body, string.format(htmlChunk.message, postId))
 			if not id then
-				return nil, errorString.internal
+				return nil, errorString.interna
 			end
 
 			local isModerated, moderatedBy, reason = false
-			local timestamp, author, authorDiscriminator, _, prestige, msgHtml, content = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.message_data)
+			local timestamp, author, authorDiscriminator, _, prestige, msgHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.message_data)
 			if not timestamp then
-				timestamp, author, authorDiscriminator, _, moderatedBy, reason = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.moderate_message)
+				timestamp, author, authorDiscriminator, _, id, moderatedBy, reason = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.moderated_message)
 				if not timestamp then
-					return nil, errorString.internal
+					return nil, errorString.internal .. (11)
 				end
 				isModerated = true
 			end
+
 			local editTimestamp = string.match(post, htmlChunk.edition_timestamp)
+
+			local content = string.match(post, htmlChunk.message_content)
 
 			return {
 				f = location.f,
@@ -1421,12 +1428,12 @@ return function()
 			-- Private message
 			post = string.match(body, string.format(htmlChunk.private_message, postId))
 			if not post then
-				return nil, errorString.internal .. " (001)"
+				return nil, errorString.internal
 			end
 
 			local timestamp, author, authorDiscriminator, _, id, msgHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.private_message_data)
 			if not timestamp then
-				return nil, errorString.internal .. " (002)"
+				return nil, errorString.internal
 			end
 
 			local content = string.match(post, htmlChunk.message_content)
@@ -1852,7 +1859,7 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local success, data = this.performAction(forumUri.create_topic, {
+		local success, data = this.performAction(forumUri.answer_topic, {
 			{ 'f', location.f },
 			{ 't', location.t },
 			{ "message_reponse", message }
@@ -1868,7 +1875,7 @@ return function()
 		@returns boolean Whether the message content was edited or not
 		@returns string if #1, `post's location`, else `Result string` or `Error message`
 	]]
-	self.editTopicAnswer = function(messageId, message, location)
+	self.editAnswer = function(messageId, message, location)
 		assertion("editTopicAnswer", { "number", "string" }, 1, messageId)
 		assertion("editTopicAnswer", "string", 2, message)
 		assertion("editTopicAnswer", "table", 3, location)
@@ -1891,13 +1898,12 @@ return function()
 			end
 		end
 
-		local success, data = this.performAction(forumUri.edit_message, {
+		return this.performAction(forumUri.edit_message, {
 			{ 'f', location.f },
 			{ 't', location.t },
 			{ 'm', messageId },
 			{ "message", message }
 		}, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
-		return returnRedirection(success, data)
 	end
 	--[[@
 		@file Forum
@@ -2490,11 +2496,13 @@ return function()
 		@file Tribe
 		@desc Gets the ranks of a tribe, if possible.
 		@param tribeId?<int> The tribe id. (default = Client's tribe id)
-		@returns table|nil The names of the tribe ranks
+		@param location?<table> The location where the ranks should be taken (for role IOs, the fields 'f' and 's' are reuiqred)
+		@returns table<string,table>|nil The names of the tribe ranks
 		@returns nil|string The message error, if any occurred
 	]]
-	self.getTribeRanks = function(tribeId)
+	self.getTribeRanks = function(tribeId, location)
 		assertion("getTribeRanks", { "number", "nil" }, 1, tribeId)
+		assertion("getTribeRanks", { "table", "nil" }, 2, location)
 
 		if not this.isConnected then
 			return nil, errorString.not_connected
@@ -2507,18 +2515,33 @@ return function()
 			tribeId = this.tribeId
 		end
 
-		local head, body = this.getPage(forumUri.tribe_members .. "?tr=" .. tribeId)
-
-		local data = string.match(body, htmlChunk.tribe_rank_list)
-		if not data then
-			return nil, errorString.no_right
+		if location and (not location.f or not location.s) then
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's' / 'tr'")
 		end
 
+		local head, body = this.getPage((location and (forumUri.edit_section_permissions .. "?f=" .. location.f .. "&s=" .. location.s) or (forumUri.tribe_members .. "?tr=" .. tribeId)))
+
 		local ranks, counter = { }, 0
-		string.gsub(data, htmlChunk.tribe_rank, function(name)
-			counter = counter + 1
-			ranks[counter] = name
-		end)
+
+		if not location then
+			local data = string.match(body, htmlChunk.tribe_rank_list)
+			if not data then
+				return nil, errorString.no_right
+			end
+
+			string.gsub(data, htmlChunk.tribe_rank, function(name)
+				counter = counter + 1
+				ranks[counter] = name
+			end)
+		else
+			string.gsub(body, htmlChunk.tribe_rank_id, function(id, name)
+				counter = counter + 1
+				ranks[counter] = {
+					name = name,
+					id = id
+				}
+			end)
+		end
 
 		return ranks
 	end
@@ -2572,11 +2595,12 @@ return function()
 		local head, body = this.getPage(forumUri.tribe_forum .. (location.s and ("?f=" .. location.f .. "&s=" .. location.s) or ("?tr=" .. location.tr)))
 
 		local sections, counter = { }, 0
-		string.gsub(body, htmlChunk.tribe_section_id, function(f, s)
+		string.gsub(body, htmlChunk.tribe_section_id, function(f, s, name)
 			counter = counter + 1
 			sections[counter] = {
 				f = tonumber(f),
 				s = tonumber(s),
+				name = name,
 				tr = location.tr
 			}
 		end)
@@ -2931,13 +2955,13 @@ return function()
 			return nil, errorString.no_tribe
 		end
 
-		local ranks = this.getTribeRank(location) -- [i] = { id, name }
-		local ranks_by_id = table.createSet(ranks, 1) -- [id] = { id, name }
-		local ranks_by_name = table.createSet(ranks, 2) -- [name] = { id, name }
+		local ranks = self.getTribeRanks(nil, location)
+		local ranks_by_id = table.createSet(ranks, "id")
+		local ranks_by_name = table.createSet(ranks, "name")
 
 		local indexes = { "canRead", "canAnswer", "canCreateTopic", "canModerate", "canManage" }
 
-		local defaultPermission = { ranks[1][1] }
+		local defaultPermission = { ranks[1].id }
 
 		-- Checks for duplicates, transform strings in IDs, adds the leader id if necessary
 		for i = 1, #indexes do
@@ -2950,14 +2974,14 @@ return function()
 						if permissions[indexes[i]][j] == "non_member" then
 							permissions[indexes[i]][j] = enumerations.misc.non_member
 						else
-							permissions[indexes[i]][j] = ranks_by_name[permissions[indexes[i]][j]][1]
+							permissions[indexes[i]][j] = ranks_by_name[permissions[indexes[i]][j]].id
 						end
 						if not permissions[indexes[i]][j] then
 							return nil, errorString.invalid_id .. " (in #" .. j .. " at '" .. indexes[i] .. "')"
 						end
 					end
 
-					if not hasLeader and permissions[indexes[i]][j] == ranks[1][1] then
+					if not hasLeader and permissions[indexes[i]][j] == ranks[1].id then
 						hasLeader = true
 					end
 
@@ -2972,7 +2996,7 @@ return function()
 					end
 				end
 				if not hasLeader then
-					permissions[indexes[i]][#permissions[indexes[i]] + 1] = ranks[1][1]
+					permissions[indexes[i]][#permissions[indexes[i]] + 1] = ranks[1].id
 				end
 			else
 				permissions[indexes[i]] = defaultPermission

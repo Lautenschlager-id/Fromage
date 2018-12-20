@@ -32,10 +32,11 @@
 >
 
  
->### getTribeRanks ( tribeId )
+>### getTribeRanks ( tribeId, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| tribeId | `int` | ✕ | The tribe id. (default = Client's tribe id) |
+>| location | `table` | ✕ | The location where the ranks should be taken (for role IOs, the fields 'f' and 's' are reuiqred) |
 >
 >Gets the ranks of a tribe, if possible.
 >
@@ -43,7 +44,7 @@
 >
 >| Type | Description |
 >| :-: | - |
->| `table`, `nil` | The names of the tribe ranks |
+>| `table<string,table>`, `nil` | The names of the tribe ranks |
 >| `nil`, `string` | The message error, if any occurred |
 >
 
