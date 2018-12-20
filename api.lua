@@ -123,10 +123,10 @@ local htmlChunk = {
     total_pages               = '"input%-pagination".-max="(%d+)"',
     post                      = '<div id="m%d',
     message                   = 'cadre_message_sujet_(%%d+)">%%s+<div id="m%d"(.-</div>%%s+</div>%%s+</div>)',
-    message_data              = 'class="coeur".-(%d+).-message_%d+">(.-)</div>%s+</div>%s+</div>',
+    message_data              = 'class="coeur".-(%d+).-message_%d+">(.-)</div>%s+</div>',
     edition_timestamp         = 'cadre%-message%-dates.-(%d+)',
     private_message           = '<div id="m%d" (.-</div>%%s+</div>%%s+</div>%%s+</td>%%s+</tr>)',
-    message_content           = 'citer_message_%d+.->(.-)',
+    message_content           = '"%s_message_%d" .->(.-)<',
     private_message_data      = '<.-id="message_(%d+)">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>',
     navigation_bar            = 'barre%-navigation.->(.-)</ul>',
     navigaton_bar_sections    = '<a.-href="(.-)".->%s*(.-)%s*</a>',
@@ -152,7 +152,7 @@ local htmlChunk = {
     tribe_rank_list           = '<h4>Ranks</h4>(.-)</div>%s+</div>',
     tribe_rank                = '<div class="rang%-tribu"> (.-) </div>',
     total_entries             = '(%d+) entries',
-    moderate_messaged         = 'cadre%-message%-modere%-texte">by ([^,]+)[^:]*:?(.*)%]<',
+    moderated_message         = 'cadre%-message%-modere%-texte">.-by ([^,]+)[^:]*:?%s*(.*)%s*%]<',
     tribe_log                 = '<td> (.-) </td>',
     message_history_log       = 'class="hidden"> (.-) </div>',
     image_id                  = '?im=(%w+)"',
@@ -1390,22 +1390,22 @@ return function()
 			-- Forum message
 			id, post = string.match(body, string.format(htmlChunk.message, postId))
 			if not id then
-				return nil, errorString.interna
+				return nil, errorString.internal
 			end
 
 			local isModerated, moderatedBy, reason = false
 			local timestamp, author, authorDiscriminator, _, prestige, msgHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.message_data)
 			if not timestamp then
-				timestamp, author, authorDiscriminator, _, id, moderatedBy, reason = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.moderated_message)
+				timestamp, author, authorDiscriminator, _, moderatedBy, reason = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.moderated_message)
 				if not timestamp then
-					return nil, errorString.internal .. (11)
+					return nil, errorString.internal
 				end
 				isModerated = true
 			end
 
 			local editTimestamp = string.match(post, htmlChunk.edition_timestamp)
 
-			local content = string.match(post, htmlChunk.message_content)
+			local content = string.match(body, string.format(htmlChunk.message_content, forumUri.edit, id))
 
 			return {
 				f = location.f,
@@ -1419,7 +1419,7 @@ return function()
 				content = content,
 				messageHtml = msgHtml,
 				isEdited = not not editTimestamp,
-				edit_timestamp = tonumber(editTimestamp),
+				editionTimestamp = tonumber(editTimestamp),
 				isModerated = isModerated,
 				moderatedBy = moderatedBy,
 				reason = reason
@@ -1436,7 +1436,7 @@ return function()
 				return nil, errorString.internal
 			end
 
-			local content = string.match(post, htmlChunk.message_content)
+			local content = string.match(body, string.format(htmlChunk.message_content, forumUri.quote, id))
 
 			return {
 				f = 0,
@@ -1544,7 +1544,7 @@ return function()
 			t = location.t,
 			elementId = ie,
 			navbar = navigation_bar,
-			title = navigation_bar[#navigation_bar][2],
+			title = navigation_bar[#navigation_bar].name,
 			isFixed = isFixed,
 			isLocked = isLocked,
 			isDeleted = isDeleted,

@@ -47,6 +47,44 @@ Author : %s
 	))
 end
 
+local print_messageData = function(data)
+	local f                = data.f
+	local co               = data.co
+	local p                = data.p
+	local post             = data.post
+	local timestamp        = data.timestamp
+	local author           = data.author
+	local id               = data.id
+	local content          = data.content
+	local messageHtml      = data.messageHtml
+
+	print(string.format([[
+f       : %d
+co      : %d
+p       : %d
+Post id : %d
+Id      : %d
+
+Author     : %s
+Created in : %s
+
+HTML Content : %s
+Content      : %s
+	]],
+		f,
+		co,
+		p,
+		post,
+		id,
+
+		author,
+		timestamp,
+
+		messageHtml,
+		content
+	))
+end
+
 coroutine.wrap(function()
 	local client = api()
 	client.connect(account.username, account.password)
@@ -91,11 +129,20 @@ coroutine.wrap(function()
 			print("Moving the conversation:")
 			print(client.movePrivateConversation(enumerations.inboxLocale.archives, location.data.co)) -- Puts the discussion in the archives
 
-			print("Private conversation:")
+			print("Getting private conversation:")
 			local conv
 			conv, err = client.getConversation(location.data) -- Gets the private conversation data
 			if conv then
 				print_conversationData(conv)
+
+				print("Getting message data:")
+				local message
+				message, err = client.getMessage('1', location.data) -- conv.firstMessage, gets the data of a message
+				if message then
+					print_messageData(message)
+				else
+					print(err)
+				end
 			else
 				print(err)
 			end
