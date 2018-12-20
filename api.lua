@@ -128,7 +128,7 @@ local htmlChunk = {
     private_message           = '<div id="m%d" (.-</div>%%s+</div>%%s+</div>%%s+</td>%%s+</tr>)',
     message_content           = '"%s_message_%d" .->(.-)<',
     private_message_data      = '<.-id="message_(%d+)">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>',
-    navigation_bar            = 'barre%-navigation.->(.-)</ul>',
+    navigation_bar            = '"barre%-navigation.->(.-)</ul>',
     navigaton_bar_sections    = '<a.-href="(.-)".->%s*(.-)%s*</a>',
     navigaton_bar_sec_content = '^<(.+)>%s*(.+)%s*$',
     date                      = '(%d+/%d+/%d+)',
@@ -139,10 +139,10 @@ local htmlChunk = {
     profile_tribe             = 'cadre%-tribu%-nom">(.-)</span>.-tr=(%d+)',
     profile_avatar            = 'http://avatars%.atelier801%.com/%d+/%d+%.%a+%?%d+',
     profile_soulmate          = 'Soul mate :</span>.-',
-    subsection                = '"cadre%-section%-titre%-mini.-(section.-)".- (.-) </a>',
+    subsection                = '"cadre%-section%-titre%-mini.-(section.-)".->%s+([^>]+)%s+</a>',
     profile_presentation      = 'cadre%-presentation">%s*(.-)%s*</div></div></div>',
     topic_div                 = '<div class="row">',
-    section_icon              = 'sections/(.-)%.png',
+    section_icon              = 'sections/(.-%.png)',
     title                     = '<title>(.-)</title>',
     conversation_icon         = 'cadre%-sujet%-titre"><img (.-)</span>',
     recruitment               = 'Recruitment : (.-)<',
@@ -162,7 +162,7 @@ local htmlChunk = {
     message_html              = 'Message</a></span> :%s+(.-)%s*</div>%s+</td>%s+</tr>',
     admin_name                = 'cadre%-type%-auteur%-admin">(.-)</span>',
     favorite_topics           = '<td rowspan="2">(.-)</td>%s+<td rowspan="2">',
-    section_topic             = 'href="topic.-t=(%d+).-">%s+(.-)%s+</a>%s+</td>',
+    section_topic             = 'cadre%-sujet%-%titre.-href="topic%?.-&t=(%d+).-".->%s+([^>]+)%s+</a>',
     tribe_list                = '<li class="nav%-header">(.-)</li>.-%?tr=(%d+)"',
     search_list               = '<a href="(topic%?.-)".->%s+(.-)%s+</a></li>',
     message_post_id           = 'numero%-message".-#(%d+)',
@@ -630,12 +630,17 @@ return function()
 		if err then return nil, err end
 		community, err = isEnum(community, "community", "#2", true)
 		if err then return nil, err end
-		section, err = isEnum(section, "section", "#3", true)
+		section, err = isEnum(section, "section", "#3", true, true)
 		if err then return nil, err end
+
+		local s = enumerations.location[community][enumerations.forum(forum)][section]
+		if not s then
+			return nil, errorString.enum_out_of_range .. " (section)"
+		end
 
 		return {
 			f = forum,
-			s = enumerations.location[community][forum][section]
+			s = s
 		}
 	end
 	--[[@
@@ -1588,7 +1593,7 @@ return function()
 		local navigation_bar, community = { }
 		local counter = 0
 
-		local err
+		local err, lastHtml
 		string.gsub(navBar, htmlChunk.navigaton_bar_sections, function(href, code)
 			href, err = self.parseUrlData(href)
 			if err then
@@ -1603,6 +1608,7 @@ return function()
 					name = name
 				}
 
+				lastHtml = html
 				if not community then
 					community = string.match(html, htmlChunk.community)
 				end
@@ -1613,6 +1619,9 @@ return function()
 				}
 			end
 		end)
+		if not lastHtml then
+			return nil, errorString.internal
+		end
 
 		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
 
@@ -1625,12 +1634,12 @@ return function()
 				counter = counter + 1
 			end)
 
-			local totalTopics = ((totalPages - 1) * 30) + (counter - (totalSubsections and 1 or 0))
+			totalTopics = ((totalPages - 1) * 30) + (counter - (totalSubsections and 1 or 0))
 
 			counter = 0
 		end
 
-		local subsections, totalSubsections = { }
+		local subsections, totalSubsections = { }, 0
 		string.gsub(lastPage, htmlChunk.subsection, function(href, name)
 			counter = counter + 1
 			href, err = self.parseUrlData(href)
@@ -1638,7 +1647,10 @@ return function()
 				return nil, err
 			end
 
-			subsections[counter] = { href, name }
+			subsections[counter] = {
+				location = href,
+				name = name
+			}
 		end)
 		if counter == 0 then
 			subsections = nil
@@ -1647,27 +1659,30 @@ return function()
 		end
 		local isSubsection = #navigation_bar > 3
 
-		local fixedTopics = 0
-		string.gsub(lastPage, enumerations.topicIcon.postit, function()
-			fixedTopics = fixedTopics + 1
+		local totalFixedTopics = 0
+		string.gsub(body, enumerations.topicIcon.postit, function()
+			totalFixedTopics = totalFixedTopics + 1
 		end)
 
-		local icon = string.match(body, htmlChunk.section_icon)
+		local icon = string.match(lastHtml, htmlChunk.section_icon)
 		icon = enumerations.sectionIcon(icon) or icon
+		if not icon then
+			return nil, errorString.internal
+		end
 
 		return {
 			f = location.f,
 			s = location.s,
 			navbar = navigation_bar,
 			name = navigation_bar[#navigation_bar].name,
-			hasSubsections = not not totalSubsections,
+			hasSubsections = totalSubsections > 0,
 			totalSubsections = totalSubsections,
 			subsections = subsections,
 			isSubsection = isSubsection,
 			parent = (isSubsection and (navigation_bar[#navigation_bar - 1]) or nil),
 			pages = totalPages,
 			totalTopics = totalTopics,
-			fixedTopics = fixedTopics,
+			totalFixedTopics = totalFixedTopics,
 			community = (community and enumerations.community[community] or nil),
 			icon = icon
 		}
@@ -1725,16 +1740,18 @@ return function()
 		@file Forum
 		@desc Gets the messages of a topic.
 		@param location<table> The topic location. Fields 'f' and 't' are needed.
+		@param getAllInfo?<boolean> Whether the message data should be simple (ids only) or complete (getTopic). (default = true)
 		@param pageNumber?<int> The topic page. To list ALL messages, use `0`. (default = 1)
-		@param getAllInfo?<boolean> Whether the message data should be simple (ids only) or complete (getMessage). (default = true)
+		@returns table|nil The list of topics
+		@returns nil|string Error Message
 	]]
-	self.getSectionTopics = function(location, pageNumber, getAllInfo)
+	self.getSectionTopics = function(location, getAllInfo, pageNumber)
 		assertion("getSectionTopics", "table", 1, location)
-		assertion("getSectionTopics", { "number", "nil" }, 2, pageNumber)
-		assertion("getSectionTopics", { "boolean", "nil" }, 3, getAllInfo)
+		assertion("getSectionTopics", { "boolean", "nil" }, 2, getAllInfo)
+		assertion("getSectionTopics", { "number", "nil" }, 1, pageNumber)
 
-		pageNumber = pageNumber or 1
 		getAllInfo = (getAllInfo == nil and true or getAllInfo)
+		pageNumber = pageNumber or 1
 
 		if not location.f or not location.s then
 			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
@@ -1763,7 +1780,7 @@ return function()
 					timestamp = tonumber(timestamp)
 				}
 			end
-		end, htmlChunk.section_topic .. ".-" .. htmlChunk.ms_time)
+		end, htmlChunk.section_topic .. ".- on .-" .. htmlChunk.ms_time)
 	end
 	--[[@
 		@file Forum

@@ -44,7 +44,7 @@ Author : %s
 
 isPoll : %s
 pollId : %s
-	]],
+]],
 		f,
 		t,
 		enumerations.community(community), community, -- Can be nil if it's a forum topic

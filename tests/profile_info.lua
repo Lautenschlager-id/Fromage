@@ -44,7 +44,6 @@ Tribe Id : %s
 Avatar : %s
 
 Presentation : %s
-
 ]], 
 		name,
 		id,

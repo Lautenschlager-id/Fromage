@@ -30,8 +30,7 @@ Favorite Id  : %s
 
 Greetings : %s
 
-presentation : %s
-
+Presentation : %s
 ]], 
 		id,
 		name,

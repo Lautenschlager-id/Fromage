@@ -70,7 +70,7 @@ Created in : %s
 
 HTML Content : %s
 Content      : %s
-	]],
+]],
 		f,
 		co,
 		p,

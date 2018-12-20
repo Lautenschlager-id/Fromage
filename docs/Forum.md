@@ -60,15 +60,22 @@
 
 
  
->### getSectionTopics ( location, pageNumber, getAllInfo )
+>### getSectionTopics ( location, getAllInfo, pageNumber )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
+>| getAllInfo | `boolean` | ✕ | Whether the message data should be simple (ids only) or complete (getTopic). (default = true) |
 >| pageNumber | `int` | ✕ | The topic page. To list ALL messages, use `0`. (default = 1) |
->| getAllInfo | `boolean` | ✕ | Whether the message data should be simple (ids only) or complete (getMessage). (default = true) |
 >
 >Gets the messages of a topic.
-
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The list of topics |
+>| `nil`, `string` | Error Message |
+>
 
  
 >### getMessageHistory ( messageId, location )
@@ -123,7 +130,7 @@
 >
 
  
->### editTopicAnswer ( messageId, message, location )
+>### editAnswer ( messageId, message, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| messageId | `int`, `string` | ✔ | The message id. Use `string` if it's the post number. |

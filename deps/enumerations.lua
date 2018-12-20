@@ -70,32 +70,18 @@ enum.forum = e {
 
 ]]
 enum.section = e {
-	atelier801 = e {
-        announcements = -1,
-        discussions   = 0,
-        off_topic     = 1,
-        forum_games   = 2,
-        tribes        = 3
-	},
-	transformice = e {
-        map_submissions = -1,
-        discussions     = 0,
-        map_editor      = 1,
-        modules         = 2,
-        fanart          = 3,
-        suggestions     = 4,
-        bugs            = 5,
-        archives        = 6
-	},
-	bouboum = e {
-		discussions = 0
-	},
-	fortoresse = e {
-		discussions = 0
-	},
-	nekodancer = e {
-		discussions = 0
-	}
+	announcements   = "announcements", 
+	discussions     = "discussions",
+	off_topic       = "off_topic",
+	forum_games     = "forum_games",
+	tribes          = "tribes",
+	map_submissions = "map_submissions",
+	map_editor      = "map_editor",
+	modules         = "modules",
+	fanart          = "fanart",
+	suggestions     = "suggestions",
+	bugs            = "bugs",
+	archives        = "archives",
 }
 --@ Private enum
 local section_ID = {
@@ -230,6 +216,34 @@ local section_ID = {
 		others       = 028
 	}
 }
+local section_VALUE = {
+	atelier801 = {
+        announcements = -1,
+        discussions   = 0,
+        off_topic     = 1,
+        forum_games   = 2,
+        tribes        = 3
+	},
+	transformice = {
+        map_submissions = -1,
+        discussions     = 0,
+        map_editor      = 1,
+        modules         = 2,
+        fanart          = 3,
+        suggestions     = 4,
+        bugs            = 5,
+        archives        = 6
+	},
+	bouboum = {
+		discussions = 0
+	},
+	fortoresse = {
+		discussions = 0
+	},
+	nekodancer = {
+		discussions = 0
+	}
+}
 --[[@
 
 ]]
@@ -237,7 +251,7 @@ enum.location = { }
 for community, ids in next, section_ID do
 	enum.location[community] = { }
 
-	for forum, data in pairs(enum.section) do
+	for forum, data in next, section_VALUE do
 		enum.location[community][forum] = { }
 
 		local id = ids[forum]
@@ -245,7 +259,7 @@ for community, ids in next, section_ID do
 			id = ids.others
 		end
 
-		for name, value in pairs(data) do
+		for name, value in next, data do
 			if value >= 0 then
 				enum.location[community][forum][name] = value + id
 			end
