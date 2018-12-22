@@ -33,6 +33,22 @@
 >
 
  
+>### getPoll ( location )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| location | `table` | ✔ | The poll location. Fields 'f' and 't' are needed if the poll is public, 'co' if it's private. |
+>
+>Gets the data of a poll.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The poll data, if there's any |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+ 
 >### getSection ( location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -158,26 +174,10 @@
 >
 
  
->### getPollOptions ( location )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| location | `table` | ✔ | The location of the poll. Fields 'f' and 't' are needed. |
->
->Gets all the options of a poll.
->
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `table`, `nil` | Poll options, if any is found. The indexes are `id` and `value`. |
->| `string`, `nil` | Error message |
->
-
- 
 >### answerPoll ( option, location, pollId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| option | `int`, `table`, `string` | ✔ | The poll option to be selected. You can insert its ID or its text (highly recommended). For multiple options polls, use a table with `ints` or `strings`. |
+>| option | `int`, `table`, `string` | ✔ | The poll option to be selected. You can insert its ID (highly recommended) or its text. For multiple options polls, use a table with `ints` or `strings`. |
 >| location | `table` | ✔ | The location where the poll answer should be recorded. Fields 'f' and 't' are needed for forum poll, 'co' for private poll. |
 >| pollId | `int` | ✕ | The poll id. It's obtained automatically if no value is given. |
 >

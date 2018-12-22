@@ -52,7 +52,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether the report was recorded or not |
->| `string` | `Result string` or `Error message` |
+>| `string` | `Result string` or `Error message`	 |
 >
 
  
