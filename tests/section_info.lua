@@ -75,9 +75,14 @@ coroutine.wrap(function()
 				print_sectionData(section)
 
 				print("Getting section topics:")
-				local topics = client.getSectionTopics(location, false, 1) -- Gets all the topics of the first page with simple info only
-				for i = 1, #topics do
-					print("[" .. topics[i].f .. ", " .. topics[i].s .. "] " .. topics[i].t .. " - " .. topics[i].title .. ", created on " .. os.date("%c", topics[i].timestamp / 1000))
+				local topics
+				topics, err = client.getSectionTopics(location, false, 1) -- Gets all the topics of the first page with simple info only
+				if topics then
+					for i = 1, #topics do
+						print("[" .. topics[i].f .. ", " .. topics[i].s .. "] " .. topics[i].t .. " - " .. topics[i].title .. ", created on " .. os.date("%c", topics[i].timestamp / 1000))
+					end
+				else
+					print(err)
 				end
 			else
 				print(err)

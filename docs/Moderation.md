@@ -1,14 +1,31 @@
 ## Methods
->### updateTopic ( data, location )
+>### getMessageHistory ( messageId, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| data | `table` | ✔ | The new topic data |
+>| messageId | `int`, `string` | ✔ | The message id. Use `string` if it's the post number. |
+>| location | `table` | ✔ | The message location. Fields 'f' and 't' are needed. |
+>
+>Gets the edition logs of a message, if possible.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The edition logs |
+>| `nil`, `string` | The message error, if any occurred |
+>
+
+ 
+>### updateTopic ( location, data )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
 >| location | `table` | ✔ | The location where the topic is. Fields 'f' and 't' are needed. |
+>| data | `table` | ✕ | The new topic data. (default = Old title, active) |
 >
 >Updates a topic state, location and parameters.<br>
 >The available data are:<br>
 >string `title` -> Topic's title<br>
->boolean `postit` -> Whether the topic should be fixed or not<br>
+>boolean `fixed` -> Whether the topic should be fixed or not<br>
 >string|int `state` -> The topic's state. An enum from `enumerations.displayState` (index or value)
 >
 >**Returns**

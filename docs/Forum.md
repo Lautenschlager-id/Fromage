@@ -49,15 +49,22 @@
 >
 
  
->### getTopicMessages ( location, pageNumber, getAllInfo )
+>### getTopicMessages ( location, getAllInfo, pageNumber )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
->| pageNumber | `int` | ✕ | The topic page. To list ALL messages, use `0`. (default = 1) |
 >| getAllInfo | `boolean` | ✕ | Whether the message data should be simple (ids only) or complete (getMessage). (default = true) |
+>| pageNumber | `int` | ✕ | The topic page. To list ALL messages, use `0`. (default = 1) |
 >
 >Gets the messages of a topic.
-
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The list of messages |
+>| `nil`, `string` | Error Message |
+>
 
  
 >### getSectionTopics ( location, getAllInfo, pageNumber )
@@ -75,23 +82,6 @@
 >| :-: | - |
 >| `table`, `nil` | The list of topics |
 >| `nil`, `string` | Error Message |
->
-
- 
->### getMessageHistory ( messageId, location )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| messageId | `int`, `string` | ✔ | The message id. Use `string` if it's the post number. |
->| location | `table` | ✔ | The message location. Fields 'f' and 't' are needed. |
->
->Gets the edition logs of a message, if possible.
->
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `table`, `nil` | The edition logs |
->| `nil`, `string` | The message error, if any occurred |
 >
 
  

@@ -9,15 +9,14 @@ local print_conversationData = function(data)
 	local isPrivateMessage = data.isPrivateMessage
 	local isDiscussion     = data.isDiscussion
 	local isPoll           = data.isPoll
-	local pollId           = data.pollId
-	local pollOptions      = data.pollOptions
+	local poll             = data.poll
 	local isLocked         = data.isLocked
 	local pages            = data.pages
  	local totalMessages    = data.totalMessages
 	local firstMessage     = data.firstMessage
 
 	print(string.format([[
-conversation ID : %d
+Conversation ID : %d
 
 Title          : %s
 Locked         : %s
@@ -26,8 +25,8 @@ Total messages : %d
 
 Priv Message [%s] | Priv Disc [%s] | Priv Poll [%s]
 
-Poll ID      : %s
-Poll Options : %s
+Is Poll : %s
+Poll ID : %s
 
 Author : %s
 ]], 
@@ -40,10 +39,10 @@ Author : %s
 
 		(isPrivateMessage and 'x' or ''), (isDiscussion and 'x' or ''), (isPoll and 'x' or ''),
 
-		pollId,
-		(pollOptions and table.concat(pollOptions, " ; ") or nil),
+		isPoll,
+		(isPoll and poll.id or nil)
 
-		firstMessage.author
+		(firstMessage and firstMessage.author or nil)
 	))
 end
 

@@ -5,6 +5,7 @@ local enumerations = require("../deps/enumerations")
 
 local print_topicData = function(data)
 	local f             = data.f
+	local s             = data.s
 	local t             = data.t
 	local elementId     = data.elementId
 	local navbar        = data.navbar
@@ -19,11 +20,11 @@ local print_topicData = function(data)
 	local firstMessage  = data.firstMessage
 	local community     = data.community
 	local isPoll        = data.isPoll
-	local pollId        = data.pollId
-	local pollOptions   = data.pollOptions
+	local poll          = data.poll
 
 	print(string.format([[
 f         : %d
+s         : %d
 t         : %d
 Community : %s [%s]
 
@@ -42,10 +43,11 @@ Total messages : %d
 
 Author : %s
 
-isPoll : %s
-pollId : %s
+Is Poll : %s
+Poll ID : %s
 ]],
 		f,
+		s,
 		t,
 		enumerations.community(community), community, -- Can be nil if it's a forum topic
 
@@ -62,10 +64,10 @@ pollId : %s
 		pages,
 		totalMessages,
 
-		firstMessage.author,
+		(firstMessage and firstMessage.author or nil),
 
 		isPoll,
-		pollId
+		(isPoll and poll.id or nil)
 	))
 end
 
@@ -134,6 +136,7 @@ coroutine.wrap(function()
 	client.connect(account.username, account.password)
 	
 	if client.isConnected() then
+		print("Creating topic:")
 		local topic = client.createTopic("Testing API", "Aye Hey Hi", {
 			f = enumerations.forum.atelier801,
 			s = 167
@@ -149,6 +152,17 @@ coroutine.wrap(function()
 			message, err = client.getMessage('1', topic.data) -- topicData.firstMessage, gets the data of a message
 			if message then
 				print_messageData(message)
+			else
+				print(err)
+			end
+
+			print("Getting all topic messages:")
+			local messages
+			messages, err = client.getTopicMessages(topic.data, false, 1) -- Gets all the messages of the first page with simple info only
+			if messages then
+				for i = 1, #messages do
+					print("[" .. messages[i].f .. ", " .. messages[i].t .. "] " .. messages[i].id .. ", page " .. messages[i].p .. ", post #" .. messages[i].post)
+				end
 			else
 				print(err)
 			end

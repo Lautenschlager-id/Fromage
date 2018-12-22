@@ -12,7 +12,7 @@ coroutine.wrap(function()
 		if images then
 			print("Pages: " .. images._pages)
 			for i = 1, #images do
-				print("Image " .. images[i].imageId .. " created on " .. os.date("%c", images[i].timestamp / 1000))
+				print("Image " .. images[i].id .. " created on " .. os.date("%c", images[i].timestamp / 1000))
 			end
 		else
 			print(err)
@@ -22,7 +22,7 @@ coroutine.wrap(function()
 		images, err = client.getLatestImages() -- Gets the last 16 images hosted on micepix
 		if images then
 			for i = 1, #images do
-				print("Image " .. images[i].imageId .. " created by " .. images[i].author .. " on " .. os.date("%c", images[i].timestamp / 1000))
+				print("Image " .. images[i].id .. " created by " .. images[i].author .. " on " .. os.date("%c", images[i].timestamp / 1000))
 			end
 		else
 			print(err)
