@@ -7,6 +7,7 @@
 Using a command prompt or terminal, create a new directory where you would like to install Luvit executables.
 
 Follow the installation instructions at https://luvit.io/install.html according to your operational system.
+###### If you get installation issues, get the executables using this: [Get-Lit](https://github.com/SinisterRectus/get-lit).
 
 The files `lit`, `luvit`, and `luvit` are needed. Make sure that you have them in your new directory once its installed, otherwise the API will not work.
 

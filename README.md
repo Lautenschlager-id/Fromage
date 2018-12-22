@@ -16,6 +16,7 @@ Join the **_[Fifty Shades of Lua](https://discord.gg/quch83R)_** [discord](https
 ## Installation
 
 - To install Luvit, visit https://luvit.io and follow the instructions provided for your platform.
+	- If you have problems installing it on Windows, please use [Get-Lit](https://github.com/SinisterRectus/get-lit)
 - To install **Fromage**, run `lit install Lautenschlager-id/fromage`
 - Run your bot script using, for example, `luvit bot.lua`
 
