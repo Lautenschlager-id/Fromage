@@ -60,6 +60,18 @@
 >
 
  
+>### enumerations (  )
+>Gets the enumerations.<br>
+>Use `require "fromage/libs/enumerations"` if you don't want to use this.
+>
+>**Returns**
+>
+>| Type | Description |
+>| :-: | - |
+>| `table` | The enumerations table |
+>
+
+ 
 >### getTribeForum ( location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |

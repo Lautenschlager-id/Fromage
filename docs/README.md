@@ -36,6 +36,7 @@ With the three executables installed, run `lit install Lautenschlager-id/fromage
 	- [getLocation](API.md#getlocation---forum--community--section--)
 	- [formatNickname](API.md#formatnickname---nickname--)
 	- [isConnected](API.md#isconnected-----)
+	- [enumerations](API.md#enumerations-----)
 	- [getTribeForum](API.md#gettribeforum---location--)
 - [Settings](Settings.md)
 	- [connect](Settings.md#connect---username--userpassword--)

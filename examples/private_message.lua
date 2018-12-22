@@ -1,8 +1,6 @@
-local account = load(io.open("account", 'r'):read("*a"))()
-
 local api = require("fromage")
 local client = api()
-local enumerations = require("../deps/enumerations")
+local enumerations = client.enumerations()
 
 local print_conversationData = function(data)
 	local co               = data.co
@@ -86,7 +84,7 @@ Content      : %s
 end
 
 coroutine.wrap(function()
-	client.connect(account.username, account.password)
+	client.connect("Username#0000", "password")
 	
 	if client.isConnected() then
 		local location, result, err

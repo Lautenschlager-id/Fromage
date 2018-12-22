@@ -1,8 +1,6 @@
-local account = load(io.open("account", 'r'):read("*a"))()
-
 local api = require("fromage")
 local client = api()
-local enumerations = require("../deps/enumerations")
+local enumerations = client.enumerations()
 
 local print_tribeData = function(data)
 	local id               = data.id
@@ -52,7 +50,7 @@ Presentation : %s
 end
 
 coroutine.wrap(function()
-	client.connect(account.username, account.password)
+	client.connect("Username#0000", "password")
 	
 	if client.isConnected() then
 		print("Tribe's profile:")

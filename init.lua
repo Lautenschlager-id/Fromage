@@ -643,6 +643,14 @@ return function()
 	self.isConnected = function()
 		return this.isConnected, this.userName, this.userId
 	end
+	--[[@
+		@desc Gets the enumerations.
+		@desc Use `require "fromage/libs/enumerations"` if you don't want to use this.
+		@returns table The enumerations table
+	]]
+	self.enumerations = function()
+		return enumerations
+	end
 
 	--[[ Methods ]]
 	-- > Settings

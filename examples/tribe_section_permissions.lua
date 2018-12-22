@@ -1,8 +1,6 @@
-local account = load(io.open("account", 'r'):read("*a"))()
-
 local api = require("fromage")
 local client = api()
-local enumerations = require("../deps/enumerations")
+local enumerations = client.enumerations()
 
 local checkPermission = function(perm)
 	io.write("\n\t[y/n]\t" .. perm .. "? ")
@@ -13,7 +11,7 @@ local checkPermission = function(perm)
 end
 
 coroutine.wrap(function()
-	client.connect(account.username, account.password)
+	client.connect("Username#0000", "password")
 	
 	if client.isConnected() then
 		local section = client.createSection({

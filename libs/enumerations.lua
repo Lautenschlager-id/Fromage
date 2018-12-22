@@ -246,6 +246,11 @@ local section_VALUE = {
 }
 --[[@
 	@desc The path location of the official sections on forums, by community.
+	@struct {
+		enums.community
+			enums.forum
+				enums.section
+	}
 ]]
 enum.location = { } 
 for community, ids in next, section_ID do
@@ -278,18 +283,6 @@ enum.location.xx = e {
 		map_submissions = 102
 	}
 }
---[[ Structure
-enum
-	location
-		en
-			atelier801
-				discussions
-			transformice
-				modules
-		xx
-			transformice
-				map_submissions
-]]
 enum.location = e(enum.location)
 --[[@
 	@desc The ids of the available display states of an element. (Topic)

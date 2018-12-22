@@ -1,11 +1,9 @@
-local account = load(io.open("account", 'r'):read("*a"))()
-
 local api = require("fromage")
 local client = api()
-local enumerations = require("../deps/enumerations")
+local enumerations = client.enumerations()
 
 coroutine.wrap(function()
-	client.connect(account.username, account.password)
+	client.connect("Username#0000", "password")
 	
 	if client.isConnected() then
 		local bolosTopic = client.getCreatedTopics("Bolodefchoco#0000")[1].location.data -- Gets the topics created by someone, then its location

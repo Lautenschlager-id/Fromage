@@ -1,11 +1,9 @@
-local account = load(io.open("account", 'r'):read("*a"))()
-
 local api = require("fromage")
 local client = api()
-local enumerations = require("../deps/enumerations")
+local enumerations = client.enumerations()
 
 coroutine.wrap(function()
-	client.connect(account.username, account.password)
+	client.connect("Username#0000", "password")
 	
 	if client.isConnected() then
 		print("Creating topic:")
@@ -26,7 +24,7 @@ coroutine.wrap(function()
 				print(client.editAnswer(message.num_id, "Testing [b]two[/b]", topic.data)) -- Edits the message sent
 				
 				local subClient = api()
-				subClient.connect(account.sub_username, account.sub_password) -- Logs in another account to like
+				subClient.connect("Username2#0000", "password2") -- Logs in another account to like
 				print("Liking message:")
 				print(subClient.likeMessage(message.num_id, topic.data)) -- Likes a message
 				subClient.disconnect()

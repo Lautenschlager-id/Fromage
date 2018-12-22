@@ -1,11 +1,9 @@
-local account = load(io.open("account", 'r'):read("*a"))()
-
 local api = require("fromage")
 local client = api()
 
 coroutine.wrap(function()
 	print("Connecting to " .. account.username)
-	local isConnected, result = client.connect(account.username, account.password) -- Connects
+	local isConnected, result = client.connect("Username#0000", "password") -- Connects
 	print(isConnected, result)
 
 	if isConnected then

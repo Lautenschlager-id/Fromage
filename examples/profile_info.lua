@@ -1,8 +1,6 @@
-local account = load(io.open("account", 'r'):read("*a"))()
-
 local api = require("fromage")
 local client = api()
-local enumerations = require("../deps/enumerations")
+local enumerations = client.enumerations()
 
 local print_profileData = function(data)
 	local name             = data.name
@@ -71,7 +69,7 @@ Presentation : %s
 end
 
 coroutine.wrap(function()
-	client.connect(account.username, account.password) -- Needs a connection for 'getProfile(nil)'
+	client.connect("Username#0000", "password") -- Needs a connection for 'getProfile(nil)'
 	
 	if client.isConnected() then
 		print("Account's profile:")
