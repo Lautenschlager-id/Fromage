@@ -16,6 +16,7 @@
 - _getProfile_.**fullname**
 - _getProfile_.**discriminator**
 - _getConversation_.**invitedUsers**
+- **timestamp** is now a field when _getTopicMessages_ is called with _getAllInfo` as false.
 
 ### Changes
 - **isConnected** now only returns whether the account is logged or not, other values were split in getters.
