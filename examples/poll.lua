@@ -2,50 +2,6 @@ local api = require("fromage")
 local client = api()
 local enumerations = client.enumerations()
 
-local print_pollData = function(data)
-	-- data.options is in a separated loop
-	local f             = data.f
-	local t             = data.t
-	local co            = data.co
-	local id            = data.id
-	local author        = data.author
-	local totalVotes    = data.totalVotes
-	local isPublic      = data.isPublic
-	local allowMultiple = data.allowMultiple
-	local messageHtml   = data.messageHtml
-	local timestamp     = data.timestamp
-
-	print(string.format([[
-f       : %s
-t       : %s
-co      : %s
-Poll ID : %d
-
-Author     : %s
-Created in : %d
-
-Total Votes    : %d
-Is Public      : %s
-Allow Multiple : %s
-
-Message : %s
-]],
-		f,
-		t,
-		co,
-		id,
-
-		author,
-		timestamp,
-
-		totalVotes,
-		isPublic,
-		allowMultiple,
-
-		messageHtml
-	))
-end
-
 coroutine.wrap(function()
 	client.connect("Username#0000", "password")
 	
@@ -56,12 +12,7 @@ coroutine.wrap(function()
 				local pollData
 				pollData, err = client.getPoll(poll.data) -- Gets the private poll data
 				if pollData then
-					print_pollData(pollData)
-	
-					print("Poll options:")
-					for i = 1, #pollData.options do
-						print("[" .. pollData.options[i].id .. "] " .. pollData.options[i].value .. (pollData.options[i].votes and (" (" .. pollData.options[i].votes .. ") [" .. (pollData.options[i].votes / pollData.totalVotes * 100) .. "]") or ""))
-					end
+					p(pollData)
 	
 					print("Answering poll:")
 					print(client.answerPoll(pollData.options[1].id, poll.data, pollData.id)) -- Answers a poll

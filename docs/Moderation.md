@@ -1,93 +1,139 @@
-## Methods
+# Methods
 >### getMessageHistory ( messageId, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| messageId | `int`, `string` | ✔ | The message id. Use `string` if it's the post number. |
->| location | `table` | ✔ | The message location. Fields 'f' and 't' are needed. |
+>| location | `table` | ✔ | The message location. |
 >
->Gets the edition logs of a message, if possible.
+>**@`location` parameter's structure**:
 >
->**Returns**
+>| Index | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| 	f | `int` | ✔ | The forum id. |
+>| 	t | `int` | ✔ | The topic id. |
+>
+>Gets the edition logs of a message.
+>
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
->| `table`, `nil` | The edition logs |
->| `nil`, `string` | The message error, if any occurred |
+>| `table`, `nil` | The edition logs. |
+>| `nil`, `string` | Error message. |
 >
-
- 
+>**Table structure**:
+>```Lua
+>{
+>	[n] = {
+>		bbcode = "", -- The bbcode of the edited message.
+>		timestamp = 0 -- The timestamp of the edited message.
+>	}
+>}
+>```
+---
 >### updateTopic ( location, data )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| location | `table` | ✔ | The location where the topic is. Fields 'f' and 't' are needed. |
->| data | `table` | ✕ | The new topic data. (default = Old title, active) |
+>| location | `table` | ✔ | The location where the topic is located. |
+>| data | `table` | ✕ | The new topic data. |
 >
->Updates a topic state, location and parameters.<br>
->The available data are:<br>
->string `title` -> Topic's title<br>
->boolean `fixed` -> Whether the topic should be fixed or not<br>
->string|int `state` -> The topic's state. An enum from `enumerations.displayState` (index or value)
+>**@`location` parameter's structure**:
 >
->**Returns**
+>| Index | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| 	f | `int` | ✔ | The forum id. |
+>| 	s | `int` | ✔ | The section id. |
+>| 	t | `int` | ✔ | The topic id. |
+>
+>**@`data` parameter's structure**:
+>
+>| Index | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| 	title | `string` | ✕ | The new title of the topic. <sub>(default = Current title)</sub> |
+>| 	fixed | `boolean` | ✕ | Whether the topic should be fixed or not. <sub>(default = false)</sub> |
+>| 	state | `string`, `int` | ✕ | The state of the topic. An enum from 'enumerations.displayState'. (index or value) |
+>
+>Updates a topic state, location, and parameters.
+>
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
->| `boolean` | Whether the topic was updated or not |
->| `string` | if #1, `topic's url`, else `Result string` or `Error message` |
+>| `string`, `nil` | Result string. |
+>| `nil`, `string` | Error message. |
 >
-
- 
+---
 >### reportElement ( element, elementId, reason, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| element | `string`, `int` | ✔ | The element type. An enum from `enumerations.element` (index or value) |
+>| element | `string`, `int` | ✔ | The element type. An enum from `enumerations.element`. (index or value) |
 >| elementId | `int`, `string` | ✔ | The element id. |
 >| reason | `string` | ✔ | The report reason. |
->| location | `table` | ✕ | The location of the report. If it's a forum message the field 'f' is needed, if it's a private message the field 'co' is needed. |
+>| location | `table` | ✕ | The location of the report. |
+>
+>**@`location` parameter's structure**:
+>
+>| Index | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| 	f | `int` | ✕ | The forum id. (needed for forum element) |
+>| 	t | `int` | ✕ | The topic id. (needed for forum element) |
+>| 	co | `int` | ✕ | The private conversation id. (needed for private element) |
 >
 >Reports an element. (e.g: message, profile)
 >
->**Returns**
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
->| `boolean` | Whether the report was recorded or not |
->| `string` | `Result string` or `Error message`	 |
+>| `string`, `nil` | Result string. |
+>| `nil`, `string` | Error message. |
 >
-
- 
+---
 >### changeMessageState ( messageId, messageState, location, reason )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| messageId | `int`, `table`, `string` | ✔ | The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`. |
->| messageState | `string`, `int` | ✔ | The message state. An enum from `enumerations.messageState` (index or value) |
->| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
->| reason | `string` | ✕ | The reason for changing the message state |
+>| messageId | `int`, `table`, `string` | ✔ | The message id. Use `string` if it's the post number. For multiple message ids, use a table with `ints` or `strings`. |
+>| messageState | `string`, `int` | ✔ | The message state. An enum from `enumerations.messageState`. (index or value) |
+>| location | `table` | ✔ | The message location. |
+>| reason | `string` | ✕ | The state change reason. |
 >
->Changes the state of the message. (e.g: active, moderated)
+>**@`location` parameter's structure**:
 >
->**Returns**
+>| Index | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| 	f | `int` | ✔ | The forum id. |
+>| 	t | `int` | ✔ | The topic id. |
+>
+>Changes the state of a message. (e.g: active, moderated)
+>
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
->| `boolean` | Whether the message(s) state was(were) changed or not |
->| `string` | if #1, `post's url`, else `Result string` or `Error message` |
+>| `string`, `nil` | Result string. |
+>| `nil`, `string` | Error message. |
 >
-
- 
+---
 >### changeMessageContentState ( messageId, contentState, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| messageId | `int`, `table`, `string` | ✔ | The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`. |
+>| messageId | `int`, `table`, `string` | ✔ | The message id. Use `string` if it's the post number. For multiple message ids, use a table with `ints` or `strings`. |
 >| contentState | `string` | ✔ | An enum from `enumerations.contentState` (index or value) |
->| location | `table` | ✔ | The topic location. Fields 'f' and 't' are needed. |
+>| location | `table` | ✔ | The topic location. |
 >
->Changes the restriction state for a message.
+>**@`location` parameter's structure**:
 >
->**Returns**
+>| Index | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| 	f | `int` | ✔ | The forum id. |
+>| 	t | `int` | ✔ | The topic id. |
+>
+>Changes the restriction state of a message.
+>
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
->| `boolean` | Whether the message content state was changed or not |
->| `string` | if #1, `post's url`, else `Result string` or `Error message` |
+>| `string`, `nil` | Result string. |
+>| `nil`, `string` | Error message. |
 >

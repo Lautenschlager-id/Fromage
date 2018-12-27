@@ -4,7 +4,8 @@ local enum = { }
 enum.enum = enum
 
 --[[@
-	@desc The id of each forum element.
+	@desc The ID of each forum element.
+	@type int
 ]]
 enum.element = e {
 	topic           = 03,
@@ -16,7 +17,8 @@ enum.element = e {
 	image           = 45
 }
 --[[@
-	@desc The id of each forum server community.
+	@desc The ID of each forum community.
+	@type int
 ]]
 enum.community = e({
 	xx = 01,
@@ -57,7 +59,8 @@ enum.community = e({
 	return index
 end)
 --[[@
-	@desc The id of each forum.
+	@desc The ID of each forum.
+	@type int
 ]]
 enum.forum = e {
 	atelier801   = 000005,
@@ -67,10 +70,11 @@ enum.forum = e {
 	nekodancer   = 508574
 }
 --[[@
-	@desc The official section names.
+	@desc The names of the official sections.
+	@type string
 ]]
 enum.section = e {
-	announcements   = "announcements", 
+	announcements   = "announcements",
 	discussions     = "discussions",
 	off_topic       = "off_topic",
 	forum_games     = "forum_games",
@@ -245,14 +249,13 @@ local section_VALUE = {
 	}
 }
 --[[@
-	@desc The path location of the official sections on forums, by community.
-	@struct {
-		enums.community
-			enums.forum
-				enums.section
-	}
+	@desc The path location of the official sections on forums.
+	@type table
+	@tree [enums.community]
+	@tree 	└ [enums.forum]
+	@tree 		└ [enums.section]
 ]]
-enum.location = { } 
+enum.location = { }
 for community, ids in next, section_ID do
 	enum.location[community] = { }
 
@@ -285,7 +288,8 @@ enum.location.xx = e {
 }
 enum.location = e(enum.location)
 --[[@
-	@desc The ids of the available display states of an element. (Topic)
+	@desc The IDs of the available display states of an element. (Topic, Section, ...)
+	@type int
 ]]
 enum.displayState = e {
 	active  = 0,
@@ -293,7 +297,8 @@ enum.displayState = e {
 	deleted = 2
 }
 --[[@
-	@desc The ids of the available locales on the inbox.
+	@desc The IDs of the available locales on the mail box.
+	@type int
 ]]
 enum.inboxLocale = e {
 	inbox    = 0,
@@ -301,21 +306,24 @@ enum.inboxLocale = e {
 	bin      = 2
 }
 --[[@
-	@desc The ids of the available display states of a message.
+	@desc The IDs of the available display states of a message.
+	@type int
 ]]
 enum.messageState = e {
 	active    = 0,
 	moderated = 1
 }
 --[[@
-	@desc The content state situations.
+	@desc The content state for image (un)restrictions.
+	@type string
 ]]
 enum.contentState = e {
 	restricted   = "true",
 	unrestricted = "false"
 }
 --[[@
-	@desc The discriminator role ids.
+	@desc The IDs of the roles of each staff discriminator.
+	@type int
 ]]
 enum.role = e {
 	administrator = 01,
@@ -324,7 +332,8 @@ enum.role = e {
 	mapcrew       = 20
 }
 --[[@
-	@desc The search type ids.
+	@desc The IDs of the search types.
+	@type int
 ]]
 enum.searchType = e {
 	message_topic = 04,
@@ -332,7 +341,8 @@ enum.searchType = e {
 	player        = 10
 }
 --[[@
-	@desc Search locations for `SearchType.message_topic`.
+	@desc The search locales for the specific `SearchType.message_topic` enumeration.
+	@type int
 ]]
 enum.searchLocation = e {
 	posts  = 1,
@@ -341,6 +351,7 @@ enum.searchLocation = e {
 }
 --[[@
 	@desc The available icons for sections.
+	@type string
 ]]
 enum.sectionIcon = e {
 	nekodancer     = "nekodancer.png",
@@ -363,24 +374,24 @@ enum.sectionIcon = e {
 	runforcheese   = "runforcheese.png"
 }
 --[[@
-	@desc The available role ids for the staff-list.
+	@desc The available roles for the staff list.
+	@type int
 ]]
 enum.listRole = e {
 	moderator         =    0001,
-	super_moderator   =    nil, -- 0002
 	sentinel          =    0004,
 	arbitre           =    0008,
 	mapcrew           =    0016,
 	module_team       =    0032,
 	anti_hack_brigade =    0064,
 	administrator     =    0128,
-	fashion_squad     =    nil, -- 0256
 	votecrew          =    0512,
 	translator        =    1024,
 	funcorp           =    2048
 }
 --[[@
-	@desc The forum titles.
+	@desc The available forum titles.
+	@type string
 ]]
 enum.forumTitle = e {
 	[1] = "Citizen",
@@ -392,6 +403,7 @@ enum.forumTitle = e {
 }
 --[[@
 	@desc The available icons for a topic.
+	@type string
 ]]
 enum.topicIcon = e {
 	poll               = "sondage%.png",
@@ -403,6 +415,7 @@ enum.topicIcon = e {
 }
 --[[@
 	@desc The available genders on profile.
+	@type int
 ]]
 enum.gender = e {
 	none   = 0,
@@ -411,14 +424,16 @@ enum.gender = e {
 }
 --[[@
 	@desc The recruitment state for tribes.
+	@type int
 ]]
 enum.recruitmentState = e {
 	closed = 0,
 	open   = 1
 }
 --[[@
-	@desc Miscellaneous values.
+	@desc Miscellaneous values for various purposes.
 	@desc `non_member` -> Tribe section permission to allow non members to have access to something.
+	@type int
 ]]
 enum.misc = e {
 	non_member = -2

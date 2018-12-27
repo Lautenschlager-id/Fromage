@@ -14,9 +14,7 @@ coroutine.wrap(function()
 			s = enumerations.location.br.atelier801.discussions
 		}) -- Searches for messages
 		if postList then
-			for i = 1, #postList do
-				print("[" .. enumerations.community(postList[i].community) .. "] [" .. postList[i].location.data.f .. ", " .. postList[i].location.data.t .. "] '" .. postList[i].topicTitle .. "' #" .. postList[i].post .. " by " .. postList[i].author .. ", on " .. os.date("%c", postList[i].timestamp / 1000) .. ":\n" .. string.sub(postList[i].messageHtml, 1, 100))
-			end
+			p(postList)
 		else
 			print(err)
 		end
@@ -30,9 +28,7 @@ coroutine.wrap(function()
 			s = enumerations.location.br.atelier801.discussions
 		}) -- Searches for topics and messages
 		if postList then
-			for i = 1, #postList do
-				print("[" .. enumerations.community(postList[i].community) .. "] [" .. postList[i].location.data.f .. ", " .. postList[i].location.data.t .. "] '" .. postList[i].topicTitle .. "' #" .. postList[i].post .. " by " .. postList[i].author .. ", on " .. os.date("%c", postList[i].timestamp / 1000) .. ":\n" .. string.sub(postList[i].messageHtml, 1, 100))
-			end
+			p(postList)
 		else
 			print(err)
 		end
@@ -45,9 +41,7 @@ coroutine.wrap(function()
 			s = enumerations.location.xx.atelier801.announcements
 		}) -- Searches for topics
 		if postList then
-			for i = 1, #postList do
-				print("[" .. enumerations.community(postList[i].community) .. "] [" .. postList[i].location.data.f .. ", " .. postList[i].location.data.t .. "] '" .. postList[i].title .. "' by " .. postList[i].author .. ", on " .. os.date("%c", postList[i].timestamp / 1000))
-			end
+			p(postList)
 		else
 			print(err)
 		end
@@ -56,9 +50,7 @@ coroutine.wrap(function()
 		local tribeList
 		tribeList, err = client.search(enumerations.searchType.tribe, "make tfm", 0) -- Searches for a tribe
 		if tribeList then
-			for i = 1, #tribeList do
-				print("[" .. tribeList[i].id .. "] " .. tribeList[i].name)
-			end
+			p(tribeList)
 		else
 			print(err)
 		end
@@ -67,9 +59,7 @@ coroutine.wrap(function()
 		local playerList
 		playerList, err = client.search(enumerations.searchType.player, "bolodef", 0) -- Searches for a player
 		if playerList then
-			for i = 1, #playerList do
-				print("[" .. enumerations.community(playerList[i].community) .. "] " .. playerList[i].name)
-			end
+			p(playerList)
 		else
 			print(err)
 		end

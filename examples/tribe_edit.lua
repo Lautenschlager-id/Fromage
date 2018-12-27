@@ -11,7 +11,10 @@ coroutine.wrap(function()
 
 		print("Updating tribe parameters:")
 		print(client.updateTribeParameters({
-			leader = true
+			displayGreetings = true,
+			displayRanks = true,
+			displayLogs = true,
+			displayLeaders = true
 		})) -- Changes the parameters in the profile of the tribe
 
 		print("Updating tribe profile:")

@@ -1,64 +1,81 @@
-## Methods
+# Methods
 >### getAccountImages ( pageNumber )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| pageNumber | `int` | ✕ | The page number of the gallery. To list ALL the gallery, use `0`. (default = 1) |
+>| pageNumber | `int` | ✕ | The page number of the gallery. To list ALL the gallery, use `0`. <sub>(default = 1)</sub> |
 >
->Gets the images that were hosted in your account.
+>Gets the images that were hosted by the logged account.
 >
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `table`, `nil` | The data of the images. Total pages at `_pages`. |
->| `nil`, `string` | The message error, if any occurred |
->
-
- 
->### getLatestImages ( quantity )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| quantity | `int` | ✕ | The quantity of images needed. Must be a number multiple of 16. (default = 16) |
->
->Gets the latest images that were hosted on Micepix.
->
->**Returns**
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
 >| `table`, `nil` | The data of the images. |
->| `nil`, `string` | The message error, if any occurred |
+>| `nil`, `string` | Error message. |
 >
-
- 
+>**Table structure**:
+>```Lua
+>{
+>	[n] = {
+>		id = "", -- The image id.
+>		timestamp = 0 -- The timestamp of when the image was hosted.
+>	},
+>	_pages = 0 -- The total pages of the images gallery.
+>}
+>```
+---
+>### getLatestImages ( quantity )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| quantity | `int` | ✕ | The quantity of images to be returned. Must be a number multiple of 16. <sub>(default = 16)</sub> |
+>
+>Gets the latest images that were hosted by people on Micepix.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The data of the images. |
+>| `nil`, `string` | Error message. |
+>
+>**Table structure**:
+>```Lua
+>{
+>	[n] = {
+>		hoster = "", -- The name of the hoster of the image.
+>		id = "", -- The image id.
+>		timestamp = 0 -- The timestamp of when the image was hosted.
+>	}
+>}
+>```
+---
 >### uploadImage ( image, isPublic )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| image | `string` | ✔ | The new image. An URL or file name. |
->| isPublic | `boolean` | ✕ | Whether the image should appear in the gallery or not. (default = false) |
+>| isPublic | `boolean` | ✕ | Whether the image should appear in the gallery or not. <sub>(default = false)</sub> |
 >
 >Uploads an image in Micepix.
 >
->**Returns**
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
->| `boolean` | Whether the image was hosted or not |
->| `string` | if #1, `image's location`, else `Result string` or `Error message` |
+>| `table`, `nil` | A parsed-url location object. |
+>| `nil`, `string` | Error message. |
 >
-
- 
+---
 >### deleteMicepixImage ( imageId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| imageId | `string` | ✔ | The image id |
+>| imageId | `string` | ✔ | The image id. |
 >
->Deletes an image from the account's micepix.
+>Deletes an image from the account's micepix gallery.
 >
->**Returns**
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
->| `boolean` | Whether the image was deleted or not |
->| `string` | `Result string` or `Error message` |
+>| `string`, `nil` | Result string. |
+>| `nil`, `string` | Error message. |
 >

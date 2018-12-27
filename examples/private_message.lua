@@ -2,87 +2,6 @@ local api = require("fromage")
 local client = api()
 local enumerations = client.enumerations()
 
-local print_conversationData = function(data)
-	local co               = data.co
-	local title            = data.title
-	local isPrivateMessage = data.isPrivateMessage
-	local isDiscussion     = data.isDiscussion
-	local isPoll           = data.isPoll
-	local poll             = data.poll
-	local isLocked         = data.isLocked
-	local pages            = data.pages
- 	local totalMessages    = data.totalMessages
-	local firstMessage     = data.firstMessage
-
-	print(string.format([[
-Conversation ID : %d
-
-Title          : %s
-Locked         : %s
-Total pages    : %d
-Total messages : %d
-
-Priv Message [%s] | Priv Disc [%s] | Priv Poll [%s]
-
-Is Poll : %s
-Poll ID : %s
-
-Author : %s
-]], 
-		co,
-
-		title,
-		isLocked,
-		pages,
-		totalMessages,
-
-		(isPrivateMessage and 'x' or ''), (isDiscussion and 'x' or ''), (isPoll and 'x' or ''),
-
-		isPoll,
-		(isPoll and poll.id or nil)
-
-		(firstMessage and firstMessage.author or nil)
-	))
-end
-
-local print_messageData = function(data)
-	local f                = data.f
-	local co               = data.co
-	local p                = data.p
-	local post             = data.post
-	local timestamp        = data.timestamp
-	local author           = data.author
-	local id               = data.id
-	local content          = data.content
-	local messageHtml      = data.messageHtml
-
-	print(string.format([[
-f       : %d
-co      : %d
-p       : %d
-Post id : %d
-Id      : %d
-
-Author     : %s
-Created in : %s
-
-HTML Content : %s
-Content      : %s
-]],
-		f,
-		co,
-		p,
-		post,
-		id,
-
-		author,
-		timestamp,
-
-		messageHtml,
-		content
-	))
-end
-
 coroutine.wrap(function()
 	client.connect("Username#0000", "password")
 	
@@ -98,7 +17,7 @@ coroutine.wrap(function()
 			local pm
 			pm, err = client.getConversation(location.data) -- Gets the private message data
 			if pm then
-				print_conversationData(pm)
+				p(pm)
 			else
 				print(err)
 			end
@@ -124,19 +43,19 @@ coroutine.wrap(function()
 			print(client.leaveConversation(location.data.co)) -- Leaves the discussion
 
 			print("Moving the conversation:")
-			print(client.movePrivateConversation(enumerations.inboxLocale.archives, location.data.co)) -- Puts the discussion in the archives
+			print(client.moveConversation(enumerations.inboxLocale.archives, location.data.co)) -- Puts the discussion in the archives
 
 			print("Getting private conversation:")
 			local conv
 			conv, err = client.getConversation(location.data) -- Gets the private conversation data
 			if conv then
-				print_conversationData(conv)
+				p(conv)
 
 				print("Getting message data:")
 				local message
 				message, err = client.getMessage('1', location.data) -- conv.firstMessage, gets the data of a message
 				if message then
-					print_messageData(message)
+					p(message)
 				else
 					print(err)
 				end

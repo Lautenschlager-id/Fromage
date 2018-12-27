@@ -8,10 +8,7 @@ coroutine.wrap(function()
 		print("Account's images:")
 		local images, err = client.getAccountImages(0) -- Gets all images hosted by the account
 		if images then
-			print("Pages: " .. images._pages)
-			for i = 1, #images do
-				print("Image " .. images[i].id .. " created on " .. os.date("%c", images[i].timestamp / 1000))
-			end
+			p(images)
 		else
 			print(err)
 		end
@@ -19,9 +16,7 @@ coroutine.wrap(function()
 		print("Latest images:")
 		images, err = client.getLatestImages() -- Gets the last 16 images hosted on micepix
 		if images then
-			for i = 1, #images do
-				print("Image " .. images[i].id .. " created by " .. images[i].author .. " on " .. os.date("%c", images[i].timestamp / 1000))
-			end
+			p(images)
 		else
 			print(err)
 		end

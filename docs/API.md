@@ -1,88 +1,110 @@
-## Methods
+# Methods
 >### parseUrlData ( href )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| href | `string` | ✔ | The uri and data to be parsed |
+>| href | `string` | ✔ | The URI and data to be parsed. |
 >
 >Parses the URL data.
 >
->**Returns**
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
->| `table`, `nil` | Parsed data. The available indexes are: `uri`, `raw_data` and `data` |
->| `nil`, `string` | Error message |
+>| `table`, `nil` | Parsed data. |
+>| `nil`, `string` | Error message. |
 >
-
- 
+>**Table structure**:
+>```Lua
+>{
+>	uri = "", -- The URI.
+>	raw_data = "", -- The data as string, without the URI.
+>	data = { }, -- The data as index->value. ( f = 0 )
+>	id = "", -- The element id, if any is given
+>	num_id = '0', -- The number of the element id, if any is given. (Still a string)
+>}
+>```
+---
 >### getLocation ( forum, community, section )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| forum | `int`, `string` | ✔ | The forum of the location. An enum from `enumerations.forum` (index or value) |
->| community | `string`, `int` | ✔ | The location community. An enum from `enumerations.community` (index or value) |
->| section | `string`, `int` | ✔ | The section of the location. An enum from `enumerations.section` (index or value) |
+>| forum | `int`, `string` | ✔ | The forum id. An enum from `enumerations.forum`. (index or value) |
+>| community | `string`, `int` | ✔ | The community id. An enum from `enumerations.community`. (index or value) |
+>| section | `string`, `int` | ✔ | The section id. An enum from `enumerations.section`. (index or value) |
 >
->Gets the location of a section on forums based on its community.
+>Gets the location of a section on the forums.
 >
->**Returns**
->
->| Type | Description |
->| :-: | - |
->| `table` | The location table. Fields `f` and `s`. |
->
-
- 
->### formatNickname ( nickname )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| nickname | `string` | ✔ | The nickname to be formated |
->
->Formats a nickname.
->
->**Returns**
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
->| `string` | Formated nickname |
+>| `table`, `nil` | The location. |
+>| `nil`, `string` | Error message. |
 >
-
- 
+>**Table structure**:
+>```Lua
+>{
+>	f = 0, -- The forum id.
+>	s = 0 -- The section id.
+>}
+>```
+---
 >### isConnected (  )
+>
 >Checks whether the instance is connected to an account or not.
 >
->**Returns**
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether there's already a connection or not. |
->| `string`, `nil` | If #1, the user name |
->| `int`, `nil` | If #1, the user id |
 >
-
- 
+---
+>### getUser (  )
+>
+>Gets the instance's account information.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `string`, `nil` | The username of the account. |
+>| `int`, `nil` | The ID of the account. |
+>| `int`, `nil` | the ID of the account's tribe. |
+>
+---
+>### isAccountValidated (  )
+>
+>Checks whether an account was validated by an e-mail code or not.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the account is validated or not. |
+>
+---
 >### enumerations (  )
->Gets the enumerations.<br>
->Use `require "fromage/libs/enumerations"` if you don't want to use this.
 >
->**Returns**
+>Gets the system enumerations.<br>
+>Smoother alias of `require "fromage/libs/enumerations"`.
+>
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
 >| `table` | The enumerations table |
 >
-
- 
->### getTribeForum ( location )
+---
+>### formatNickname ( nickname )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| location | `table` | ✕ | The location of the tribe forum. Field 'tr' (tribeId) is needed if it's a forum, fields 'f' and 's' are needed if it's a sub-forum. (default = Client's tribe forum) |
+>| nickname | `string` | ✔ | The nickname. |
 >
->Gets the sections of a tribe forum.
+>Formats a nickname.
 >
->**Returns**
+>**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
->| `table`, `nil` | The data of each section. |
->| `nil`, `string` | Error message, if any occurred. |
+>| `string` | Formated nickname. |
 >

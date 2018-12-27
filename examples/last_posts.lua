@@ -8,9 +8,7 @@ coroutine.wrap(function()
 		print("Last posts:")
 		local lastPosts, err = client.getLastPosts() -- Gets the last posts
 		if lastPosts then
-			for i = 1, #lastPosts do
-				print("In [" .. lastPosts[i].location.data.f .. ", " .. lastPosts[i].location.data.t .. " - " .. lastPosts[i].topicTitle .. "] post #" .. lastPosts[i].post .. " on " .. os.date("%c", lastPosts[i].timestamp / 1000) .. ":\n" .. string.sub(lastPosts[i].messageHtml, 1, 100))
-			end			
+			p(lastPosts)		
 		else
 			print(err)
 		end

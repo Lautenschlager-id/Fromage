@@ -58,6 +58,7 @@ local forumUri = {
 	images_gallery             = "gallery-images-ajax",
 	index                      = "index",
 	invite_discussion          = "invite-discussion",
+	invited                    = "invited",
 	kick_member                = "kick-discussion-member",
 	leave_discussion           = "quit-discussion",
 	like_message               = "like-message",
@@ -118,6 +119,8 @@ local htmlChunk = {
 	blacklist_name            = 'cadre%-ignore%-nom">(.-)</span>',
 	community                 = 'pays/(..)%.png',
 	conversation_icon         = 'cadre%-sujet%-titre">(.-)</span>%s+</td>%s+</tr>%s+</table>',
+	conversation_member_state = '<span class="cadre%-membre%-conversation.-> %((.-)%)',
+	conversation_members      = '<div class="cadre%-membre%-conversation">(.-)</div>%s+</div>%s+</div>',
 	created_topic_data        = 'href="(topic%?f=%d+&t=%d+).-".->%s+([^>]+)%s+</a>.-%2.-m(%d+)',
 	date                      = '(%d+/%d+/%d+)',
 	edition_timestamp         = 'cadre%-message%-dates.-(%d+)',
@@ -132,6 +135,7 @@ local htmlChunk = {
 	message_data              = 'class="coeur".-(%d+).-message_%d+">(.-)</div>%s+</div>',
 	message_history_log       = 'class="hidden"> (.-) </div>',
 	message_html              = 'Message</a></span> :%s+(.-)%s*</div>%s+</td>%s+</tr>',
+	message_id                = '<div id="message_(%d+)">',
 	message_post_id           = 'numero%-message".-#(%d+)',
 	moderated_message         = 'cadre%-message%-modere%-texte">.-by ([^,]+)[^:]*:?%s*(.*)%s*%]<',
 	ms_time                   = 'data%-afficher%-secondes.->(%d+)',
@@ -145,7 +149,7 @@ local htmlChunk = {
 	post                      = '<div id="m%d',
 	private_message           = '<div id="m%d" (.-</div>%%s+</div>%%s+</div>%%s+</td>%%s+</tr>)',
 	private_message_data      = '<.-id="message_(%d+)">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>',
-	profile_avatar            = 'http://avatars%.atelier801%.com/%d+/%d+%.%a+%?%d+',
+	profile_avatar            = '(http://avatars%.atelier801%.com/%d+/(%d+)%.%a+)',
 	profile_birthday          = 'Birthday :</span> ',
 	profile_data              = 'Messages: </span>(%-?%d+).-Prestige: </span>(%d+).-Level: </span>(%d+)',
 	profile_gender            = 'Gender :.- (%S+)%s+<br>',
@@ -424,7 +428,9 @@ return function()
 		-- Account cookies
 		cookies = { },
 		-- Whether the account has validated its account with a code
-		hasCertificate = false
+		hasCertificate = false,
+		-- Current time since the last login
+		connectionTime = -1
 	}
 	-- External
 	local self = { }
@@ -504,18 +510,56 @@ return function()
 
 		this.setCookies(head)
 
-		return true, body
+		return body
 	end
 
 	-- Gets a page using the headers of the account
 	this.getPage = function(url)
-		return http.request("GET", forumLink .. url, this.getHeaders())
+		local _, body = http.request("GET", forumLink .. url, this.getHeaders())
+		return body
 	end
 
 	--> Private function
+	local getNavbar = function(content)
+		local navBar = string.match(content, htmlChunk.navigation_bar)
+		if not navBar then
+			return nil, errorString.internal .. " (0x1)"
+		end
+
+		local navigation_bar = { }
+		local counter = 0
+
+		local lastHtml, err, html, name, community = ''
+		string.gsub(navBar, htmlChunk.navigation_bar_sections, function(href, code)
+			href, err = self.parseUrlData(href)
+			if not href then
+				return nil, err .. " (0x2)"
+			end
+
+			counter = counter + 1
+			navigation_bar[counter] = {
+				location = href
+			}
+
+			local html, name = string.match(code, htmlChunk.navigation_bar_sec_content)
+			if html then
+				navigation_bar[counter].name = name
+	
+				lastHtml = html
+				if not community then
+					community = string.match(html, htmlChunk.community)
+				end
+			else
+				navigation_bar[counter].name = code
+			end
+		end)
+
+		return navigation_bar, lastHtml, community
+	end
+
 	local getList, getBigList
 	getBigList = function(pageNumber, uri, f, getTotalPages, _totalPages)
-		local head, body = this.getPage(uri .. "&p=" .. math.max(1, pageNumber))
+		local body = this.getPage(uri .. "&p=" .. math.max(1, pageNumber))
 
 		if getTotalPages then
 			_totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
@@ -550,23 +594,30 @@ return function()
 		end, true)
 	end
 
-	local returnRedirection = function(success, data)
-		if success then
+	local redirect = function(data, err)
+		if data then
 			local link = string.match(data, '"redirection":"(.-)"')
 			if link then
 				return self.parseUrlData(link)
 			end
 		end
 
-		return nil, data
+		return nil, err
 	end
 
 	-- > Tool
 	--[[@
 		@desc Parses the URL data.
-		@param href<string> The uri and data to be parsed
-		@returns table|nil Parsed data. The available indexes are: `uri`, `raw_data` and `data`
-		@returns nil|string Error message
+		@param href<string> The URI and data to be parsed.
+		@returns table,nil Parsed data.
+		@returns nil,string Error message.
+		@struct {
+			uri = "", -- The URI.
+			raw_data = "", -- The data as string, without the URI.
+			data = { }, -- The data as index->value. ( f = 0 )
+			id = "", -- The element id, if any is given
+			num_id = '0', -- The number of the element id, if any is given. (Still a string)
+		}
 	]]
 	self.parseUrlData = function(href)
 		assertion("parseUrlData", "string", 1, href)
@@ -575,7 +626,7 @@ return function()
 		if not uri then
 			return nil, errorString.invalid_forum_url
 		end
-		
+
 		local raw_data = data
 
 		local data = { }
@@ -592,11 +643,16 @@ return function()
 		}
 	end
 	--[[@
-		@desc Gets the location of a section on forums based on its community.
-		@param forum<int,string> The forum of the location. An enum from `enumerations.forum` (index or value)
-		@param community<string,int> The location community. An enum from `enumerations.community` (index or value)
-		@param section<string,int> The section of the location. An enum from `enumerations.section` (index or value)
-		@returns table The location table. Fields `f` and `s`.
+		@desc Gets the location of a section on the forums.
+		@param forum<int,string> The forum id. An enum from `enumerations.forum`. (index or value)
+		@param community<string,int> The community id. An enum from `enumerations.community`. (index or value)
+		@param section<string,int> The section id. An enum from `enumerations.section`. (index or value)
+		@returns table,nil The location.
+		@returns nil,string Error message.
+		@struct {
+			f = 0, -- The forum id.
+			s = 0 -- The section id.
+		}
 	]]
 	self.getLocation = function(forum, community, section)
 		assertion("getLocation", { "number", "string" }, 1, forum)
@@ -622,9 +678,50 @@ return function()
 		}
 	end
 	--[[@
+		@desc Checks whether the instance is connected to an account or not.
+		@returns boolean Whether there's already a connection or not.
+	]]
+	self.isConnected = function()
+		return this.isConnected
+	end
+	--[[@
+		@desc Gets the instance's account information.
+		@returns string,nil The username of the account.
+		@returns int,nil The ID of the account.
+		@returns int,nil the ID of the account's tribe.
+	]]
+	self.getUser = function()
+		return this.userName, this.userId, this.tribeId
+	end
+	--[[@
+		@desc Checks whether an account was validated by an e-mail code or not.
+		@returns boolean Whether the account is validated or not.
+	]]
+	self.isAccountValidated = function()
+		return this.hasCertificate
+	end
+	--[[
+		@desc Gets the total time since the last login performed in the instace.
+		@returns int Total time since the connection of the current account.
+	]]
+	self.getConnectionTime = function()
+		if this.connectionTime >= 0 then
+			return os.time() - this.connectionTime
+		end
+		return this.connectionTime
+	end
+	--[[@
+		@desc Gets the system enumerations.
+		@desc Smoother alias of `require "fromage/libs/enumerations"`.
+		@returns table The enumerations table
+	]]
+	self.enumerations = function()
+		return enumerations
+	end
+	--[[@
 		@desc Formats a nickname.
-		@param nickname<string> The nickname to be formated
-		@returns string Formated nickname
+		@param nickname<string> The nickname.
+		@returns string Formated nickname.
 	]]
 	self.formatNickname = function(nickname)
 		assertion("normalizeNickname", "string", 1, nickname)
@@ -634,33 +731,16 @@ return function()
 		nickname = string.gsub(nickname, "%a", string.upper, 1)
 		return nickname
 	end
-	--[[@
-		@desc Checks whether the instance is connected to an account or not.
-		@returns boolean Whether there's already a connection or not.
-		@returns string|nil If #1, the user name
-		@returns int|nil If #1, the user id
-	]]
-	self.isConnected = function()
-		return this.isConnected, this.userName, this.userId
-	end
-	--[[@
-		@desc Gets the enumerations.
-		@desc Use `require "fromage/libs/enumerations"` if you don't want to use this.
-		@returns table The enumerations table
-	]]
-	self.enumerations = function()
-		return enumerations
-	end
 
 	--[[ Methods ]]
 	-- > Settings
 	--[[@
 		@file Settings
 		@desc Connects to an account on Atelier801's forums.
-		@param userName<string> account's user name
-		@param userPassword<string> account's password
-		@returns boolean Whether the account connected or not
-		@returns string Result string
+		@param userName<string> Account's username.
+		@param userPassword<string> Account's password.
+		@returns boolean,nil Whether the connection succeeded or not.
+		@returns nil,string Error message.
 	]]
 	self.connect = function(userName, userPassword)
 		assertion("connect", "string", 1, userName)
@@ -670,53 +750,69 @@ return function()
 			return nil, errorString.already_connected
 		end
 
-		local success, data = this.performAction(forumUri.identification, {
+		userName = self.formatNickname(userName)
+
+		local result, err = this.performAction(forumUri.identification, {
 			{ "rester_connecte", "on" },
 			{ "id", userName },
 			{ "pass", getPasswordHash(userPassword) },
 			{ "redirect", string.sub(forumLink, 1, -2) }
 		}, forumUri.login)
-
-		if success and string.sub(data, 2, 15) == '"supprime":"*"' then
-			this.isConnected = true
-			this.userName = userName
-			this.cookieState = cookieState.after_login
-			local pr = self.getProfile()
-			this.userId = pr.id
-			this.tribeId = pr.tribeId
+		if not result then
+			return nil, err .. " (0x1)"
 		end
 
-		return success, data
+		if string.sub(result, 2, 15) == '"supprime":"*"' then
+			this.isConnected = true
+			this.userName = userName
+			local pr, err = self.getProfile()
+			if not pr then
+				this.isConnected = false
+				this.userName = nil
+				return nil, err .. " (0x2)"
+			end
+			this.cookieState = cookieState.after_login
+			this.userId = pr.id
+			this.tribeId = pr.tribeId
+			this.connectionTime = os.time()
+			return true, result
+		end
+		return false, result
 	end
 	--[[@
 		@file Settings
 		@desc Disconnects from an account on Atelier801's forums.
-		@returns boolean Whether the account disconnected or not
-		@returns string Result string
+		@returns boolean,nil Whether the account was disconnected or not.
+		@returns nil,string Error message.
 	]]
 	self.disconnect = function()
 		if not this.isConnected then
 			return nil, errorString.not_connected
 		end
 
-		local success, data = this.performAction(forumUri.disconnection, nil, forumUri.acc)
+		local result, err = this.performAction(forumUri.disconnection, nil, forumUri.acc)
+		if not result then
+			return nil, err
+		end
 
-		if success and string.sub(data, 2, 15) == '"supprime":"*"' then
+		if string.sub(result, 2, 15) == '"supprime":"*"' then
 			this.isConnected = false
 			this.userName = nil
 			this.cookieState = cookieState.login
 			this.cookies = { }
 			this.userId = nil
 			this.tribeId = nil
+			this.hasCertificate = false
+			this.connectionTime = -1
+			return true, result
 		end
-
-		return success, data
+		return false, result
 	end
 	--[[@
 		@file Settings
 		@desc Sends a validation code to the account's e-mail.
-		@returns boolean Whether the validation code was sent or not
-		@returns string `Result string` or `Error message`
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.requestValidationCode = function()
 		if not this.isConnected then
@@ -729,8 +825,8 @@ return function()
 		@file Settings
 		@desc Submits the validation code to the forum to be validated.
 		@param code<string> The validation code.
-		@returns boolean Whether the validation code was sent to be validated or not
-		@returns string `Result string` (Empty for success) or `Error message`
+		@returns boolean,nil Whether the validation code is valid or not.
+		@returns string Result string or Error message.
 	]]
 	self.submitValidationCode = function(code)
 		assertion("submitValidationCode", "string", 1, code)
@@ -739,23 +835,24 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local success, data = this.performAction(forumUri.set_cert, {
+		local result, err = this.performAction(forumUri.set_cert, {
 			{ "code", code }
 		}, forumUri.acc)
-
-		if success then
-			this.hasCertificate = true
+		if not result then
+			return nil, err
 		end
 
-		return success, data
+		this.hasCertificate = (result == "{}") -- An empty table is returned when it succeed
+
+		return this.hasCertificate, result
 	end
 	--[[@
 		@file Settings
 		@desc Sets the new account's e-mail.
-		@param email<string> The e-mail to be linked to your account
-		@param registration?<boolean> Whether this is the first e-mail assigned to the account or not
-		@returns boolean Whether the validation code was sent or not
-		@returns string `Result string` or `Error message`
+		@param email<string> The e-mail to be linked to the account.
+		@param registration?<boolean> Whether this is the first e-mail assigned to the account or not. @default false
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.setEmail = function(email, registration)
 		assertion("setEmail", "string", 1, email)
@@ -778,10 +875,10 @@ return function()
 	--[[@
 		@file Settings
 		@desc Sets the new account's password.
-		@param password<string> The new password
-		@param disconnect?<boolean> Whether the account should be disconnect from all the dispositives or not. (default = false)
-		@returns boolean Whether the new password was set or not
-		@returns string `Result string` or `Error message`
+		@param password<string> The new password.
+		@param disconnect?<boolean> Whether the account should be disconnect from all the dispositives or not. @default false
+		@returns boolean,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.setPassword = function(password, disconnect)
 		assertion("setPassword", "string", 1, password)
@@ -807,10 +904,31 @@ return function()
 	-- > Profile
 	--[[@
 		@file Profile
-		@desc Gets an user profile.
-		@param userName?<string,int> User name or id. (default = Client's account name)
-		@returns table|nil The profile data, if there's any
-		@returns nil|string The message error, if any occurred
+		@desc Gets the profile data of an user.
+		@param userName?<string,int> User name or user id. @default Account's username
+		@returns table,nil The profile data.
+		@returns nil,string Error message.
+		@struct {
+			avatarUrl = "", -- The profile picture url.
+			birthday = "", -- The birthday string field.
+			community = enumerations.community, -- The community of the user.
+			discriminator = "", -- The username discriminator.
+			fullname = "", -- The full username. (name and discriminator)
+			gender = enumerations.gender, -- The gender of the user.
+			highestRole = enumerations.role, -- The highest role of the account based on the discriminator number.
+			id = 0, -- The user ID.
+			level = 0, -- The level of the user on forums.
+			location = "", -- The location string field.
+			name = "", -- The name of the user.
+			presentation = "", -- The presentation string field (HTML).
+			registrationDate = "", -- The registration date string field.
+			soulmate = "", -- The username of the account's soulmate.
+			title = enumerations.forumTitle, -- The current forum title of the account based on the level.
+			totalMessages = 0, -- The quantity of messages sent by the user.
+			totalPrestige = 0, -- The quantity of prestige (likes) obtained by the user.
+			tribe = "", -- The name of the account's tribe.
+			tribeId = 0 -- The id of the account's tribe.
+		}
 	]]
 	self.getProfile = function(userName)
 		assertion("getProfile", { "string", "number", "nil" }, 1, userName)
@@ -822,67 +940,77 @@ return function()
 		end
 
 		userName = userName or this.userName
-		local head, body = this.getPage(forumUri.profile .. "?pr=" .. encodeUrl(userName))
+		local body = this.getPage(forumUri.profile .. "?pr=" .. encodeUrl(userName))
 
-		local id = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.element_id))) -- Element id
+		local avatar, id = string.match(body, htmlChunk.profile_avatar)
+		id = tonumber(id)
 		if not id then
-			return nil, errorString.invalid_user
+			id = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.element_id)))
+			if not id then
+				return nil, errorString.invalid_user
+			end
 		end
 
 		local name, hashtag, discriminator = string.match(body, htmlChunk.nickname)
-		
+		if not discriminator then
+			return nil, errorString.internal .. " (0x1)"
+		end
+
 		local highestRole = tonumber(discriminator)
-		if highestRole == 0 then
+		if not enumerations.role(highestRole) then
 			highestRole = nil
 		end
 
 		local registrationDate, community, messages, prestige, level = string.match(body, htmlChunk.date .. ".-" .. htmlChunk.community .. ".-" .. htmlChunk.profile_data)
 		level = tonumber(level)
-		
+		if not level then
+			return nil, errorString.internal .. " (0x2)"
+		end
+
 		local gender = string.match(body, htmlChunk.profile_gender)
 		gender = gender and string.lower(gender) or "none"
-		
+
 		local location = string.match(body, htmlChunk.profile_location)
 
 		local birthday = string.match(body, htmlChunk.profile_birthday .. htmlChunk.date)
 
 		local presentation = string.match(body, htmlChunk.profile_presentation)
-		
+
 		local soulmate, soulmateDiscriminator = string.match(body, htmlChunk.profile_soulmate .. htmlChunk.nickname)
 		if soulmate then
 			soulmate = soulmate .. soulmateDiscriminator
 		end
-		
+
 		local tribeName, tribeId = string.match(body, htmlChunk.profile_tribe)
 
-		local avatar = string.match(body, htmlChunk.profile_avatar)
-
 		return {
-			id = tonumber(id),
-			name = name .. hashtag,
-			highestRole = highestRole,
-			registrationDate = registrationDate,
+			avatarUrl = avatar,
+			birthday = birthday,
 			community = enumerations.community[community],
+			discriminator = discriminator,
+			fullname = name .. hashtag,
+			gender = enumerations.gender[gender],
+			highestRole = highestRole,
+			id = tonumber(id),
+			level = level,
+			location = location,
+			name = name,
+			presentation = presentation,
+			registrationDate = registrationDate,
+			soulmate = soulmate,
+			title = enumerations.forumTitle[level],
 			totalMessages = tonumber(messages),
 			totalPrestige = tonumber(prestige),
-			level = level,
-			title = enumerations.forumTitle[level],
-			gender = enumerations.gender[gender],
-			birthday = birthday,
-			location = location,
-			soulmate = soulmate,
 			tribe = tribeName,
-			tribeId = tonumber(tribeId),
-			avatarUrl = avatar,
-			presentation = presentation
+			tribeId = tonumber(tribeId)
 		}
 	end
 	--[[@
 		@file Profile
-		@desc Updates the client's account profile picture.
+		@desc Changes the profile picture of the account.
 		@param image<string> The new image. An URL or file name.
-		@returns boolean Whether the new avatar was set or not
-		@returns string `Result string` or `Error message`
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.changeAvatar = function(image)
 		assertion("changeAvatar", "string", 1, image)
@@ -922,15 +1050,16 @@ return function()
 	--[[@
 		@file Profile
 		@desc Updates the account's profile.
-		@desc The available data are:
-		@desc string|int `community` -> Account's community. An enum from `enumerations.community` (index or value)
-		@desc string `birthday` -> The birthday date (dd/mm/yyyy)
-		@desc string `location` -> The location
-		@desc string|int `gender` -> Account's gender. An enum from `enumerations.gender` (index or value)
-		@desc string `presentation` -> Profile's presentation
-		@param data?<table> The data
-		@returns boolean Whether the profile was updated or not
-		@returns string `Result string` or `Error message`
+		@param data?<table> The data.
+		@paramstruct data {
+			community?<string,int> User's community. An enum from `enumerations.community`. (index or value) @default xx
+			birthday?<string> The birthday string field. (dd/mm/yyyy)
+			location?<string> The location string field.
+			gender?<string,int> User's gender. An enum from `enumerations.gender`. (index or value)
+			presentation?<string> Profile's presentation string field.
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.updateProfile = function(data)
 		assertion("updateProfile", { "table", "nil" }, 1, data)
@@ -979,9 +1108,9 @@ return function()
 	end
 	--[[@
 		@file Profile
-		@desc Removes the account's avatar.
-		@returns boolean Whether the avatar was removed or not
-		@returns string `Result string` or `Error message`
+		@desc Removes the profile picture of the account.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.removeAvatar = function()
 		if not this.isConnected then
@@ -994,12 +1123,13 @@ return function()
 	end
 	--[[@
 		@file Profile
-		@desc Updates the account parameters.
-		@desc The available parameters are:
-		@desc boolean `online` -> Whether the account should display if it's online or not
+		@desc Updates the account profile parameters.
 		@param parameters?<table> The parameters.
-		@returns boolean Whether the new parameter settings were set or not
-		@returns string `Result string` or `Error message`
+		@paramstruct parameters {
+			online?<boolean> Whether the account should display if it's online or not. @default false
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.updateParameters = function(parameters)
 		assertion("updateParameters", { "table", "nil" }, 1, parameters)
@@ -1021,11 +1151,32 @@ return function()
 	-- > Private
 	--[[@
 		@file Private
-		@desc Gets the data of a conversation.
-		@param location<table> The conversation location. Field 'co' is needed.
-		@param ignoreFirstMessage?<boolean> Whether the data of the first message should be ignored or not. (default = false)
-		@returns table|nil The conversation data, if there's any
-		@returns nil|string The message error, if any occurred
+		@desc Gets the data of a conversation (private message).
+		@param location<table> The conversation location.
+		@param ignoreFirstMessage?<boolean> Whether the data of the first message should be ignored or not. If the conversation is a poll, it will ignore the poll data if `true`. @default false
+		@paramstruct location {
+			co<int> The conversation id.
+		}
+		@returns table,nil The conversation data.
+		@returns nil,string Message error.
+		@struct {
+			co = 0, -- The conversation id.
+			firstMessage = getMessage, -- The message object of the first message of the conversation. (It's ignored when 'isPoll') 
+			invitedUsers = {
+				[n] = {
+					name = "", -- Name of the user.
+					situation = "" -- Situation string field. (e.g: invited, gone, author)
+				}
+			}, -- The list of players that are in the conversation.
+			isDiscussion = false, -- If the conversation is a discussion.
+			isLocked = false, -- Whether the conversation is locked or not.
+			isPoll = false, -- If the conversation is a poll.
+			isPrivateMessage = false, -- If the conversation is a private message.
+			pages = 0, -- The total of pages in the conversation.
+			poll = getPoll, -- The poll object if 'isPoll'.
+			title = "", -- The conversation title.
+			totalMessages = 0 -- The total of messages in the conversation.
+		}
 	]]
 	self.getConversation = function(location, ignoreFirstMessage)
 		assertion("getConversation", "table", 1, location)
@@ -1040,30 +1191,58 @@ return function()
 		end
 
 		local path = "?co=" .. location.co
-		local head, body = this.getPage(forumUri.conversation .. path)
+		local body = this.getPage(forumUri.conversation .. path)
+
+		local title = string.match(body, htmlChunk.title)
+		if not title then
+			return nil, errorString.internal .. " (0x1)"
+		end
+
+		local isDiscussion, isPrivateMessage = false, false
+		local titleIcon = string.match(body, htmlChunk.conversation_icon)
+		if not titleIcon then
+			return nil, errorString.internal .. " (0x2)"
+		end
 
 		local err
 		local isPoll, poll = not not string.find(body, string.format(htmlChunk.hidden_value, forumUri.poll_id)) -- Whether it's a poll or not
 		if isPoll and not ignoreFirstMessage then
 			poll, err = self.getPoll(location)
 			if not poll then
-				return nil, err
+				return nil, err .. " (0x3)"
 			end
 		end
-
-		local title = string.match(body, htmlChunk.title)
-		if not title then
-			return nil, errorString.internal
-		end
-
-		local isDiscussion, isPrivateMessage = false, false
-		local titleIcon = string.match(body, htmlChunk.conversation_icon)
-		if not titleIcon then
-			return nil, errorString.internal
-		end
+		
 		if not isPoll then
 			isDiscussion = not not string.find(titleIcon, enumerations.topicIcon.private_discussion)
 			isPrivateMessage = not isDiscussion
+		end
+
+		local counter, invitedUsers = 0
+		if not isPrivateMessage then
+			invitedUsers = { }
+			local invList = string.match(body, htmlChunk.conversation_members)
+
+			local foundSelf = false
+			string.gsub(invList, htmlChunk.conversation_member_state .. ".-" .. htmlChunk.nickname, function(situation, name, discriminator)
+				counter = counter + 1
+
+				name = name .. discriminator
+				invitedUsers[counter] = {
+					name = name,
+					situation = situation
+				}
+
+				if not foundSelf then
+					foundSelf = name == this.userName
+				end
+			end)
+			if not foundSelf then
+				invitedUsers[counter + 1] = {
+					name = this.userName,
+					situation = forumUri.invited
+				}
+			end
 		end
 
 		local isLocked = false
@@ -1074,8 +1253,8 @@ return function()
 		-- Get total of pages and total of messages
 		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
 
-		local _, lastPage = this.getPage(forumUri.conversation .. path .. "&p=" .. totalPages)
-		local counter = 0
+		counter = 0
+		local lastPage = this.getPage(forumUri.conversation .. path .. "&p=" .. totalPages)
 		string.gsub(lastPage, htmlChunk.post, function()
 			counter = counter + 1
 		end)
@@ -1087,32 +1266,33 @@ return function()
 			if not isPoll then
 				firstMessage, err = self.getMessage('1', location)
 				if not firstMessage then
-					return nil, err
+					return nil, err .. " (0x4)"
 				end
 			end
 		end
 
 		return {
 			co = location.co,
-			title = title,
-			isPrivateMessage = isPrivateMessage,
+			firstMessage = firstMessage,
+			invitedUsers = invitedUsers,
 			isDiscussion = isDiscussion,
-			isPoll = isPoll,
-			poll = poll,
 			isLocked = isLocked,
+			isPoll = isPoll,
+			isPrivateMessage = isPrivateMessage,
  			pages = totalPages,
-			totalMessages = totalMessages,
-			firstMessage = firstMessage
+			poll = poll,
+			title = title,
+			totalMessages = totalMessages
 		}
 	end
 	--[[@
 		@file Private
 		@desc Creates a new private message.
-		@param destinatary<string> The user who is going to receive the private message
-		@param subject<string> The subject of the private message
-		@param message<string> The content of the private message
-		@returns boolean Whether the private message was created or not
-		@returns string if #1, `private message's location`, else `Result string` or `Error message`
+		@param destinatary<string> The user who is going to receive the private message.
+		@param subject<string> The subject of the private message.
+		@param message<string> The message content of the private message.
+		@returns table,nil A parsed-url location object.
+		@returns nil,string Error message.
 	]]
 	self.createPrivateMessage = function(destinatary, subject, message)
 		assertion("createPrivateMessage", "string", 1, destinatary)
@@ -1123,21 +1303,21 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local success, data = this.performAction(forumUri.create_dialog, {
+		local result, err = this.performAction(forumUri.create_dialog, {
 			{ "destinataire", destinatary },
 			{ "objet", subject },
 			{ "message", message }
 		}, forumUri.new_dialog)
-		return returnRedirection(success, data)
+		return redirect(result, err)
 	end
 	--[[@
 		@file Private
 		@desc Creates a new private discussion.
-		@param destinataries<table> The users who are going to be invited to the private discussion
-		@param subject<string> The subject of the private discussion
-		@param message<string> The content of the private discussion
-		@returns boolean Whether the private discussion was created or not
-		@returns string if #1, `private discussion's location`, else `Result string` or `Error message`
+		@param destinataries<table> The users who are going to be invited to the private discussion.
+		@param subject<string> The subject of the private discussion.
+		@param message<string> The message content of the private discussion.
+		@returns table,nil A parsed-url location object.
+		@returns nil,string Error message.
 	]]
 	self.createPrivateDiscussion = function(destinataries, subject, message)
 		assertion("createPrivateDiscussion", "table", 1, destinataries)
@@ -1148,23 +1328,27 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local success, data = this.performAction(forumUri.create_discussion, {
+		local result, err = this.performAction(forumUri.create_discussion, {
 			{ "destinataires", table.concat(destinataries, separator.forum_data) },
 			{ "objet", subject },
 			{ "message", message }
 		}, forumUri.new_discussion)
-		return returnRedirection(success, data)
+		return redirect(result, err)
 	end
 	--[[@
 		@file Private
 		@desc Creates a new private poll.
-		@param destinataries<table> The users who are going to be invited to the private poll
-		@param subject<string> The subject of the private poll
-		@param message<string> The content of the private poll
-		@param pollResponses<table> The poll response options
-		@param settings?<table> The poll settings. The available indexes are: `multiple` and `public`.
-		@returns boolean Whether the private poll was created or not
-		@returns string if #1, `private poll's location`, else `Result string` or `Error message`
+		@param destinataries<table> The users who are going to be invited to the private poll.
+		@param subject<string> The subject of the private poll.
+		@param message<string> The message content of the private poll.
+		@param pollResponses<table> The poll response options.
+		@param settings?<table> The poll settings.
+		@paramstruct settings {
+			multiple?<boolean> If users are allowed to select more than one option.
+			public?<boolean> If users can see the results of the poll.
+		}
+		@returns table,nil A parsed-url location object.
+		@returns nil,string Error message.
 	]]
 	self.createPrivatePoll = function(destinataries, subject, message, pollResponses, settings)
 		assertion("createPrivatePoll", "table", 1, destinataries)
@@ -1197,16 +1381,16 @@ return function()
 			end
 		end
 
-		local success, data = this.performAction(forumUri.create_discussion, postData, forumUri.new_private_poll)
-		return returnRedirection(success, data)
+		local result, err = this.performAction(forumUri.create_discussion, postData, forumUri.new_private_poll)
+		return redirect(result, err)
 	end
 	--[[@
 		@file Private
 		@desc Answers a conversation.
-		@param conversationId<int,string> The conversation id
-		@param answer<string> The answer
-		@returns boolean Whether the answer was posted or not
-		@returns string if #1, `post's location`, else `Result string` or `Error message`
+		@param conversationId<int,string> The conversation id.
+		@param answer<string> The answer message content.
+		@returns table,nil A parsed-url location object.
+		@returns nil,string Error message.
 	]]
 	self.answerConversation = function(conversationId, answer)
 		assertion("answerConversation", { "number", "string" }, 1, conversationId)
@@ -1216,21 +1400,21 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local success, data = this.performAction(forumUri.answer_conversation, {
+		local result, err = this.performAction(forumUri.answer_conversation, {
 			{ "co", conversationId },
 			{ "message_reponse", answer }
 		}, forumUri.conversation .. "?co=" .. conversationId)
-		return returnRedirection(success, data)
+		return redirect(result, err)
 	end
 	--[[@
 		@file Private
 		@desc Moves private conversations to the inbox or bin.
-		@param inboxLocale<string,int> Where the conversation will be located. An enum from `enumerations.inboxLocale` (index or value)
-		@param conversationId?<int,table> The id or IDs of the conversation(s) to be moved. `nil` for all.
-		@returns boolean Whether the conversation was moved or not
-		@returns string if #1, `location's url`, else `Result string` or `Error message`
+		@param inboxLocale<string,int> Where the conversation will be located. An enum from `enumerations.inboxLocale`. (index or value)
+		@param conversationId?<int,table> The ID(s) of the conversation(s) to be moved. Use `nil` for all.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
-	self.movePrivateConversation = function(inboxLocale, conversationId)
+	self.moveConversation = function(inboxLocale, conversationId)
 		conversationId = tonumber(conversationId) or conversationId
 		assertion("movePrivateConversation", { "string", "number" }, 1, inboxLocale)
 
@@ -1243,7 +1427,7 @@ return function()
 			conversationId = { }
 			moveAll = true
 		end
-		
+
 		assertion("movePrivateConversation", { "number", "table" }, 2, conversationId)
 
 		if not this.isConnected then
@@ -1254,19 +1438,18 @@ return function()
 			conversationId = { conversationId }
 		end
 
-		local postData = (not moveAll and {
+		return this.performAction((moveAll and forumUri.move_all_conversations or forumUri.move_conversation), (not moveAll and {
 			{ "conversations", table.concat(conversationId, separator.forum_data) },
 			{ "location", inboxLocale }
-		} or nil)
-		return this.performAction((moveAll and forumUri.move_all_conversations or forumUri.move_conversation), postData, forumUri.conversations .. "?location=" .. inboxLocale)
+		} or nil), forumUri.conversations .. "?location=" .. inboxLocale)
 	end
 	--[[@
 		@file Private
 		@desc Changes the conversation state (open, closed).
-		@param displayState<string,int> The conversation display state. An enum from `enumerations.displayState` (index or value)
-		@param conversationId<int,string> The conversation id
-		@returns boolean Whether the conversation display state was changed or not
-		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
+		@param displayState<string,int> The conversation display state. An enum from `enumerations.displayState`. (index or value)
+		@param conversationId<int,string> The conversation id.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.changeConversationState = function(displayState, conversationId)
 		assertion("changeConversationState", { "string", "number" }, 1, displayState)
@@ -1291,9 +1474,9 @@ return function()
 	--[[@
 		@file Private
 		@desc Leaves a private conversation.
-		@param conversationId<int,string> The conversation id
-		@returns boolean Whether the account left the conversation or not
-		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
+		@param conversationId<int,string> The conversation id.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.leaveConversation = function(conversationId)
 		assertion("leaveConversation", { "number", "string" }, 1, conversationId)
@@ -1309,10 +1492,10 @@ return function()
 	--[[@
 		@file Private
 		@desc Invites an user to a private conversation.
-		@param conversationId<int,string> The conversation id
-		@param userName<string> The username to be invited
-		@returns boolean Whether the username was added in the conversation or not
-		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
+		@param conversationId<int,string> The conversation id.
+		@param userName<string> The name of the user to be invited.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.conversationInvite = function(conversationId, userName)
 		assertion("conversationInvite", { "number", "string" }, 1, conversationId)
@@ -1329,11 +1512,11 @@ return function()
 	end
 	--[[@
 		@file Private
-		@desc Excludes a user from a conversation.
-		@param conversationId<int,string> The conversation id
-		@param userId<int,string> The user id or nickname
-		@returns boolean Whether the user was excluded from the conversation or not
-		@returns string if #1, `conversation's url`, else `Result string` or `Error message`
+		@desc Removes a user from a conversation.
+		@param conversationId<int,string> The conversation id.
+		@param userId<int,string> User name or user id.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.kickConversationMember = function(conversationId, userId)
 		assertion("kickConversationMember", { "number", "string" }, 1, conversationId)
@@ -1362,10 +1545,34 @@ return function()
 	--[[@
 		@file Forum
 		@desc Gets the data of a message.
-		@param postId<int,string> The post id (note: not the message id, but the #mID)
-		@param location<table> The post topic or conversation location. Fields 'f' and 't' are needed for forum messages, field 'co' is needed for private message.
-		@returns table|nil The message data, if there's any
-		@returns nil|string The message error, if any occurred
+		@param postId<int,string> The post id. (note: not the message id, but the #mID)
+		@param location<table> The post topic or conversation location.
+		@paramstruct location {
+			f?<int> The forum id. (needed for forum message)
+			t?<int> The topic id. (needed for forum message)
+			co?<int> The private conversation id. (needed for private conversation message)
+		}
+		@returns table,nil The message data.
+		@returns nil,string Error message.
+		@struct {
+			author = "", -- The user name of the message author.
+			canLike = true, -- Whether the message can be liked or not. (forum message only)
+			co = 0, -- The conversation id. (private message only)
+			content = "", -- The message content.
+			contentHtml = "", -- The HTML of the message content.
+			editionTimestamp = 0, -- The timestamp of the last edition. (forum message only)
+			f = 0, -- The forum id.
+			id = 0, -- The message id.
+			isEdited = false, -- Whether the message was edited or not. (forum message only)
+			isModerated = false, -- Whether the message is moderated or not. (forum message only)
+			moderatedBy = "", -- The name of the sentinel that moderated the message. (forum message only)
+			p = 0, -- The page where the message is located.
+			post = "", -- The post id.
+			prestige = 0, -- The quantity of prestiges that the message has. (forum message only)
+			reason = "", -- The moderation reason. (forum message only)
+			t = 0, -- The topic id. (forum message only)
+			timestamp = 0 -- The timestamp of when the message was created.
+		}
 	]]
 	self.getMessage = function(postId, location)
 		assertion("getMessage", { "number", "string" }, 1, postId)
@@ -1375,25 +1582,24 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		postId = tonumber(postId)
-		local pageNumber = math.ceil(postId / 20)
+		local pageNumber = math.ceil(tonumber(postId) / 20)
 
-		local head, body = this.getPage((location.co and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)) .. "&p=" .. pageNumber)
+		local body = this.getPage((location.co and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)) .. "&p=" .. pageNumber)
 
 		local id, post
 		if not location.co then
 			-- Forum message
 			id, post = string.match(body, string.format(htmlChunk.message, postId))
 			if not id then
-				return nil, errorString.internal
+				return nil, errorString.internal .. " (0x1)"
 			end
 
 			local isModerated, moderatedBy, reason = false
-			local timestamp, author, authorDiscriminator, _, prestige, msgHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.message_data)
+			local timestamp, author, authorDiscriminator, _, prestige, contentHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.message_data)
 			if not timestamp then
 				timestamp, author, authorDiscriminator, _, moderatedBy, reason = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.moderated_message)
 				if not timestamp then
-					return nil, errorString.internal
+					return nil, errorString.internal .. " (0x2)"
 				end
 				isModerated = true
 			end
@@ -1402,57 +1608,87 @@ return function()
 
 			local content = string.match(body, string.format(htmlChunk.message_content, forumUri.edit, id))
 
+			local canLike = not not string.find(post, string.format(htmlChunk.hidden_value, 'm'))
+
 			return {
-				f = location.f,
-				t = location.t,
-				p = pageNumber,
-				post = postId,
-				timestamp = tonumber(timestamp),
 				author = author .. authorDiscriminator,
-				id = tonumber(id),
-				prestige = tonumber(prestige),
+				canLike = canLike,
 				content = content,
-				messageHtml = msgHtml,
-				isEdited = not not editTimestamp,
+				contentHtml = contentHtml,
 				editionTimestamp = tonumber(editTimestamp),
+				f = location.f,
+				id = tonumber(id),
+				isEdited = not not editTimestamp,
 				isModerated = isModerated,
 				moderatedBy = moderatedBy,
-				reason = reason
+				p = pageNumber,
+				post = postId,
+				prestige = tonumber(prestige),
+				reason = reason,
+				t = location.t,
+				timestamp = tonumber(timestamp)
 			}
 		else
 			-- Private message
 			post = string.match(body, string.format(htmlChunk.private_message, postId))
 			if not post then
-				return nil, errorString.internal
+				return nil, errorString.internal .. " (0x3)"
 			end
 
-			local timestamp, author, authorDiscriminator, _, id, msgHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.private_message_data)
+			local timestamp, author, authorDiscriminator, _, id, contentHtml = string.match(post, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.private_message_data)
 			if not timestamp then
-				return nil, errorString.internal
+				return nil, errorString.internal .. " (0x4)"
 			end
 
 			local content = string.match(body, string.format(htmlChunk.message_content, forumUri.quote, id))
 
 			return {
-				f = 0,
+				author = author .. authorDiscriminator,
 				co = location.co,
- 				p = pageNumber,
+				content = content,
+				contentHtml = contentHtml,
+				f = 0,
+				id = tonumber(id),
 				post = tostring(postId),
 				timestamp = tonumber(timestamp),
-				author = author .. authorDiscriminator,
-				id = tonumber(id),
-				content = content,
-				messageHtml = msgHtml
+ 				p = pageNumber
 			}
 		end
 	end
 	--[[@
 		@file Forum
 		@desc Gets the data of a topic.
-		@param location<table> The topic location. Fields 'f' and 't' are needed.
-		@param ignoreFirstMessage?<boolean> Whether the data of the first message should be ignored or not. (default = false)
-		@returns table|nil The topic data, if there's any
-		@returns nil|string The message error, if any occurred
+		@param location<table> The topic location.
+		@param ignoreFirstMessage?<boolean> Whether the data of the first message should be ignored or not. If the topic is a poll, it will ignore the poll data if `true`. @default false
+		@paramstruct location {
+			f<int> The forum id.
+			t<int> The topic id.
+		}
+		@returns table,nil The topic data.
+		@returns nil,string Error message.
+		@struct {
+			community = enumerations.community, -- The community where the topic is located.
+			elementId = 0, -- The element id of the topic.
+			f = 0, -- The forum id.
+			favoriteId = 0, -- The favorite id of the topic, if 'isFavorited'.
+			firstMessage = getMessage, -- The message object of the first message of the topic. (It's ignored when 'isPoll')
+			isDeleted = false, -- Whether the topic is deleted or not.
+			isFavorited = false, -- Whether the topic is favorited or not.
+			isFixed = false, -- Whether the topic is fixed in the section or not.
+			isLocked = false, -- Whether the topic is locked or not.
+			isPoll = false, -- If the conversation is a poll.
+			navbar = {
+				[n] = {
+					location = parseUrlData, -- The parsed-url location object.
+					name = "" -- The name of the location.
+				}
+			}, -- A list of locations of the navigation bar.
+			pages = 0, -- The quantity of pages in the topic.
+			poll = getPoll, -- The poll object if 'isPoll'.
+			t = 0, -- The topic id.
+			title = "", -- The name of the topic.
+			totalMessages = 0, -- The total of messages in the topic.
+		}
 	]]
 	self.getTopic = function(location, ignoreFirstMessage)
 		assertion("getTopic", "table", 1, location)
@@ -1467,103 +1703,98 @@ return function()
 		end
 
 		local path = "?f=" .. location.f .. "&t=" .. location.t
-		local head, body = this.getPage(forumUri.topic .. path)
+		local body = this.getPage(forumUri.topic .. path)
 
-		local ie = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.element_id))) -- Element id
 		local isPoll, poll = not not string.find(body, string.format(htmlChunk.hidden_value, forumUri.poll_id)) -- Whether it's a poll or not
 		if isPoll and not ignoreFirstMessage then
-			poll = self.getPoll(location)
-		end
-
-		local navBar = string.match(body, htmlChunk.navigation_bar)
-		if not navBar then
-			return nil, errorString.internal
-		end
-
-		local isFixed, isLocked, isDeleted = false, false, false
-		local navigation_bar, community = { }
-		
-		local counter, lastHtml = 0, ''
-
-		local err
-		string.gsub(navBar, htmlChunk.navigaton_bar_sections, function(href, code)
-			href, err = self.parseUrlData(href)
-			if err then
-				return nil, err
+			poll, err = self.getPoll(location)
+			if not poll then
+				return nil, err .. " (0x1)"
 			end
-			
-			counter = counter + 1
-			local html, name = string.match(code, htmlChunk.navigaton_bar_sec_content)
-			if html then
-				lastHtml = html
-				navigation_bar[counter] = {
-					location = href,
-					name = name
-				}
-
-				if not community then
-					community = string.match(html, htmlChunk.community)
-				end
-			else
-				navigation_bar[counter] = {
-					location = href,
-					name = code
-				}
-			end
-		end)
-
-		isFixed = not not string.find(lastHtml, enumerations.topicIcon.postit)
-		isLocked = not not string.find(lastHtml, enumerations.topicIcon.locked)
-		isDeleted = not not string.find(lastHtml, enumerations.topicIcon.deleted)
-
-		local fa = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.favorite_id)))
-		
-		-- Get total of pages and total of messages
-		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
-
-		local _, lastPage = this.getPage(forumUri.topic .. path .. "&p=" .. totalPages)
-		local counter = 0
-		string.gsub(lastPage, htmlChunk.post, function()
-			counter = counter + 1
-		end)
-
-		local totalMessages = ((totalPages - 1) * 20) + counter
+		end
 
 		local firstMessage
 		if not ignoreFirstMessage then
 			if not isPoll then
 				firstMessage, err = self.getMessage('1', location)
 				if not firstMessage then
-					return nil, err
+					return nil, err .. " (0x2)"
 				end
 			end
 		end
 
+		local navigation_bar, lastHtml, community = getNavbar(body)
+		if not navigation_bar then
+			return nil, lastHtml .. " (0x3)"
+		end
+
+		local isFixed = not not string.find(lastHtml, enumerations.topicIcon.postit)
+		local isLocked = not not string.find(lastHtml, enumerations.topicIcon.locked)
+		local isDeleted = not not string.find(lastHtml, enumerations.topicIcon.deleted)
+
+		local ie = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.element_id))) -- Element id
+		local fa = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.favorite_id)))
+
+		-- Get total of pages and total of messages
+		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
+
+		local counter = 0
+		local lastPage = this.getPage(forumUri.topic .. path .. "&p=" .. totalPages)
+		string.gsub(lastPage, htmlChunk.post, function()
+			counter = counter + 1
+		end)
+
+		local totalMessages = ((totalPages - 1) * 20) + counter
+
 		return {
-			f = location.f,
-			t = location.t,
+			community = (community and enumerations.community[community] or nil),
 			elementId = ie,
-			navbar = navigation_bar,
-			title = navigation_bar[#navigation_bar].name,
-			isFixed = isFixed,
-			isLocked = isLocked,
+			f = location.f,
+			favoriteId = fa,
+			firstMessage = firstMessage,
 			isDeleted = isDeleted,
 			isFavorited = not not fa,
-			favoriteId = fa,
-			pages = totalPages,
-			totalMessages = totalMessages,
-			firstMessage = firstMessage,
-			community = (community and enumerations.community[community] or nil),
+			isFixed = isFixed,
+			isLocked = isLocked,
 			isPoll = isPoll,
-			poll = poll
+			navbar = navigation_bar,
+			pages = totalPages,
+			poll = poll,
+			t = location.t,
+			title = navigation_bar[#navigation_bar].name,
+			totalMessages = totalMessages
 		}
 	end
 	--[[@
 		@file Forum
 		@desc Gets the data of a poll.
-		@param location<table> The poll location. Fields 'f' and 't' are needed if the poll is public, 'co' if it's private.
-		@returns table|nil The poll data, if there's any
-		@returns nil|string The message error, if any occurred
+		@param location<table> The poll location.
+		@paramstruct location {
+			f?<int> The forum id. (needed for forum topic)
+			t?<int> The topic id. (needed for forum topic)
+			co?<int> The private conversation id. (needed for private conversation)
+		}
+		@returns table,nil The poll data.
+		@returns nil,string Error message.
+		@struct {
+			allowsMultiple = false, -- Whether the poll allows multiple selections or not.
+			author = "", -- The user name of the poll author.
+			co = 0, -- The conversation id. (private poll only)
+			contentHtml = "", -- The HTML of the poll content.
+			f = 0, -- The forum id.
+			id = 0, -- The poll id.
+			isPublic = 0, -- Whether the users are allowed to see the results of the poll.
+			options = {
+				[n] = {
+					id = 0, -- The id of the option.
+					value = "", -- The option string field.
+					votes = 0, -- The total of votes for the option. (-1 if it can't be calculated)
+				}
+			}, -- The poll options.
+			t = 0, -- The topic id. (forum poll only)
+			timestamp = 0, -- The timestamp of when the poll was created.
+			totalVotes = 0 -- The total of votes in the poll. (-1 if it can't be calculated)
+		}
 	]]
 	self.getPoll = function(location)
 		assertion("getPoll", "table", 1, location)
@@ -1577,24 +1808,16 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local head, body = this.getPage((isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)))
+		local body = this.getPage((isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)))
 
-		local timestamp, nickname, discriminator, _, id, msgHtml = string.match(body, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. string.format(htmlChunk.hidden_value, forumUri.poll_id) .. ".-" .. htmlChunk.poll_content)
+		local timestamp, nickname, discriminator, _, id, contentHtml = string.match(body, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. string.format(htmlChunk.hidden_value, forumUri.poll_id) .. ".-" .. htmlChunk.poll_content)
 		if not timestamp then
 			return nil, errorString.internal
 		end
 
-		local poll = {
-			options = { },
-			timestamp = tonumber(timestamp),
-			author = nickname .. discriminator,
-			id = tonumber(id),
-			messageHtml = msgHtml,
-			f = location.f,
-			t = location.t,
-			co = location.co
-		}
+		local options = { }
 		local multiple = false
+		local totalVotes = -1
 
 		local counter = 0
 		string.gsub(body, htmlChunk.poll_option, function(t, id, value)
@@ -1603,9 +1826,10 @@ return function()
 			end
 
 			counter = counter + 1
-			poll.options[counter] = {
+			options[counter] = {
 				id = tonumber(id),
-				value = value
+				value = value,
+				votes = -1
 			}
 		end)
 		if counter > 0 then
@@ -1616,24 +1840,66 @@ return function()
 				number = tonumber(number)
 				counter = counter + 1
 				votes = votes + number
-				poll.options[counter].votes = number
+				options[counter].votes = number
 			end)
-			poll.totalVotes = votes
+			totalVotes = votes
 		else
 			return nil, errorString.not_poll
 		end
 
-		poll.isPublic = poll.totalVotes > 0
-		poll.allowMultiple = multiple
-
-		return poll
+		return {
+			allowsMultiple = multiple,
+			author = nickname .. discriminator,
+			co = location.co,
+			contentHtml = contentHtml,
+			f = location.f or 0,
+			id = tonumber(id),
+			isPublic = totalVotes > 0,
+			options = options,
+			t = location.t,
+			timestamp = tonumber(timestamp),
+			totalVotes = totalVotes
+		}
 	end
 	--[[@
 		@file Forum
 		@desc Gets the data of a section.
-		@param location<table> The section location. Fields 'f' and 's' are needed.
-		@returns table|nil The section data, if there's any
-		@returns nil|string The message error, if any occurred
+		@param location<table> The section location.
+		@paramstruct location {
+			f<int> The forum id.
+			s<int> The section id.
+		}
+		@returns table,nil The section data.
+		@returns nil,string Error message.
+		@struct {
+			community = enumerations.community, -- The community where the section is located.
+			f = 0, -- The forum id.
+			hasSubsections = false, -- Whether the section has subsections or not.
+			icon = enumerations.sectionIcon, -- The icon of the section.
+			isSubsection = false, -- Whether the section is a subsection or not.
+			name = "", -- The name of the section.
+			navbar = {
+				[n] = {
+					location = parseUrlData, -- The parsed-url location object.
+					name = "" -- The name of the location.
+				}
+			}, -- A list of locations of the navigation bar.
+			pages = 0, -- The quantity of pages in the section.
+			parent = {
+				location = parseUrlData, -- The parsed-url location object.
+				name = "" -- The name of the parent section.
+			}, -- The parent section of the subsection
+			s = 0, -- The section id.
+			subsections = {
+				[n] = {
+					location = parseUrlData, -- The parsed-url location object.
+					name = "" -- The name of the subsection.
+				}
+			}, -- A list of subsections of the section.
+			totalFixedTopics = 0, -- Total of topics that are fixed in the section.
+			totalSubsections = 0, -- Total of subsections in the section.
+			totalTopics = 0 -- Total of topics in the section.
+		}
 	]]
 	self.getSection = function(location)
 		assertion("getSection", "table", 1, location)
@@ -1647,50 +1913,26 @@ return function()
 		end
 
 		local path = "?f=" .. location.f .. "&s=" .. location.s
-		local head, body = this.getPage(forumUri.section .. path)
+		local body = this.getPage(forumUri.section .. path)
 
-		local navBar = string.match(body, htmlChunk.navigation_bar)
-		if not navBar then
-			return nil, errorString.internal
+		local navigation_bar, lastHtml, community = getNavbar(body)
+		if not navigation_bar then
+			return nil, lastHtml .. " (0x1)"
+		end
+		if not lastHtml then
+			return nil, errorString.internal .. " (0x2)"
 		end
 
-		local navigation_bar, community = { }
-		local counter = 0
-
-		local err, lastHtml
-		string.gsub(navBar, htmlChunk.navigaton_bar_sections, function(href, code)
-			href, err = self.parseUrlData(href)
-			if err then
-				return nil, err
-			end
-
-			counter = counter + 1
-			local html, name = string.match(code, htmlChunk.navigaton_bar_sec_content)
-			if html then
-				navigation_bar[counter] = {
-					location = href,
-					name = name
-				}
-
-				lastHtml = html
-				if not community then
-					community = string.match(html, htmlChunk.community)
-				end
-			else
-				navigation_bar[counter] = {
-					location = href,
-					name = code
-				}
-			end
-		end)
-		if not lastHtml then
-			return nil, errorString.internal
+		local icon = string.match(lastHtml, htmlChunk.section_icon)
+		icon = enumerations.sectionIcon(icon)
+		if not icon then
+			return nil, errorString.internal .. " (0x3)"
 		end
 
 		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
 
 		local counter, totalTopics = 0
-		_, lastPage = this.getPage(forumUri.section .. path .. "&p=" .. totalPages)
+		lastPage = this.getPage(forumUri.section .. path .. "&p=" .. totalPages)
 		if string.find(lastPage, htmlChunk.empty_section) then
 			totalTopics = 0
 		else
@@ -1703,12 +1945,12 @@ return function()
 			counter = 0
 		end
 
-		local subsections, totalSubsections = { }, 0
+		local subsections, totalSubsections, err = { }, 0
 		string.gsub(lastPage, htmlChunk.subsection, function(href, name)
 			counter = counter + 1
 			href, err = self.parseUrlData(href)
 			if err then
-				return nil, err
+				return nil, err .. " (0x4)"
 			end
 
 			subsections[counter] = {
@@ -1728,37 +1970,46 @@ return function()
 			totalFixedTopics = totalFixedTopics + 1
 		end)
 
-		local icon = string.match(lastHtml, htmlChunk.section_icon)
-		icon = enumerations.sectionIcon(icon) or icon
-		if not icon then
-			return nil, errorString.internal
-		end
-
 		return {
-			f = location.f,
-			s = location.s,
-			navbar = navigation_bar,
-			name = navigation_bar[#navigation_bar].name,
-			hasSubsections = totalSubsections > 0,
-			totalSubsections = totalSubsections,
-			subsections = subsections,
-			isSubsection = isSubsection,
-			parent = (isSubsection and (navigation_bar[#navigation_bar - 1]) or nil),
-			pages = totalPages,
-			totalTopics = totalTopics,
-			totalFixedTopics = totalFixedTopics,
 			community = (community and enumerations.community[community] or nil),
-			icon = icon
+			f = location.f,
+			hasSubsections = totalSubsections > 0,
+			icon = icon,
+			isSubsection = isSubsection,
+			name = navigation_bar[#navigation_bar].name,
+			navbar = navigation_bar,
+			pages = totalPages,
+			parent = (isSubsection and (navigation_bar[#navigation_bar - 1]) or nil),
+			s = location.s,
+			subsections = subsections,
+			totalFixedTopics = totalFixedTopics,
+			totalSubsections = totalSubsections,
+			totalTopics = totalTopics
 		}
 	end
 	--[[@
 		@file Forum
 		@desc Gets the messages of a topic.
-		@param location<table> The topic location. Fields 'f' and 't' are needed.
-		@param getAllInfo?<boolean> Whether the message data should be simple (ids only) or complete (getMessage). (default = true)
-		@param pageNumber?<int> The topic page. To list ALL messages, use `0`. (default = 1)
-		@returns table|nil The list of messages
-		@returns nil|string Error Message
+		@param location<table> The topic location.
+		@param getAllInfo?<boolean> Whether the message data should be simple (ids only) or complete (getMessage). @default true
+		@param pageNumber?<int> The topic page. To list ALL messages, use `0`. @default 1
+		@paramstruct location {
+			f<int> The forum id.
+			t<int> The topic id.
+		}
+		@returns table,nil The list of message datas.
+		@returns nil,string Error Message.
+		@struct {
+			-- Structure if not 'getAllInfo'
+			[n] = {
+				f = 0, -- The forum id.
+				id = 0, -- The message id.
+				p = 0, -- The page where the message is located.
+				post = "", -- The post id.
+				t = 0, -- The topic id.
+				timestamp = 0 -- The timestamp of when the message was created.
+			}
+		}
 	]]
 	self.getTopicMessages = function(location, getAllInfo, pageNumber)
 		assertion("getTopicMessages", "table", 1, location)
@@ -1790,14 +2041,15 @@ return function()
 				end
 			else
 				post = (post - 20)
-				string.gsub(body, string.format(htmlChunk.hidden_value, 'm'), function(id)
+				string.gsub(body, htmlChunk.message_id .. ".-" .. htmlChunk.ms_time, function(id, timestamp)
 					counter = counter + 1
 					messages[counter] = {
 						f = location.f,
-						t = location.t,
+						id = tonumber(id),
 						p = pageNumber,
 						post = tostring(post + counter),
-						id = tonumber(id)
+						t = location.t,
+						timestamp = tonumber(timestamp)
 					}
 				end)
 			end
@@ -1805,12 +2057,26 @@ return function()
 	end
 	--[[@
 		@file Forum
-		@desc Gets the messages of a topic.
-		@param location<table> The topic location. Fields 'f' and 't' are needed.
-		@param getAllInfo?<boolean> Whether the message data should be simple (ids only) or complete (getTopic). (default = true)
-		@param pageNumber?<int> The topic page. To list ALL messages, use `0`. (default = 1)
-		@returns table|nil The list of topics
-		@returns nil|string Error Message
+		@desc Gets the topics of a section.
+		@param location<table> The section location.
+		@param getAllInfo?<boolean> Whether the topic data should be simple (ids only) or complete (getTopic). @default true
+		@param pageNumber?<int> The section page. To list ALL topics, use `0`. @default 1
+		@paramstruct location {
+			f<int> The forum id.
+			s<int> The section id.
+		}
+		@returns table,nil The list of topic datas.
+		@returns nil,string Error Message.
+		@struct {
+			-- Structure if not 'getAllInfo'
+			[n] = {
+				f = 0, -- The forum id.
+				s = 0, -- The section id.
+				t = 0, -- The topic id.
+				timestamp = 0, -- The timestamp of when the topic was created.
+				title = "" -- The name of the topic.
+			}
+		}
 	]]
 	self.getSectionTopics = function(location, getAllInfo, pageNumber)
 		assertion("getSectionTopics", "table", 1, location)
@@ -1843,8 +2109,8 @@ return function()
 					f = location.f,
 					s = location.s,
 					t = id,
-					title = title,
-					timestamp = tonumber(timestamp)
+					timestamp = tonumber(timestamp),
+					title = title
 				}
 			end
 		end, htmlChunk.section_topic .. ".- on .-" .. htmlChunk.ms_time)
@@ -1853,10 +2119,14 @@ return function()
 		@file Forum
 		@desc Creates a topic.
 		@param title<string> The title of the topic
-		@param message<string> The initial message of the topic
-		@param location<table> The location where the topic should be created. Fields 'f' and 's' are needed.
-		@returns boolean Whether the topic was created or not
-		@returns string if #1, `topic's location`, else `Result string` or `Error message`
+		@param message<string> The initial message content of the topic.
+		@param location<table> The location where the topic should be created.
+		@paramstruct location {
+			f<int> The forum id.
+			s<int> The section id.
+		}
+		@returns table,nil A parsed-url location object.
+		@returns nil,string Error message.
 	]]
 	self.createTopic = function(title, message, location)
 		assertion("createTopic", "string", 1, title)
@@ -1871,26 +2141,35 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local success, data = this.performAction(forumUri.create_topic, {
+		local result, err = this.performAction(forumUri.create_topic, {
 			{ 'f', location.f },
 			{ 's', location.s },
 			{ "titre", title },
 			{ "message", message }
 		}, forumUri.new_topic .. "?f=" .. location.f .. "&s=" .. location.s)
-
-		data, success = returnRedirection(success, data)
-		if data then
-			data.data.s = location.s
+		if not result then
+			return nil, err
 		end
-		return data, success
+
+		result, err = redirect(result, err)
+		if result then
+			result.data.s = location.s
+			return result, err
+		end
+
+		return nil, err
 	end
 	--[[@
 		@file Forum
 		@desc Answers a topic.
-		@param message<string> The answer
-		@param location<table> The location where the message is. Fields 'f' and 't' are needed.
-		@returns boolean Whether the post was created or not
-		@returns string if #1, `post's location`, else `Result string` or `Error message`
+		@param message<string> The answer message content.
+		@param location<table> The topic location.
+		@paramstruct location {
+			f<int> The forum id.
+			t<int> The topic id.
+		}
+		@returns table,nil A parsed-url location object.
+		@returns nil,string Error message.
 	]]
 	self.answerTopic = function(message, location)
 		assertion("answerTopic", "string", 1, message)
@@ -1904,26 +2183,30 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local success, data = this.performAction(forumUri.answer_topic, {
+		local result, err = this.performAction(forumUri.answer_topic, {
 			{ 'f', location.f },
 			{ 't', location.t },
 			{ "message_reponse", message }
 		}, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)
-		return returnRedirection(success, data)
+		return redirect(result, err)
 	end
 	--[[@
 		@file Forum
-		@desc Edits a message content.
+		@desc Edits the content of a message.
 		@param messageId<int,string> The message id. Use `string` if it's the post number.
-		@param message<string> The new message
-		@param location<table> The location where the message should be edited. Fields 'f' and 't' are needed.
-		@returns boolean Whether the message content was edited or not
-		@returns string if #1, `post's location`, else `Result string` or `Error message`
+		@param message<string> The new message content.
+		@param location<table> The message location.
+		@paramstruct location {
+			f<int> The forum id.
+			t<int> The topic id.
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.editAnswer = function(messageId, message, location)
-		assertion("editTopicAnswer", { "number", "string" }, 1, messageId)
-		assertion("editTopicAnswer", "string", 2, message)
-		assertion("editTopicAnswer", "table", 3, location)
+		assertion("editAnswer", { "number", "string" }, 1, messageId)
+		assertion("editAnswer", "string", 2, message)
+		assertion("editAnswer", "table", 3, location)
 
 		if not location.f or not location.t then
 			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
@@ -1953,13 +2236,21 @@ return function()
 	--[[@
 		@file Forum
 		@desc Creates a new poll.
-		@param title<string> The title of the poll
-		@param message<string> The content of the poll
-		@param pollResponses<table> The poll response options
-		@param location<table> The location where the topic should be created. Fields 'f' and 's' are needed.
-		@param settings?<table> The poll settings. The available indexes are: `multiple` and `public`.
-		@returns boolean Whether the poll was created or not
-		@returns string if #1, `poll's location`, else `Result string` or `Error message`
+		@param title<string> The title of the poll.
+		@param message<string> The message content of the poll.
+		@param pollResponses<table> The poll response options.
+		@param location<table> The location where the topic should be created.
+		@param settings?<table> The poll settings.
+		@paramstruct location {
+			f<int> The forum id.
+			s<int> The section id.
+		}
+		@paramstruct settings {
+			multiple?<boolean> If users are allowed to select more than one option.
+			public?<boolean> If users can see the results of the poll.
+		}
+		@returns table,nil A parsed-url location object.
+		@returns nil,string Error message.
 	]]
 	self.createPoll = function(title, message, pollResponses, location, settings)
 		assertion("createPoll", "string", 1, title)
@@ -1997,17 +2288,22 @@ return function()
 			end
 		end
 
-		local success, data = this.performAction(forumUri.create_topic, postData, forumUri.new_poll .. "?f=" .. location.f .. "&s=" .. location.s)
-		return returnRedirection(success, data)
+		local result, err = this.performAction(forumUri.create_topic, postData, forumUri.new_poll .. "?f=" .. location.f .. "&s=" .. location.s)
+		return redirect(result, err)
 	end
 	--[[@
 		@file Forum
 		@desc Answers a poll.
-		@param option<int,table,string> The poll option to be selected. You can insert its ID (highly recommended) or its text. For multiple options polls, use a table with `ints` or `strings`.
-		@param location<table> The location where the poll answer should be recorded. Fields 'f' and 't' are needed for forum poll, 'co' for private poll.
+		@param option<int,table,string> The poll option to be selected. You can insert its id (highly recommended) or its text value. For multiple options, use a table with `ints` or `strings`.
+		@param location<table> The location where the poll answer should be recorded.
 		@param pollId?<int> The poll id. It's obtained automatically if no value is given.
-		@returns boolean Whether the poll option was recorded or not
-		@returns string if #1, `poll's location`, else `Result string` or `Error message`
+		@paramstruct location {
+			f?<int> The forum id. (needed for forum poll)
+			t?<int> The topic id. (needed for forum poll)
+			co?<int> The private conversation id. (needed for private poll)
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.answerPoll = function(option, location, pollId)
 		assertion("answerPoll", { "number", "table", "string" }, 1, option)
@@ -2023,7 +2319,14 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local url = (isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t))
+		if not pollId then
+			local body = this.getPage((isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)))
+
+			pollId = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.poll_id)))
+			if not pollId then
+				return nil, errorString.not_poll
+			end
+		end
 
 		local optionIsString = type(option) == "string"
 		if optionIsString or (type(option) == "table" and type(option[1]) == "string") then
@@ -2051,15 +2354,6 @@ return function()
 			end
 		end
 
-		if not pollId then
-			local head, body = this.getPage((isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)))
-
-			pollId = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.poll_id)))
-			if not pollId then
-				return nil, errorString.not_poll
-			end
-		end
-
 		local postData = {
 			{ "po", pollId }
 		}
@@ -2078,15 +2372,19 @@ return function()
 			end
 		end
 
-		return this.performAction((isPrivatePoll and forumUri.answer_private_poll or forumUri.answer_poll), postData, url)
+		return this.performAction((isPrivatePoll and forumUri.answer_private_poll or forumUri.answer_poll), postData, (isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)))
 	end
 	--[[@
 		@file Forum
 		@desc Likes a message.
 		@param messageId<int,string> The message id. Use `string` if it's the post number.
-		@param location<table> The topic location. Fields 'f' and 't' are needed.
-		@returns boolean Whether the like was recorded or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
+		@param location<table> The topic location.
+		@paramstruct location {
+			f<int> The forum id.
+			t<int> The topic id.
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.likeMessage = function(messageId, location)
 		assertion("likeMessage", { "number", "string" }, 1, messageId)
@@ -2120,11 +2418,21 @@ return function()
 	-- > Moderation
 	--[[@
 		@file Moderation
-		@desc Gets the edition logs of a message, if possible.
+		@desc Gets the edition logs of a message.
 		@param messageId<int,string> The message id. Use `string` if it's the post number.
-		@param location<table> The message location. Fields 'f' and 't' are needed.
-		@returns table|nil The edition logs
-		@returns nil|string The message error, if any occurred
+		@param location<table> The message location.
+		@paramstruct location {
+			f<int> The forum id.
+			t<int> The topic id.
+		}
+		@returns table,nil The edition logs.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				bbcode = "", -- The bbcode of the edited message.
+				timestamp = 0 -- The timestamp of the edited message.
+			}
+		}
 	]]
 	self.getMessageHistory = function(messageId, location)
 		assertion("getMessageHistory", { "number", "string" }, 1, messageId)
@@ -2148,10 +2456,9 @@ return function()
 			end
 		end
 
-		local head, body = this.getPage(forumUri.message_history .. "?forum=" .. location.f .. "&message=" .. messageId)
+		local body = this.getPage(forumUri.message_history .. "?forum=" .. location.f .. "&message=" .. messageId)
 
 		local history, counter = { }, 0
-
 		string.gsub(body, htmlChunk.message_history_log .. ".-" .. htmlChunk.ms_time, function(bbcode, timestamp)
 			counter = counter + 1
 			history[counter] = {
@@ -2164,15 +2471,21 @@ return function()
 	end
 	--[[@
 		@file Moderation
-		@desc Updates a topic state, location and parameters.
-		@desc The available data are:
-		@desc string `title` -> Topic's title
-		@desc boolean `fixed` -> Whether the topic should be fixed or not
-		@desc string|int `state` -> The topic's state. An enum from `enumerations.displayState` (index or value)
-		@param location<table> The location where the topic is. Fields 'f' and 't' are needed.
-		@param data?<table> The new topic data. (default = Old title, active)
-		@returns boolean Whether the topic was updated or not
-		@returns string if #1, `topic's url`, else `Result string` or `Error message`
+		@desc Updates a topic state, location, and parameters.
+		@param location<table> The location where the topic is located.
+		@param data?<table> The new topic data.
+		@paramstruct location {
+			f<int> The forum id.
+			s<int> The section id.
+			t<int> The topic id.
+		}
+		@paramstruct data {
+			title?<string> The new title of the topic. @default Current title
+			fixed?<boolean> Whether the topic should be fixed or not. @default false
+			state?<string,int> The state of the topic. An enum from 'enumerations.displayState'. (index or value)
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.updateTopic = function(location, data)
 		assertion("updateTopic", "table", 1, location)
@@ -2188,7 +2501,11 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local topic = self.getTopic(location, true)
+		local topic, err = self.getTopic(location, true)
+		if not topic then
+			return nil, err
+		end
+
 		local postit = data.fixed
 		if postit == nil then
 			postit = topic.isFixed
@@ -2206,18 +2523,23 @@ return function()
 			{ "titre", (data.title or topic.title) },
 			{ "postit", (postit and "on" or '') },
 			{ "etat", (data.state or enumerations.displayState.active) },
-			{ 's', (location.s or topic.s) }
+			{ 's', location.s }
 		}, forumUri.edit_topic .. "?f=" .. location.f .. "&t=" .. location.t)
 	end
 	--[[@
 		@file Moderation
 		@desc Reports an element. (e.g: message, profile)
-		@param element<string,int> The element type. An enum from `enumerations.element` (index or value)
+		@param element<string,int> The element type. An enum from `enumerations.element`. (index or value)
 		@param elementId<int,string> The element id.
 		@param reason<string> The report reason.
-		@param location?<table> The location of the report. If it's a forum message the field 'f' is needed, if it's a private message the field 'co' is needed.
-		@returns boolean Whether the report was recorded or not
-		@returns string `Result string` or `Error message`	
+		@param location?<table> The location of the report.
+		@paramstruct location {
+			f?<int> The forum id. (needed for forum element)
+			t?<int> The topic id. (needed for forum element)
+			co?<int> The private conversation id. (needed for private element)
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.reportElement = function(element, elementId, reason, location)
 		assertion("reportElement", { "string", "number" }, 1, element)
@@ -2245,7 +2567,7 @@ return function()
 				if elementId then
 					elementId = elementId.id
 				else
-					return nil, err
+					return nil, err .. " (0x1)"
 				end
 			end
 			link = forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t
@@ -2258,7 +2580,7 @@ return function()
 				local err
 				elementId, err = self.getProfile(elementId)
 				if err then
-					return nil, err
+					return nil, err .. " (0x2)"
 				end
 				elementId = elementId.id
 			end
@@ -2273,7 +2595,7 @@ return function()
 				if elementId then
 					elementId = elementId.id
 				else
-					return nil, err
+					return nil, err .. " (0x3)"
 				end
 			end
 			link = forumUri.conversation .. "?co=" .. location.co
@@ -2305,13 +2627,17 @@ return function()
 	end
 	--[[@
 		@file Moderation
-		@desc Changes the state of the message. (e.g: active, moderated)
-		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`.
-		@param messageState<string,int> The message state. An enum from `enumerations.messageState` (index or value)
-		@param location<table> The topic location. Fields 'f' and 't' are needed.
-		@param reason?<string> The reason for changing the message state
-		@returns boolean Whether the message(s) state was(were) changed or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
+		@desc Changes the state of a message. (e.g: active, moderated)
+		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message ids, use a table with `ints` or `strings`.
+		@param messageState<string,int> The message state. An enum from `enumerations.messageState`. (index or value)
+		@param location<table> The message location.
+		@paramstruct location {
+			f<int> The forum id.
+			t<int> The topic id.
+		}
+		@param reason?<string> The state change reason.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.changeMessageState = function(messageId, messageState, location, reason)
 		assertion("changeMessageState", { "number", "table", "string" }, 1, messageId)
@@ -2337,14 +2663,14 @@ return function()
 			if messageIdIsString then
 				message, err = self.getMessage(messageId, location)
 				if not message then
-					return nil, err
+					return nil, err .. " (0x1)"
 				end
 				messageId = { message.id }
 			else
 				for i = 1, #messageId do
 					message, err = self.getMessage(messageId, location)
 					if not message then
-						return nil, err
+						return nil, err .. " (0x2)"
 					end
 					messageId[i] = message.id
 				end
@@ -2361,12 +2687,16 @@ return function()
 	end
 	--[[@
 		@file Moderation
-		@desc Changes the restriction state for a message.
-		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message IDs, use a table with `ints` or `strings`.
+		@desc Changes the restriction state of a message.
+		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message ids, use a table with `ints` or `strings`.
 		@param contentState<string> An enum from `enumerations.contentState` (index or value)
-		@param location<table> The topic location. Fields 'f' and 't' are needed.
-		@returns boolean Whether the message content state was changed or not
-		@returns string if #1, `post's url`, else `Result string` or `Error message`
+		@param location<table> The topic location.
+		@paramstruct location {
+			f<int> The forum id.
+			t<int> The topic id.
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.changeMessageContentState = function(messageId, contentState, location)
 		assertion("changeMessageContentState", { "number", "table", "string" }, 1, messageId)
@@ -2391,14 +2721,14 @@ return function()
 			if messageIdIsString then
 				message, err = self.getMessage(messageId, location)
 				if not message then
-					return nil, err
+					return nil, err .. " (0x1)"
 				end
 				messageId = { message.id }
 			else
 				for i = 1, #messageId do
 					message, err = self.getMessage(messageId, location)
 					if not message then
-						return nil, err
+						return nil, err .. " (0x2)"
 					end
 					messageId[i] = message.id
 				end
@@ -2417,9 +2747,21 @@ return function()
 	--[[@
 		@file Tribe
 		@desc Gets the data of a tribe.
-		@param tribeId?<int> The tribe id. (default = Client's tribe id)
-		@returns table|nil The tribe data, if there's any
-		@returns nil|string The message error, if any occurred
+		@param tribeId?<int> The tribe id. @default = Account's tribe id
+		@returns table,nil The tribe data.
+		@returns nil,string Error message.
+		@struct {
+			community = enumerations.community, -- The tribe community.
+			creationDate = "", -- The timestamp of the tribe creation.
+			favoriteId = 0, -- The favorite id of the tribe, if 'isFavorited'.
+			greetingMessage = "", -- The tribe greeting messages string field.
+			id = 0, -- The tribe id.
+			isFavorited = false, -- Whether the tribe is favorited or not.
+			leaders = { "" }, -- The list of tribe leaders.
+			name = "", -- The name of the tribe.
+			presentation = "", -- The tribe presentation string field.
+			recruitment = enumerations.recruitmentState -- The current recruitment state of the tribe.
+		}
 	]]
 	self.getTribe = function(tribeId)
 		assertion("getTribe", { "number", "nil" }, 1, tribeId)
@@ -2435,14 +2777,14 @@ return function()
 			tribeId = this.tribeId
 		end
 
-		local head, body = this.getPage(forumUri.tribe .. "?tr=" .. tribeId)
+		local body = this.getPage(forumUri.tribe .. "?tr=" .. tribeId)
 
 		local fa = tonumber(string.match(body, string.format(htmlChunk.hidden_value, forumUri.favorite_id)))
 
 		local name = string.match(body, htmlChunk.title)
 		local creationDate, community = string.match(body, htmlChunk.date .. ".-" .. htmlChunk.community)
 		local recruitment = string.match(body, htmlChunk.recruitment)
-		
+
 		local leaders, counter = { }, 0
 		-- Some tribes may have more than one leader
 		string.gsub(body, htmlChunk.nickname, function(name, discriminator)
@@ -2469,25 +2811,35 @@ return function()
 		end
 
 		return {
-			id = tribeId,
-			name = name,
-			creationDate = creationDate,
 			community = enumerations.community[community],
-			recruitment = enumerations.recruitmentState[string.lower(recruitment)],
-			leaders = leaders,
+			creationDate = creationDate,
+			favoriteId = fa,
 			greetingMessage = greetingMessage,
-			presentation = presentation,
+			id = tribeId,
 			isFavorited = not not fa,
-			favoriteId = fa
+			leaders = leaders,
+			name = name,
+			presentation = presentation,
+			recruitment = enumerations.recruitmentState[string.lower(recruitment)]
 		}
 	end
 	--[[@
 		@file Tribe
 		@desc Gets the members of a tribe.
-		@param tribeId?<int> The tribe id. (default = Client's tribe id)
-		@param pageNumber?<int> The list page (case the tribe has more than 30 members). To list ALL members, use `0`. (default = 1)
-		@returns table|nil The names of the tribe ranks. Total pages at `_pages`, total members at `_count`.
-		@returns nil|string The message error, if any occurred
+		@param tribeId?<int> The tribe id. @default = Accounts's tribe id
+		@param pageNumber?<int> The list page (if the tribe has more than 30 members). To list ALL members, use `0`. @default 1
+		@returns table,nil The names of the tribe ranks.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				community = enumerations.community, -- The community of the member.
+				name = "", -- The name of the member.
+				rank = "", -- The name of the rank assigned to the member. (needs tribe permissions or to be a tribe member)
+				timestamp = 0 -- The timestamp of when the member joined the tribe. (needs to be a tribe member)
+			},
+			_pages = 0, -- The total pages of the member list.
+			_count = 0 -- The total of members in the tribe.
+		}
 	]]
 	self.getTribeMembers = function(tribeId, pageNumber)
 		assertion("getTribeMembers", { "number", "nil" }, 1, tribeId)
@@ -2514,8 +2866,8 @@ return function()
 				string.gsub(body, htmlChunk.community .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.tribe_rank .. ".-" .. htmlChunk.ms_time, function(community, name, discriminator, _, rank, jointDate)
 					counter = counter + 1
 					members[counter] = {
-						name = name .. discriminator,
 						community = enumerations.community[community],
+						name = name .. discriminator,
 						rank = rank,
 						timestamp = tonumber(jointDate)
 					}
@@ -2526,8 +2878,8 @@ return function()
 					string.gsub(body, htmlChunk.community .. ".-" .. htmlChunk.nickname .. ".-" .. htmlChunk.tribe_rank, function(community, name, discriminator, _, rank)
 						counter = counter + 1
 						members[counter] = {
-							name = name .. discriminator,
 							community = enumerations.community[community],
+							name = name .. discriminator,
 							rank = rank
 						}
 					end)
@@ -2535,8 +2887,8 @@ return function()
 					string.gsub(body, htmlChunk.community .. ".-" .. htmlChunk.nickname, function(community, name, discriminator)
 						counter = counter + 1
 						members[counter] = {
+							community = enumerations.community[community],
 							name = name .. discriminator,
-							community = enumerations.community[community]
 						}
 					end)
 				end
@@ -2554,7 +2906,7 @@ return function()
 
 		-- Get total of members
 		if not lastPageQuantity then
-			local head, body = this.getPage(uri .. "&p=" .. totalPages)
+			local body = this.getPage(uri .. "&p=" .. totalPages)
 			lastPageQuantity = tonumber(string.match(body, htmlChunk.total_entries))
 			if not lastPageQuantity then
 				return nil, errorString.internal
@@ -2566,11 +2918,22 @@ return function()
 	end
 	--[[@
 		@file Tribe
-		@desc Gets the ranks of a tribe, if possible.
-		@param tribeId?<int> The tribe id. (default = Client's tribe id)
-		@param location?<table> The location where the ranks should be taken (for role IOs, the fields 'f' and 's' are reuiqred)
-		@returns table<string,table>|nil The names of the tribe ranks
-		@returns nil|string The message error, if any occurred
+		@desc Gets the ranks of a tribe.
+		@param tribeId?<int> The tribe id. @default Account's tribe id
+		@param location?<table> The location where the ranks should be taken. Use `nil` if you don't need the role ids.
+		@paramstruct location {
+			f<int> The forum id.
+			s<int> The section id.
+		}
+		@returns table,nil The names of the tribe ranks
+		@returns nil,string Error message.
+		@struct {
+			-- If not 'location', the struct is a string array.
+			[n] = {
+				id = 0, -- The role id.
+				name = "" -- The role name.
+			}
+		}
 	]]
 	self.getTribeRanks = function(tribeId, location)
 		assertion("getTribeRanks", { "number", "nil" }, 1, tribeId)
@@ -2588,10 +2951,10 @@ return function()
 		end
 
 		if location and (not location.f or not location.s) then
-			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's' / 'tr'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
-		local head, body = this.getPage((location and (forumUri.edit_section_permissions .. "?f=" .. location.f .. "&s=" .. location.s) or (forumUri.tribe_members .. "?tr=" .. tribeId)))
+		local body = this.getPage((location and (forumUri.edit_section_permissions .. "?f=" .. location.f .. "&s=" .. location.s) or (forumUri.tribe_members .. "?tr=" .. tribeId)))
 
 		local ranks, counter = { }, 0
 
@@ -2609,8 +2972,8 @@ return function()
 			string.gsub(body, htmlChunk.tribe_rank_id, function(id, name)
 				counter = counter + 1
 				ranks[counter] = {
-					name = name,
-					id = id
+					id = id,
+					name = name
 				}
 			end)
 		end
@@ -2619,11 +2982,18 @@ return function()
 	end
 	--[[@
 		@file Tribe
-		@desc Gets the history logs of a tribe, if possible.
-		@param tribeId?<int> The tribe id. (default = Client's tribe id)
-		@param pageNumber?<int> The page number of the history. To list ALL the history, use `0`. (default = 1)
-		@returns table|nil The history logs. Total pages at `_pages`.
-		@returns nil|string The message error, if any occurred
+		@desc Gets the history logs of a tribe.
+		@param tribeId?<int> The tribe id. @default Account's tribe id
+		@param pageNumber?<int> The page number of the history list. To list ALL the history, use `0`. @default 1
+		@returns table,nil The history logs.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				log = "", -- The log value.
+				timestamp = 0 -- The timestamp of the log.
+			},
+			_pages = 0 -- The total pages of the history list.
+		}
 	]]
 	self.getTribeHistory = function(tribeId, pageNumber)
 		assertion("getTribeHistory", { "number", "nil" }, 1, tribeId)
@@ -2650,10 +3020,24 @@ return function()
 		end, htmlChunk.ms_time .. ".-" .. htmlChunk.tribe_log)
 	end
 	--[[@
+		@file Tribe
 		@desc Gets the sections of a tribe forum.
-		@param location?<table> The location of the tribe forum. Field 'tr' (tribeId) is needed if it's a forum, fields 'f' and 's' are needed if it's a sub-forum. (default = Client's tribe forum)
-		@returns table|nil The data of each section.
-		@returns nil|string Error message, if any occurred.
+		@param location?<table> The location of the tribe forum. @default Account's tribe forum
+		@paramstruct location {
+			f?<int> The forum id. (needed if sub-forum)
+			s?<int> The section id. (needed if sub-forum)
+			tr?<int> The tribe id. (needed if forum)
+		}
+		@returns table,nil The data of each section.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				f = 0, -- The forum id.
+				name = "", -- The section name.
+				s = 0, -- The section id.
+				tr = 0 -- The tribe id.
+			}
+		}
 	]]
 	self.getTribeForum = function(location)
 		assertion("getTribeForum", { "table", "nil" }, 1, location)
@@ -2664,15 +3048,15 @@ return function()
 			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's' / 'tr'")
 		end
 
-		local head, body = this.getPage(forumUri.tribe_forum .. (location.s and ("?f=" .. location.f .. "&s=" .. location.s) or ("?tr=" .. location.tr)))
+		local body = this.getPage(forumUri.tribe_forum .. (location.s and ("?f=" .. location.f .. "&s=" .. location.s) or ("?tr=" .. location.tr)))
 
 		local sections, counter = { }, 0
 		string.gsub(body, htmlChunk.tribe_section_id, function(f, s, name)
 			counter = counter + 1
 			sections[counter] = {
 				f = tonumber(f),
-				s = tonumber(s),
 				name = name,
+				s = tonumber(s),
 				tr = location.tr
 			}
 		end)
@@ -2681,10 +3065,10 @@ return function()
 	end
 	--[[@
 		@file Tribe
-		@desc Updates the account's tribe greeting message.
-		@param message<string> The new message
-		@returns boolean Whether the tribe's greeting message was updated or not
-		@returns string `Result string` or `Error message`
+		@desc Updates the account's tribe's greetings message string field.
+		@param message<string> The new message content.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.updateTribeGreetingMessage = function(message)
 		assertion("updateTribeGreetingMessage", "string", 1, message)
@@ -2704,15 +3088,16 @@ return function()
 	end
 	--[[@
 		@file Tribe
-		@desc Updates the account's tribe's parameters.
-		@desc The available parameters are:
-		@desc boolean `greeting_message` -> Whether the tribe's profile should display the tribe's greeting message or not
-		@desc boolean `ranks` -> Whether the tribe's profile should display the tribe ranks or not
-		@desc boolean `logs` -> Whether the tribe's profile should display the history logs or not
-		@desc boolean `leader` -> Whether the tribe's profile should display the tribe leaders message or not
+		@desc Updates the account's tribe's profile parameters.
 		@param parameters<table> The parameters.
-		@returns boolean Whether the new tribe parameter settings were set or not
-		@returns string `Result string` or `Error message`
+		@paramstruct parameters {
+			displayGreetings?<boolean> Whether the tribe's profile should display the tribe's greetings message or not.
+			displayRanks?<boolean> Whether the tribe's profile should display the tribe ranks or not.
+			displayLogs?<boolean> Whether the tribe's profile should display the history logs or not.
+			displayLeaders?<boolean> Whether the tribe's profile should display the tribe leaders or not.
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.updateTribeParameters = function(parameters)
 		assertion("updateTribeParameters", "table", 1, parameters)
@@ -2728,16 +3113,16 @@ return function()
 		local postData = {
 			{ "tr", this.tribeId }
 		}
-		if type(parameters.greeting_message) == "boolean" and parameters.greeting_message then
+		if type(parameters.displayGreetings) == "boolean" and parameters.displayGreetings then
 			postData[#postData + 1] = { "message_jour_public", "on" }
 		end
-		if type(parameters.ranks) == "boolean" and parameters.ranks then
+		if type(parameters.displayRanks) == "boolean" and parameters.displayRanks then
 			postData[#postData + 1] = { "rangs_publics", "on" }
 		end
-		if type(parameters.logs) == "boolean" and parameters.logs then
+		if type(parameters.displayLogs) == "boolean" and parameters.displayLogs then
 			postData[#postData + 1] = { "historique_public", "on" }
 		end
-		if type(parameters.leader) == "boolean" and parameters.leader then
+		if type(parameters.displayLeaders) == "boolean" and parameters.displayLeaders then
 			postData[#postData + 1] = { "chefs_publics", "on" }
 		end
 
@@ -2745,14 +3130,15 @@ return function()
 	end
 	--[[@
 		@file Tribe
-		@desc Updates the account's tribe profile.
-		@desc The available data are:
-		@desc string|int `community` -> Account's tribe community. An enum from `enumerations.community` (index or value)
-		@desc string|int `recruitment` -> Account's tribe recruitment state. An enum from `enumerations.recruitmentState` (index or value)
-		@desc string `presentation` -> Account's tribe profile's presentation
+		@desc Updates the account's tribe's profile.
 		@param data<table> The data
-		@returns boolean Whether the tribe's profile was updated or not
-		@returns string `Result string` or `Error message`
+		@paramstruct data {
+			community?<string,int> Tribe's community. An enum from `enumerations.community`. (index or value) @default xx
+			recruitment?<string,int> Tribe's recruitment state. An enum from `enumerations.recruitmentState`. (index or value)
+			presentation?<string> Tribe's profile's presentation string field.
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.updateTribeProfile = function(data)
 		assertion("updateTribeProfile", "table", 1, data)
@@ -2769,16 +3155,16 @@ return function()
 			{ "tr", this.tribeId }
 		}
 
+		local err
 		if data.community then
-			if type(data.community) == "string" then
-				-- Check if community is valid first
-			end
+			data.community, err = isEnum(data.community, "community", "data.community")
+			if err then return nil, err end
+
 			postData[#postData + 1] = { "communaute", data.community }
 		else
-			postData[#postData + 1] = { "communaute", 1 } -- xx
+			postData[#postData + 1] = { "communaute", enumerations.community.xx }
 		end
 		if data.recruitment then
-			local err
 			data.recruitment, err = isEnum(data.recruitment, "recruitmentState", "data.recruitment")
 			if err then return nil, err end
 
@@ -2795,8 +3181,8 @@ return function()
 		@file Tribe
 		@desc Changes the logo of the account's tribe.
 		@param image<string> The new image. An URL or file name.
-		@returns boolean Whether the new logo was set or not
-		@returns string `Result string` or `Error message`
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.changeTribeLogo = function(image)
 		assertion("changeTribeLogo", "string", 1, image)
@@ -2840,8 +3226,8 @@ return function()
 	--[[@
 		@file Tribe
 		@desc Removes the logo of the account's tribe.
-		@returns boolean Whether the logo was removed or not
-		@returns string `Result string` or `Error message`
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.removeTribeLogo = function()
 		if not this.isConnected then
@@ -2859,15 +3245,24 @@ return function()
 	--[[@
 		@file Tribe
 		@desc Creates a section.
-		@desc The available data are:
-		@desc string `name` -> Section's name
-		@desc string `icon` -> Section's icon. An enum from `enumerations.sectionIcon` (index or value)
-		@desc string `description` -> Section's description
-		@desc int `min_characters` -> Minimum characters needed for a message in the new section
-		@param data<table> The new section data
-		@param location?<table> The location where the section will be created. Field 'f' is needed, 's' is needed if it's a sub-section.
-		@returns boolean Whether the section was created or not
-		@returns string if #1, `section's location`, else `Result string` or `Error message`
+		@param data<table> The new section data.
+		@param location?<table> The location where the section will be created.
+		@paramstruct data {
+			name<string> Section's name.
+			icon<string> Section's icon. An enum from `enumerations.sectionIcon`. (index or value)
+			description?<string> Section's description. @default Section name
+			min_characters?<int> Minimum characters needed to send a message in the section. @default 4
+		}
+		@paramstruct location {
+			f<int> The forum id.
+			s?<int> The section id. (needed if sub-section)
+		}
+		@returns table,nil The location of the new section.
+		@returns nil,string Error message.
+		@struct {
+			f = 0, -- The forum id.
+			s = 0 -- The section id.
+		}
 	]]
 	self.createSection = function(data, location)
 		assertion("createSection", "table", 1, data)
@@ -2890,7 +3285,7 @@ return function()
 		end
 
 		if not location then
-			local head, body = this.getPage(forumUri.tribe_forum .. "?tr=" .. this.tribeId)
+			local body = this.getPage(forumUri.tribe_forum .. "?tr=" .. this.tribeId)
 			location = {
 				f = tonumber(string.match(body, "%?f=(%d+)"))
 			}
@@ -2907,11 +3302,11 @@ return function()
 			tr = this.tribeId
 		})
 		if not oldSections then
-			return nil, errorString.internal
+			return nil, err .. " (0x1)"
 		end
 		oldSections = table.createSet(oldSections, 's')
 
-		local success, data = this.performAction(forumUri.create_section, {
+		local result, err = this.performAction(forumUri.create_section, {
 			{ 'f', location.f },
 			{ 's', (location.s or 0) },
 			{ "tr", (location.s and 0 or this.tribeId) },
@@ -2920,8 +3315,8 @@ return function()
 			{ "description", (data.description or data.name) },
 			{ "caracteres", (data.min_characters or 4) }
 		}, forumUri.new_section .. "?f=" .. location.f .. (location.s and ("&s=" .. location.s) or ("&tr=" .. this.tribeId)))
-		
-		if success then
+
+		if result then
 			local currentSections
 			currentSections, err = self.getTribeForum({
 				f = location.f,
@@ -2929,7 +3324,7 @@ return function()
 				tr = this.tribeId
 			})
 			if not currentSections then
-				return nil, errorString.internal
+				return nil, err .. " (0x2)"
 			end
 
 			local id
@@ -2944,24 +3339,29 @@ return function()
 				f = location.f,
 				s = id
 			}
-		else
-			return success, data
 		end
+
+		return nil, err
 	end
 	--[[@
 		@file Tribe
 		@desc Updates a section.
-		@desc The available data are:
-		@desc string `name` -> Section's name
-		@desc string `icon` -> The section's icon. An enum from `enumerations.sectionIcon` (index or value)
-		@desc string `description` -> Section's description
-		@desc int `min_characters` -> Minimum characters needed for a message in the new section
-		@desc string|int `state` -> The section's state (e.g.: open, closed). An enum from `enumerations.displayState` (index or value)
-		@desc int `parent` -> The parent section if the updated section is a sub-section. (default = 0)
 		@param data<table> The updated section data
 		@param location<table> The section location. Fields 'f' and 's' are needed.
-		@returns boolean Whether the section was updated or not
-		@returns string if #1, `section's url`, else `Result string` or `Error message`
+		@paramstruct data {
+			name<string> The name of the section.
+			icon<string> The icon of the section. An enum from `enumerations.sectionIcon`. (index or value)
+			description<string> The section's description string field.
+			min_characters<int> Minimum characters needed for a message in the new section
+			state<string,int> The section's state (e.g.: open, closed). An enum from `enumerations.displayState`. (index or value)
+			parent<int> The parent section if the updated section is a sub-section. @default 0
+		}
+		@paramstruct location {
+			f<int> The forum id.
+			s<int> The section id.
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.updateSection = function(data, location)
 		assertion("updateSection", "table", 1, data)
@@ -2980,7 +3380,7 @@ return function()
 			data.icon, err = isEnum(data.icon, "sectionIcon", "data.icon", nil, true)
 			if err then return nil, err end
 		end
-		
+
 		data.state, err = isEnum(data.state, "displayState", "data.state")
 		if err then return nil, err end
 
@@ -2992,7 +3392,11 @@ return function()
 			return nil, errorString.no_tribe
 		end
 
-		local section = self.getSection(location)
+		local section, err = self.getSection(location)
+		if not section then
+			return nil, err
+		end
+
 		return this.performAction(forumUri.update_section, {
 			{ 'f', location.f },
 			{ 's', location.s },
@@ -3006,14 +3410,23 @@ return function()
 	end
 	--[[@
 		@file Tribe
-		@desc Sets the permissions of each rank for a specific section on the tribe forums.
-		@desc The available permissions are `canRead`, `canAnswer`, `canCreateTopic`, `canModerate`, and `canManage`.
-		@desc Each one of them must be a table of IDs (`int` or `string`) of the ranks that this permission should be allowed.
-		@desc To allow _non-members_, use `enumerations.misc.non_member` or `"non_member"`.
-		@param permissions<table> The permissions
-		@param location<table> The section location. The fields 'f', 't' and 'tr' are needed.
-		@returns boolean Whether the new permissions were set or not
-		@returns string `Result string` or `Error message`
+		@desc Sets the permissions of each rank for a specific section on the account's tribe's forum.
+		@desc To allow _non-members_, use `enumerations.misc.non_member` or `"non_member"` in the permissions list.
+		@param permissions<table> The permissions of the section.
+		@param location<table> The section location.
+		@paramstruct permissions {
+			canRead?<table> A list of role names or ids that should be allowed to read the topics of the section.
+			canAnswer?<table> A list of role names or ids that should be allowed to send messages in the topics of the section.
+			canCreateTopic?<table> A list of role names or ids that should be allowed to create topics in the section.
+			canModerate?<table> A list of role names or ids that should be allowed to moderate in the section.
+			canManage?<table> A list of role names or ids that should be allowed to manage the section.
+		}
+		@paramstruct location {
+			f<int> The forum id.
+			s<int> The section id.
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.setTribeSectionPermissions = function(permissions, location)
 		assertion("setTribeSectionPermissions", "table", 1, permissions)
@@ -3027,7 +3440,11 @@ return function()
 			return nil, errorString.no_tribe
 		end
 
-		local ranks = self.getTribeRanks(nil, location)
+		local ranks, err = self.getTribeRanks(nil, location)
+		if not ranks then
+			return nil, err
+		end
+
 		local ranks_by_id = table.createSet(ranks, "id")
 		local ranks_by_name = table.createSet(ranks, "name")
 
@@ -3090,13 +3507,20 @@ return function()
 	-- > Micepix
 	--[[@
 		@file Micepix
-		@desc Gets the images that were hosted in your account.
-		@param pageNumber?<int> The page number of the gallery. To list ALL the gallery, use `0`. (default = 1)
-		@returns table|nil The data of the images. Total pages at `_pages`.
-		@returns nil|string The message error, if any occurred
+		@desc Gets the images that were hosted by the logged account.
+		@param pageNumber?<int> The page number of the gallery. To list ALL the gallery, use `0`. @default 1
+		@returns table,nil The data of the images.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				id = "", -- The image id.
+				timestamp = 0 -- The timestamp of when the image was hosted.
+			},
+			_pages = 0 -- The total pages of the images gallery.
+		}
 	]]
 	self.getAccountImages = function(pageNumber)
-		assertion("getImages", { "number", "nil" }, 1, pageNumber)
+		assertion("getAccountImages", { "number", "nil" }, 1, pageNumber)
 
 		pageNumber = pageNumber or 1
 
@@ -3113,10 +3537,17 @@ return function()
 	end
 	--[[@
 		@file Micepix
-		@desc Gets the latest images that were hosted on Micepix.
-		@param quantity?<int> The quantity of images needed. Must be a number multiple of 16. (default = 16)
-		@returns table|nil The data of the images.
-		@returns nil|string The message error, if any occurred
+		@desc Gets the latest images that were hosted by people on Micepix.
+		@param quantity?<int> The quantity of images to be returned. Must be a number multiple of 16. @default 16
+		@returns table,nil The data of the images.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				hoster = "", -- The name of the hoster of the image.
+				id = "", -- The image id.
+				timestamp = 0 -- The timestamp of when the image was hosted.
+			}
+		}
 	]]
 	self.getLatestImages = function(quantity)
 		assertion("getLatestImages", { "number", "nil" }, 1, quantity)
@@ -3132,18 +3563,18 @@ return function()
 			quantity = quantity - r + 16
 		end
 
-		local head, body, lastImage
+		local body, lastImage
 		local pat = htmlChunk.image_id .. ".-" .. htmlChunk.profile_id .. ".-" .. htmlChunk.ms_time
 
 		local images, counter = { }, 0
 		for i = 1, quantity, 16 do
-			head, body = this.getPage(forumUri.images_gallery .. (lastImage and ("?im=" .. lastImage) or ""))
+			body = this.getPage(forumUri.images_gallery .. (lastImage and ("?im=" .. lastImage) or ""))
 
 			string.gsub(body, pat, function(code, name, timestamp)
 				counter = counter + 1
 				images[counter] = {
+					hoster = self.formatNickname(name),
 					id = code,
-					author = self.formatNickname(name),
 					timestamp = tonumber(timestamp)
 				}
 				lastImage = code
@@ -3156,9 +3587,9 @@ return function()
 		@file Micepix
 		@desc Uploads an image in Micepix.
 		@param image<string> The new image. An URL or file name.
-		@param isPublic?<boolean> Whether the image should appear in the gallery or not. (default = false)
-		@returns boolean Whether the image was hosted or not
-		@returns string if #1, `image's location`, else `Result string` or `Error message`
+		@param isPublic?<boolean> Whether the image should appear in the gallery or not. @default false
+		@returns table,nil A parsed-url location object.
+		@returns nil,string Error message.
 	]]
 	self.uploadImage = function(image, isPublic)
 		assertion("uploadImage", "string", 1, image)
@@ -3195,15 +3626,15 @@ return function()
 			boundaries[3]
 		}
 
-		local success, data = this.performAction(forumUri.upload_image, nil, forumUri.user_images, table.concat(file, separator.file))
-		return returnRedirection(success, data)
+		local result, err = this.performAction(forumUri.upload_image, nil, forumUri.user_images, table.concat(file, separator.file))
+		return redirect(result, err)
 	end
 	--[[@
 		@file Micepix
-		@desc Deletes an image from the account's micepix.
-		@param imageId<string> The image id
-		@returns boolean Whether the image was deleted or not
-		@returns string `Result string` or `Error message`
+		@desc Deletes an image from the account's micepix gallery.
+		@param imageId<string> The image id.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.deleteMicepixImage = function(imageId)
 		assertion("deleteMicepixImage", "string", 1, imageId)
@@ -3221,12 +3652,33 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Performs a deep search on forums.
-		@param searchType<string,int> The type of the search (e.g.: player, message). An enum from `enumerations.searchType` (index or value)
-		@param search<string> The value to be found in the search
-		@param pageNumber?<int> The page number of the search results. To list ALL the matches, use `0`. (default = 1)
-		@param data?<table> Additional data to be used in the `message_topic` search type. Fields `searchLocation`(enum) and `f` are needed. Fields `author`, `community`(enum), and `s` are optional.
-		@returns table|nil The search matches. Total pages at `_pages`.
-		@returns nil|string The message error, if any occurred
+		@param searchType<string,int> The type of the search (e.g.: player, message). An enum from `enumerations.searchType`. (index or value)
+		@param search<string> The value to be searched.
+		@param pageNumber?<int> The page number of the search results. To list ALL the matches, use `0`. @default 1
+		@param data?<table> Additional data to be used in the `message_topic` search type.
+		@paramstruct data {
+			author?<string> The name of the message or topic author that the search system needs to look for.
+			community?<string,int> The community to perform the search. An enum from `enumerations.community`. (index or value)
+			f<int> The forum id.
+			s?<int> The section id.
+			searchLocation<string,int > The specific search location. An enum from `enumerations.searchLocation`. (index or value)
+		}
+		@returns table,nil The search matches. Total pages at `_pages`.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				author = "", -- The author of the topic or message matched. (When 'searchType' is 'message_topic')
+				community = enumerations.community, -- The community of the topic or player matched. (When 'searchType' is not 'tribe')
+				contentHtml = "", -- The HTML of the message content. (When 'searchType' is 'message_topic' and 'searchLocation' is not 'titles')
+				id = 0, -- The id of the tribe found. (When 'searchType' is 'tribe')
+				location = parseUrlData, -- The location of the message or topic. (When 'searchType' is 'message_topic')
+				name = "", -- The name of the player or tribe. (When 'searchType' is not 'message_topic')
+				post = "", -- The post id of the message. (When 'searchType' is 'message_topic' and 'searchLocation' is not 'titles')
+				timestamp = 0, -- The timestamp of when the message or topic was created.
+				title = "" -- The topic title. (When 'searchType' is 'message_topic')
+			},
+			_pages = 0 -- The total pages of available matches for the search.
+		}
 	]]
 	self.search = function(searchType, search, pageNumber, data)
 		if type(search) == "number" then
@@ -3262,24 +3714,24 @@ return function()
 				html = htmlChunk.topic_div .. ".-" .. htmlChunk.community .. ".-" .. htmlChunk.search_list .. ".-" .. htmlChunk.ms_time .. ".-" .. htmlChunk.profile_id
 				f = function(community, post, title, timestamp, author)
 					return {
-						location = self.parseUrlData(post),
+						author = self.formatNickname(author),
 						community = enumerations.community[community],
-						title = title,
+						location = self.parseUrlData(post),
 						timestamp = tonumber(timestamp),
-						author = self.formatNickname(author)
+						title = title
 					}
 				end
 			else
 				html = htmlChunk.topic_div .. ".-" .. htmlChunk.community .. ".-" .. htmlChunk.search_list .. ".-" .. htmlChunk.message_post_id .. ".-" .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time .. ".-" .. htmlChunk.profile_id
-				f = function(community, post, title, postId, msgHtml, timestamp, author)
+				f = function(community, post, title, postId, contentHtml, timestamp, author)
 					return {
+						author = self.formatNickname(author),
+						community = enumerations.community[community],
+						contentHtml = contentHtml,
 						location = self.parseUrlData(post),
 						post = postId,
-						topicTitle = title,
-						community = enumerations.community[community],
-						messageHtml = msgHtml,
 						timestamp = tonumber(timestamp),
-						author = self.formatNickname(author)
+						title = title
 					}
 				end
 			end
@@ -3290,8 +3742,8 @@ return function()
 				html = htmlChunk.tribe_list
 				f = function(name, id)
 					return {
-						name = name,
-						id = tonumber(id)
+						id = tonumber(id),
+						name = name
 					}
 				end
 			else
@@ -3310,9 +3762,18 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Gets the topics created by a user.
-		@param userName?<string,int> User name or id. (default = Client's account id)
-		@returns table|nil The list of topics, if there's any
-		@returns nil|string The message error, if any occurred
+		@param userName?<string,int> User name or user id. @default Account's id
+		@returns table,nil The list of topics.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				community = enumerations.community, -- The community where the topic was created.
+				location = parseUrlData, -- The location of the topic.
+				timestamp = 0, -- The timestamp of when the topic was created.
+				title = "", -- The title of the topic.
+				totalMessages = 0 -- The total of messages of the topic.
+			}
+		}
 	]]
 	self.getCreatedTopics = function(userName)
 		assertion("getCreatedTopics", { "string", "number", "nil" }, 1, userName)
@@ -3321,17 +3782,17 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local head, body = this.getPage(forumUri.topics_started .. "?pr=" .. (userName or this.userId))
+		local body = this.getPage(forumUri.topics_started .. "?pr=" .. (userName or this.userId))
 
 		local topics, counter = { }, 0
 		string.gsub(body, htmlChunk.topic_div .. ".-" .. htmlChunk.community .. ".-" .. htmlChunk.created_topic_data .. ".- on .-" .. htmlChunk.ms_time, function(community, topic, title, messages, timestamp)
 			counter = counter + 1
 			topics[counter] = {
-				location = self.parseUrlData(topic),
-				title = title,
-				totalMessages = tonumber(messages),
 				community = enumerations.community[community],
-				timestamp = tonumber(timestamp)
+				location = self.parseUrlData(topic),
+				timestamp = tonumber(timestamp),
+				title = title,
+				totalMessages = tonumber(messages)
 			}
 		end)
 
@@ -3340,10 +3801,20 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Gets the last posts of a user.
-		@param pageNumber?<int> The page number of the last posts list. (default = 1)
-		@param userName?<string,int> User name or id. (default = Client's account id)
-		@returns table|nil The list of posts, if there's any
-		@returns nil|string The message error, if any occurred
+		@param pageNumber?<int> The page number of the last posts list. @default 1
+		@param userName?<string,int> User name or id. @default Account's id
+		@returns table,nil The list of posts.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				contentHtml = "", -- The HTML of the message content.
+				location = parseUrlData, -- The location of the message.
+				post = "", -- The post id of the message.
+				timestamp = 0, -- The timestamp of when the message was created.
+				topicTitle = "" -- The title of the topic where the message was posted.
+			},
+			_pages = 0 -- The total pages of the "last posts" list.
+		}
 	]]
 	self.getLastPosts = function(pageNumber, userName)
 		assertion("getLastPosts", { "number", "nil" }, 1, pageNumber)
@@ -3353,21 +3824,21 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local head, body = this.getPage(forumUri.posts .. "?pr=" .. (userName or this.userId) .. "&p=" .. (pageNumber or 1))
+		local body = this.getPage(forumUri.posts .. "?pr=" .. (userName or this.userId) .. "&p=" .. (pageNumber or 1))
 
 		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
 
 		local posts, counter = {
 			_pages = totalPages
 		}, 0
-		string.gsub(body, htmlChunk.last_post .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time, function(post, topicTitle, postId, messageHtml, timestamp)
+		string.gsub(body, htmlChunk.last_post .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time, function(post, topicTitle, postId, contentHtml, timestamp)
 			counter = counter + 1
 			posts[counter] = {
+				contentHtml = contentHtml,
 				location = self.parseUrlData(post),
 				post = postId,
 				timestamp = tonumber(timestamp),
-				topicTitle = topicTitle,
-				messageHtml = messageHtml
+				topicTitle = topicTitle
 			}
 		end)
 
@@ -3375,16 +3846,29 @@ return function()
 	end
 	--[[@
 		@file Miscellaneous
-		@desc Gets the client's account favorite topics.
-		@returns table|nil The list of topics, if there's any
-		@returns nil|string The message error, if any occurred
+		@desc Gets the account's favorite topics.
+		@returns table,nil The list of topics.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				community = enumerations.community, -- The community where the topic is located.
+				favoriteId = 0, -- The favorite id of the topic.
+				navbar = {
+					[n] = {
+						location = parseUrlData, -- The parsed-url location object.
+						name = "" -- The name of the location.
+					}
+				}, -- A list of locations of the navigation bar.
+				timestamp = 0 -- The timestamp of when the topic was created.
+			}
+		}
 	]]
 	self.getFavoriteTopics = function()
 		if not this.isConnected then
 			return nil, errorString.not_connected
 		end
 
-		local head, body = this.getPage(forumUri.favorite_topics)
+		local body = this.getPage(forumUri.favorite_topics)
 
 		local topics, counter = { }, 0
 
@@ -3398,7 +3882,7 @@ return function()
 				if err then
 					return nil, err
 				end
-				
+
 				_counter = _counter + 1
 				local html, name = string.match(code, htmlChunk.navigaton_bar_sec_content)
 				if html then
@@ -3420,10 +3904,10 @@ return function()
 
 			counter = counter + 1
 			topics[counter] = {
+				community = (community and enumerations.community[community] or nil),
 				favoriteId = tonumber(favoriteId),
-				timestamp = tonumber(timestamp),
 				navbar = navigation_bar,
-				community = (community and enumerations.community[community] or nil)
+				timestamp = tonumber(timestamp)
 			}
 		end)
 
@@ -3432,15 +3916,15 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Gets the account's friendlist.
-		@returns table|nil The friendlist, if there's any
-		@returns nil|string The message error, if any occurred
+		@returns table,nil The list of friends.
+		@returns nil,string Error message.
 	]]
 	self.getFriendlist = function()
 		if not this.isConnected then
 			return nil, errorString.not_connected
 		end
 
-		local head, body = this.getPage(forumUri.friends .. "?pr=" .. this.userId)
+		local body = this.getPage(forumUri.friends .. "?pr=" .. this.userId)
 
 		local friends, counter = { }, 0
 		string.gsub(body, htmlChunk.nickname, function(name, discriminator)
@@ -3453,15 +3937,15 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Gets the account's blacklist.
-		@returns table|nil The blacklist, if there's any
-		@returns nil|string The message error, if any occurred
+		@returns table,nil The list of ignored users.
+		@returns nil,string Error message.
 	]]
 	self.getBlacklist = function()
 		if not this.isConnected then
 			return nil, errorString.not_connected
 		end
 
-		local head, body = this.getPage(forumUri.blacklist .. "?pr=" .. this.userId)
+		local body = this.getPage(forumUri.blacklist .. "?pr=" .. this.userId)
 
 		local blacklist, counter = { }, 0
 		string.gsub(body, htmlChunk.blacklist_name, function(name)
@@ -3473,24 +3957,30 @@ return function()
 	end
 	--[[@
 		@file Miscellaneous
-		@desc Gets the client's account favorite tribes.
-		@returns table|nil The list of tribes, if there's any
-		@returns nil|string The message error, if any occurred
+		@desc Gets the account's favorite tribes.
+		@returns table,nil The list of tribes.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				id = 0, -- The id of the tribe.
+				name = "" -- The name of the tribe.
+			}
+		}
 	]]
 	self.getFavoriteTribes = function()
 		if not this.isConnected then
 			return nil, errorString.not_connected
 		end
 
-		local head, body = this.getPage(forumUri.favorite_tribes)
+		local body = this.getPage(forumUri.favorite_tribes)
 
 		local tribes, counter = { }, 0
 
 		string.gsub(body, htmlChunk.profile_tribe, function(name, tribeId)
 			counter = counter + 1
 			tribes[counter] = {
-				name = name,
-				id = tonumber(tribeId)
+				id = tonumber(tribeId),
+				name = name
 			}
 		end)
 
@@ -3499,59 +3989,49 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Gets the latest messages sent by admins.
-		@returns table|nil The list of posts, if there's any
-		@returns nil|string The message error, if any occurred
+		@returns table,nil The list of posts.
+		@returns nil,string Error message.
+		@struct {
+			[n] = {
+				author = "", -- The name of the admin that posted the message.
+				contentHtml = "", -- The HTML of the message content.
+				navbar = {
+					[n] = {
+						location = parseUrlData, -- The parsed-url location object.
+						name = "" -- The name of the location.
+					}
+				}, -- A list of locations of the navigation bar.
+				post = "", -- The post id of the message.
+				timestamp = 0 -- The timestamp of when the message was created.
+			}
+		}
 	]]
 	self.getDevTracker = function()
-		local head, body = this.getPage(forumUri.tracker)
+		local body = this.getPage(forumUri.tracker)
 
 		local posts, counter = { }, 0
 		string.gsub(body, htmlChunk.topic_div .. htmlChunk.tracker, function(content)
-			local navBar = string.match(content, htmlChunk.navigation_bar)
-			if not navBar then
-				return nil, errorString.internal
+			local navigation_bar, err = getNavbar(content)
+			if not navigation_bar then
+				return nil, err .. " (0x1)"
 			end
 
-			local navigation_bar = { }
-			local _counter = 0
+			local navlen = #navigation_bar
+			local postId = string.sub(navigation_bar[navlen].name, 2) -- #x
+			navigation_bar[navlen] = nil
 
-			local err
-			string.gsub(navBar, htmlChunk.navigaton_bar_sections, function(href, code)
-				href, err = self.parseUrlData(href)
-				if err then
-					return nil, err
-				end
-				
-				_counter = _counter + 1
-				local html, name = string.match(code, htmlChunk.navigaton_bar_sec_content)
-				if html then
-					navigation_bar[_counter] = {
-						location = href,
-						name = name
-					}
-				else
-					navigation_bar[_counter] = {
-						location = href,
-						name = code
-					}
-				end
-			end)
-
-			local postId = tonumber(string.sub(navigation_bar[_counter].name, 2))
-			navigation_bar[_counter] = nil
-
-			local messageHtml, timestamp, admin = string.match(content, htmlChunk.message_html .. ".-" .. htmlChunk.ms_time .. ".-" .. htmlChunk.admin_name)
-			if not messageHtml then
-				return nil, errorString.internal
+			local contentHtml, timestamp, admin = string.match(content, htmlChunk.message_html .. ".-" .. htmlChunk.ms_time .. ".-" .. htmlChunk.admin_name)
+			if not contentHtml then
+				return nil, errorString.internal .. " (0x2)"
 			end
 
 			counter = counter + 1
 			posts[counter] = {
+				author = admin .. "#0001",
+				contentHtml = contentHtml,
 				navbar = navigation_bar,
 				post = postId,
-				messageHtml = messageHtml,
-				timestamp = tonumber(timestamp),
-				author = admin .. "#0001"
+				timestamp = tonumber(timestamp)
 			}
 		end)
 
@@ -3560,9 +4040,9 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Adds a user as friend.
-		@param userName<string> The user to be added
-		@returns boolean Whether the user was added or not
-		@returns string `Result string` or `Error message`
+		@param userName<string> The user to be added.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.addFriend = function(userName)
 		assertion("addFriend", "string", 1, userName)
@@ -3578,9 +4058,9 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Adds a user in the blacklist.
-		@param userName<string> The user to be blacklisted
-		@returns boolean Whether the user was blacklisted or not
-		@returns string `Result string` or `Error message`
+		@param userName<string> The user to be blacklisted.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.blacklistUser = function(userName)
 		assertion("blacklistUser", "string", 1, userName)
@@ -3595,10 +4075,10 @@ return function()
 	end
 	--[[@
 		@file Miscellaneous
-		@desc Adds a user in the blacklist.
-		@param userName<string> The user to be blacklisted
-		@returns boolean Whether the user was blacklisted or not
-		@returns string `Result string` or `Error message`
+		@desc Removes a user from the blacklist.
+		@param userName<string> The user to be removed from the blacklist.
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.unblacklistUser = function(userName)
 		assertion("unblacklistUser", "string", 1, userName)
@@ -3614,11 +4094,15 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Favorites an element. (e.g: topic, tribe)
-		@param element<string,int> The element type. An enum from `enumerations.element` (index or value)
+		@param element<string,int> The element type. An enum from `enumerations.element`. (index or value)
 		@param elementId<int> The element id.
-		@param location?<table> The location of the element. If it's a forum topic the fields 'f' and 't' are needed.
-		@returns boolean Whether the element was favorited or not
-		@returns string `Result string` or `Error message`
+		@param location?<table> The location of the element. (if `element` is `topic`)
+		@paramstruct location {
+			f<int> The forum id.
+			t<int> The topic id.
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.favoriteElement = function(element, elementId, location)
 		assertion("favoriteElement", { "string", "number" }, 1, element)
@@ -3659,10 +4143,14 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Unfavorites an element.
-		@param favoriteId<int,string> The element favorite-id.
-		@param location?<table> The location of the element. If it's a forum topic the fields 'f' and 't' are needed.
-		@returns boolean Whether the element was unfavorited or not
-		@returns string `Result string` or `Error message`
+		@param favoriteId<int,string> The favorite id of the element.
+		@param location?<table> The location of the element. (if `element` is `topic`)
+		paramstruct location {
+			int f The forum id.
+			int t The topic id.
+		}
+		@returns string,nil Result string.
+		@returns nil,string Error message.
 	]]
 	self.unfavoriteElement = function(favoriteId, location)
 		assertion("unfavoriteElement", { "number", "string" }, 1, favoriteId)
@@ -3690,9 +4178,9 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Lists the members of a specific role.
-		@param role<string,int<> The role id. An enum from `enumerations.listRole` (index or value)
-		@returns table|nil The list, if there's any
-		@returns nil|string The message error, if any occurred
+		@param role<string,int<> The role id. An enum from `enumerations.listRole`. (index or value)
+		@returns table,nil The list of users.
+		@returns nil,string Error message.
 	]]
 	self.getStaffList = function(role)
 		assertion("getStaffList", { "string", "number" }, 1, role)
@@ -3701,7 +4189,7 @@ return function()
 		role, err = isEnum(role, "listRole")
 		if err then return nil, err end
 
-		local success, result = this.getPage(forumUri.staff .. "?role=" .. role)
+		local result = this.getPage(forumUri.staff .. "?role=" .. role)
 		local data, counter = { }, 0
 		string.gsub(result, htmlChunk.nickname, function(name, discriminator)
 			counter = counter + 1

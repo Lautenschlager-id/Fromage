@@ -18,9 +18,7 @@ coroutine.wrap(function()
 		print("Getting message edition history:")
 		local history, err = client.getMessageHistory('1', topic.data) -- Gets the history of editions of the message
 		if history then
-			for i = 1, #history do
-				print("Edited on " .. os.date("%c", history[i].timestamp / 1000) .. ":\n" .. history[i].bbcode)
-			end
+			p(history)
 		else
 			print(err)
 		end

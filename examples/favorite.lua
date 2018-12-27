@@ -13,9 +13,7 @@ coroutine.wrap(function()
 		print("Favorite topics:")
 		local favoriteTopics, err = client.getFavoriteTopics() -- Gets the favorite topics of the account
 		if favoriteTopics then
-			for i = 1, #favoriteTopics do
-				print("[" .. favoriteTopics[i].favoriteId .. "] [" .. enumerations.community(favoriteTopics[i].community) .. "] " .. favoriteTopics[i].navbar[#favoriteTopics[i].navbar].name .. ", created on " .. os.date("%c", favoriteTopics[i].timestamp / 1000))
-			end
+			p(favoriteTopics)
 		else
 			print(err)
 		end
@@ -32,9 +30,7 @@ coroutine.wrap(function()
 		local favoriteTribes
 		favoriteTribes, err = client.getFavoriteTribes() -- Gets the favorite tribes of the account
 		if favoriteTribes then
-			for i = 1, #favoriteTribes do
-				print("[" .. favoriteTribes[i].id .. "] " .. favoriteTribes[i].name)
-			end
+			p(favoriteTribes)
 		else
 			print(err)
 		end

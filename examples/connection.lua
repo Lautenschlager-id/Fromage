@@ -7,7 +7,9 @@ coroutine.wrap(function()
 	print(isConnected, result)
 
 	if isConnected then
-		print(client.isConnected()) -- Checks whether it's really connected, also the user name and id
+		print(client.isConnected()) -- Checks whether the instance is really connected, also the user name and id
+		print(client.getUser()) -- Gets the data of the account
+		print(client.getConnectionTime()) -- Shows the time since the connection
 
 		print("Disconnecting from " .. account.username)
 		print(client.disconnect()) -- Disconnects
