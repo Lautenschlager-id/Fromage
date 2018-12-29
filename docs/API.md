@@ -14,7 +14,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `string`, `nil` | Result string. |
->| `nil|string` | Error message. |
+>| `nil`, `string` | Error message. |
 >
 ---
 >### getPage ( url )
@@ -29,7 +29,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `string`, `nil` | Page HTML. |
->| `nil|string` | Error message. |
+>| `nil`, `string` | Error message. |
 >
 ---
 >### parseUrlData ( href )
