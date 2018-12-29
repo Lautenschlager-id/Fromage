@@ -336,7 +336,7 @@ local getExtension = function(f)
 end
 local getFile = function(f)
 	if string.find(f, "https?://") then
-		local head, body = http.request("GET", f)
+		local _, body = http.request("GET", f)
 		return body
 	else
 		f = os.readFile(f)
@@ -607,6 +607,43 @@ return function()
 
 	-- > Tool
 	--[[@
+		@desc Performs a POST request using the connection cookies.
+		@param uri<string> The URI code for the POST request. (Function)
+		@param postData?<table> The headers for the POST request.
+		@param ajaxUri?<string> The ajax URI code for the POST request. (Forum)
+		@param file?<string> The file (image) content. If set, this will change most of the standard headers.
+		@paramstruct postData
+		{
+			[n]<table> A table with two strings: header name, header value.
+		}
+		@returns string,nil Result string.
+		@returns nil|string Error message.
+	]]
+	self.performAction = function(uri, postData, ajaxUri, file)
+		assertion("performAction", "string", 1, uri)
+		assertion("performAction", { "table", "nil" }, 2, postData)
+		assertion("performAction", { "string", "nil" }, 3, ajaxUri)
+		assertion("performAction", { "string", "nil" }, 4, file)
+
+		if not this.isConnected then
+			return nil, errorString.not_connected
+		end
+
+		return this.performAction(uri, postData, ajaxUri, file)
+	end
+	--[[@
+		@desc Performs a GET request using the connection cookies.
+		@param url<string> The URL for the GET request. The forum path is not necessary.
+		@returns string,nil Page HTML.
+		@returns nil|string Error message.
+	]]
+	self.getPage = function(url)
+		assertion("getPage", "string", 1, url)
+
+		url = string.gsub(url, forumLink, '')
+		return this.getPage(url)
+	end
+	--[[@
 		@desc Parses the URL data.
 		@param href<string> The URI and data to be parsed.
 		@returns table,nil Parsed data.
@@ -622,6 +659,7 @@ return function()
 	self.parseUrlData = function(href)
 		assertion("parseUrlData", "string", 1, href)
 
+		href = string.gsub(href, forumLink, '')
 		local uri, data = string.match(href, "/?([^%?]+)%??(.*)$")
 		if not uri then
 			return nil, errorString.invalid_forum_url
@@ -639,7 +677,7 @@ return function()
 			raw_data = raw_data,
 			data = data,
 			id = string.match(raw_data, "#(.-)$"),
-			num_id = string.match(raw_data, "#.*(%d+).*$")
+			num_id = string.match(raw_data, "#.-(%d+).-$")
 		}
 	end
 	--[[@
@@ -729,6 +767,11 @@ return function()
 		nickname = string.lower(nickname)
 		nickname = string.gsub(nickname, "%%23", '#', 1)
 		nickname = string.gsub(nickname, "%a", string.upper, 1)
+
+		if not string.find(nickname, '#') then
+			nickname = nickname .. "#0000"
+		end
+
 		return nickname
 	end
 

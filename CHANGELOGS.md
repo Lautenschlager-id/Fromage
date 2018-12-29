@@ -1,3 +1,11 @@
+# Changelogs v0.3.2
+### Changes
+- The development functions **performAction** and **getPage** can now be accessed.
+- **formatNickname** now adds `#0000` if the nickname doesn't have a discriminator.
+
+### Fixes
+- **parseUrlData** was not working properly.
+
 # Changelogs v0.3.1
 
 ### Fixes

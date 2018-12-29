@@ -1,4 +1,37 @@
 # Methods
+>### performAction ( uri, postData, ajaxUri, file )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| uri | `string` | ✔ | The URI code for the POST request. (Function) |
+>| postData | `table` | ✕ | The headers for the POST request. |
+>| ajaxUri | `string` | ✕ | The ajax URI code for the POST request. (Forum) |
+>| file | `string` | ✕ | The file (image) content. If set, this will change most of the standard headers. |
+>
+>Performs a POST request using the connection cookies.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `string`, `nil` | Result string. |
+>| `nil|string` | Error message. |
+>
+---
+>### getPage ( url )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| url | `string` | ✔ | The URL for the GET request. The forum path is not necessary. |
+>
+>Performs a GET request using the connection cookies.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `string`, `nil` | Page HTML. |
+>| `nil|string` | Error message. |
+>
+---
 >### parseUrlData ( href )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
