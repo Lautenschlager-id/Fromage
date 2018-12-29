@@ -617,7 +617,7 @@ return function()
 			[n]<table> A table with two strings: header name, header value.
 		}
 		@returns string,nil Result string.
-		@returns nil|string Error message.
+		@returns nil,string Error message.
 	]]
 	self.performAction = function(uri, postData, ajaxUri, file)
 		assertion("performAction", "string", 1, uri)
@@ -635,7 +635,7 @@ return function()
 		@desc Performs a GET request using the connection cookies.
 		@param url<string> The URL for the GET request. The forum path is not necessary.
 		@returns string,nil Page HTML.
-		@returns nil|string Error message.
+		@returns nil,string Error message.
 	]]
 	self.getPage = function(url)
 		assertion("getPage", "string", 1, url)
