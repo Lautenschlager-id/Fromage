@@ -1,3 +1,8 @@
+# Changelogs v0.3.1
+
+### Fixes
+- The last topic message was ignored in **getTopicMessages**.
+
 # Changelogs v0.3
 
 ## Developer
@@ -17,7 +22,7 @@
 - _getProfile_.**discriminator**
 - _getConversation_.**invitedUsers**
 - **timestamp** is now a field when _getTopicMessages_ is called with _getAllInfo_ as false.
-- _getMessage-.**canLike**
+- _getMessage_.**canLike**
 
 ### Changes
 - **isConnected** now only returns whether the account is logged or not, other values were split in getters.

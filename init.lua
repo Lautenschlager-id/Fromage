@@ -2041,7 +2041,7 @@ return function()
 				end
 			else
 				post = (post - 20)
-				string.gsub(body, htmlChunk.message_id .. ".-" .. htmlChunk.ms_time, function(id, timestamp)
+				string.gsub(body, htmlChunk.ms_time .. ".-" .. htmlChunk.message_id, function(id, timestamp)
 					counter = counter + 1
 					messages[counter] = {
 						f = location.f,
