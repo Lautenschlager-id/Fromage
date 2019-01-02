@@ -1,4 +1,5 @@
 # Examples
 
-- To run the examples, run `luvit name.lua`.
-- Most of the examples use the function `p`, it's a built-in function from Luvit that prints a table.
+> The examples are going to be added eventually. You are free to make pull requests with new examples!
+
+- Run the examples with the command `luvit name.lua`.
