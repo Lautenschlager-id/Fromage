@@ -1,4 +1,68 @@
 # Methods
+>### getPage ( url )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| url | `string` | ✔ | The URL for the GET request. The forum path is not necessary. |
+>
+>Performs a GET request using the connection cookies.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `string`, `nil` | Page HTML. |
+>| `nil`, `string` | Error message. |
+>
+---
+>### getLocation ( forum, community, section )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| forum | `int`, `string` | ✔ | The forum id. An enum from `enumerations.forum`. (index or value) |
+>| community | `string`, `int` | ✔ | The community id. An enum from `enumerations.community`. (index or value) |
+>| section | `string`, `int` | ✔ | The section id. An enum from `enumerations.section`. (index or value) |
+>
+>Gets the location of a section on the forums.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `table`, `nil` | The location. |
+>| `nil`, `string` | Error message. |
+>
+>**Table structure**:
+>```Lua
+>{
+>	f = 0, -- The forum id.
+>	s = 0 -- The section id.
+>}
+>```
+---
+>### getUser (  )
+>
+>Gets the instance's account information.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `string`, `nil` | The username of the account. |
+>| `int`, `nil` | The ID of the account. |
+>| `int`, `nil` | the ID of the account's tribe. |
+>
+---
+>### enumerations (  )
+>
+>Gets the system enumerations.<br>
+>Smoother alias of `require "fromage/libs/enumerations"`.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `table` | The enumerations table |
+>
+---
 >### performAction ( uri, postData, ajaxUri, file )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -14,21 +78,6 @@
 >| Type | Description |
 >| :-: | - |
 >| `string`, `nil` | Result string. |
->| `nil`, `string` | Error message. |
->
----
->### getPage ( url )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| url | `string` | ✔ | The URL for the GET request. The forum path is not necessary. |
->
->Performs a GET request using the connection cookies.
->
->**Returns**:
->
->| Type | Description |
->| :-: | - |
->| `string`, `nil` | Page HTML. |
 >| `nil`, `string` | Error message. |
 >
 ---
@@ -57,30 +106,6 @@
 >}
 >```
 ---
->### getLocation ( forum, community, section )
->| Parameter | Type | Required | Description |
->| :-: | :-: | :-: | - |
->| forum | `int`, `string` | ✔ | The forum id. An enum from `enumerations.forum`. (index or value) |
->| community | `string`, `int` | ✔ | The community id. An enum from `enumerations.community`. (index or value) |
->| section | `string`, `int` | ✔ | The section id. An enum from `enumerations.section`. (index or value) |
->
->Gets the location of a section on the forums.
->
->**Returns**:
->
->| Type | Description |
->| :-: | - |
->| `table`, `nil` | The location. |
->| `nil`, `string` | Error message. |
->
->**Table structure**:
->```Lua
->{
->	f = 0, -- The forum id.
->	s = 0 -- The section id.
->}
->```
----
 >### isConnected (  )
 >
 >Checks whether the instance is connected to an account or not.
@@ -90,42 +115,6 @@
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether there's already a connection or not. |
->
----
->### getUser (  )
->
->Gets the instance's account information.
->
->**Returns**:
->
->| Type | Description |
->| :-: | - |
->| `string`, `nil` | The username of the account. |
->| `int`, `nil` | The ID of the account. |
->| `int`, `nil` | the ID of the account's tribe. |
->
----
->### isAccountValidated (  )
->
->Checks whether an account was validated by an e-mail code or not.
->
->**Returns**:
->
->| Type | Description |
->| :-: | - |
->| `boolean` | Whether the account is validated or not. |
->
----
->### enumerations (  )
->
->Gets the system enumerations.<br>
->Smoother alias of `require "fromage/libs/enumerations"`.
->
->**Returns**:
->
->| Type | Description |
->| :-: | - |
->| `table` | The enumerations table |
 >
 ---
 >### formatNickname ( nickname )
@@ -140,4 +129,37 @@
 >| Type | Description |
 >| :-: | - |
 >| `string` | Formated nickname. |
+>
+---
+>### extractNicknameData ( nickname )
+>| Parameter | Type | Required | Description |
+>| :-: | :-: | :-: | - |
+>| nickname | `string` | ✔ | The nickname. |
+>
+>Extracts the data of a nickname. (Name, Discriminator)
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `table` | The nickname data. |
+>
+>**Table structure**:
+>```Lua
+>{
+>	discriminator = "", -- The nickname's discriminator.
+>	fullname = "", -- The full nickname. (Name and Discriminator)
+>	name = "" -- The nickname without the discriminator.
+>}
+>```
+---
+>### isAccountValidated (  )
+>
+>Checks whether an account was validated by an e-mail code or not.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the account is validated or not. |
 >

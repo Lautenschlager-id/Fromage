@@ -19,8 +19,6 @@
 >	avatarUrl = "", -- The profile picture url.
 >	birthday = "", -- The birthday string field.
 >	community = enumerations.community, -- The community of the user.
->	discriminator = "", -- The username discriminator.
->	fullname = "", -- The full username. (name and discriminator)
 >	gender = enumerations.gender, -- The gender of the user.
 >	highestRole = enumerations.role, -- The highest role of the account based on the discriminator number.
 >	id = 0, -- The user ID.

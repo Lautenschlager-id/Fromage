@@ -1,3 +1,21 @@
+# Changelogs v0.3.3
+
+## Developer
+### Changes
+- **getNavbar** has now a second parameter `isNavbar` to ignore the first match when content = navbar.
+
+## Class
+### News
+- _getSectionTopics_.**author**. (when `getAllInfo` is false)
+- **extractNicknameData**.
+
+### Changes
+- **getProfile** does not have the fields **fullname** and **discriminator** anymore, and **name** has the _fullname_ value.
+
+### Fixes
+- **getFavoriteTopics** now uses the developer function _getNavbar_ that boosts its performance.
+- /!\\ Typo was breaking the navigation bar system.
+
 # Changelogs v0.3.2
 ### Changes
 - The development functions **performAction** and **getPage** can now be accessed.
@@ -23,12 +41,12 @@
 
 ## Class
 ### News
-- **getUser**
-- **isAccountValidated**
-- **getConnectionTime**
-- _getProfile_.**fullname**
-- _getProfile_.**discriminator**
-- _getConversation_.**invitedUsers**
+- **getUser**.
+- **isAccountValidated**.
+- **getConnectionTime**.
+- _getProfile_.**fullname**.
+- _getProfile_.**discriminator**.
+- _getConversation_.**invitedUsers**.
 - **timestamp** is now a field when _getTopicMessages_ is called with _getAllInfo_ as false.
 - _getMessage_.**canLike**
 

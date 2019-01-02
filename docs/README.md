@@ -34,6 +34,7 @@ With the three executables installed, run `lit install Lautenschlager-id/fromage
 
 - [API](API.md)
 	- [enumerations](API.md#enumerations---)
+	- [extractNicknameData](API.md#extractnicknamedata--nickname-)
 	- [formatNickname](API.md#formatnickname--nickname-)
 	- [getLocation](API.md#getlocation--forum-community-section-)
 	- [getPage](API.md#getpage--url-)

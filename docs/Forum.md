@@ -259,6 +259,7 @@
 >{
 >	-- Structure if not 'getAllInfo'
 >	[n] = {
+>		author = "", -- The name of the topic author, without discriminator.
 >		f = 0, -- The forum id.
 >		s = 0, -- The section id.
 >		t = 0, -- The topic id.

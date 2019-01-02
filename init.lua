@@ -140,8 +140,8 @@ local htmlChunk = {
 	moderated_message         = 'cadre%-message%-modere%-texte">.-by ([^,]+)[^:]*:?%s*(.*)%s*%]<',
 	ms_time                   = 'data%-afficher%-secondes.->(%d+)',
 	navigation_bar            = '"barre%-navigation.->(.-)</ul>',
-	navigaton_bar_sec_content = '^<(.+)>%s*(.+)%s*$',
-	navigaton_bar_sections    = '<a.-href="(.-)".->%s*(.-)%s*</a>',
+	navigation_bar_sec_content = '^<(.+)>%s*(.+)%s*$',
+	navigation_bar_sections   = '<a.-href="(.-)".->%s*(.-)%s*</a>',
 	nickname                  = '(%S+)<span class="nav%-header%-hashtag">(#(%d+))',
 	poll_content              = '<div>%s+(.-)%s+</div>%s+<br>',
 	poll_option               = '<label class="(.-) ">%s+<input type="%1" name="reponse_%d*" id="reponse_(%d+)" value="%2" .-/>%s+(.-)%s+</label>',
@@ -160,6 +160,7 @@ local htmlChunk = {
 	profile_tribe             = 'cadre%-tribu%-nom">(.-)</span>.-tr=(%d+)',
 	recruitment               = 'Recruitment : (.-)<',
 	search_list               = '<a href="(topic%?.-)".->%s+(.-)%s+</a></li>',
+	sec_topic_author          = '>(%S+)</span>',
 	secret_keys               = '<input type="hidden" name="(.-)" value="(.-)">',
 	section_icon              = 'sections/(.-%.png)',
 	section_topic             = 'cadre%-sujet%-%titre.-href="topic%?.-&t=(%d+).-".->%s+([^>]+)%s+</a>',
@@ -520,8 +521,8 @@ return function()
 	end
 
 	--> Private function
-	local getNavbar = function(content)
-		local navBar = string.match(content, htmlChunk.navigation_bar)
+	local getNavbar = function(content, isNavbar)
+		local navBar = (isNavbar and content or string.match(content, htmlChunk.navigation_bar))
 		if not navBar then
 			return nil, errorString.internal .. " (0x1)"
 		end
@@ -607,6 +608,80 @@ return function()
 
 	-- > Tool
 	--[[@
+		@desc Performs a GET request using the connection cookies.
+		@param url<string> The URL for the GET request. The forum path is not necessary.
+		@returns string,nil Page HTML.
+		@returns nil,string Error message.
+	]]
+	self.getPage = function(url)
+		assertion("getPage", "string", 1, url)
+
+		url = string.gsub(url, forumLink, '')
+		return this.getPage(url)
+	end
+	--[[@
+		@desc Gets the location of a section on the forums.
+		@param forum<int,string> The forum id. An enum from `enumerations.forum`. (index or value)
+		@param community<string,int> The community id. An enum from `enumerations.community`. (index or value)
+		@param section<string,int> The section id. An enum from `enumerations.section`. (index or value)
+		@returns table,nil The location.
+		@returns nil,string Error message.
+		@struct {
+			f = 0, -- The forum id.
+			s = 0 -- The section id.
+		}
+	]]
+	self.getLocation = function(forum, community, section)
+		assertion("getLocation", { "number", "string" }, 1, forum)
+		assertion("getLocation", { "string", "number" }, 2, community)
+		assertion("getLocation", { "string", "number" }, 3, section)
+
+		local err
+		forum, err = isEnum(forum, "forum", "#1")
+		if err then return nil, err end
+		community, err = isEnum(community, "community", "#2", true)
+		if err then return nil, err end
+		section, err = isEnum(section, "section", "#3", true, true)
+		if err then return nil, err end
+
+		local s = enumerations.location[community][enumerations.forum(forum)][section]
+		if not s then
+			return nil, errorString.enum_out_of_range .. " (section)"
+		end
+
+		return {
+			f = forum,
+			s = s
+		}
+	end
+	--[[@
+		@desc Gets the instance's account information.
+		@returns string,nil The username of the account.
+		@returns int,nil The ID of the account.
+		@returns int,nil the ID of the account's tribe.
+	]]
+	self.getUser = function()
+		return this.userName, this.userId, this.tribeId
+	end
+	--[[
+		@desc Gets the total time since the last login performed in the instace.
+		@returns int Total time since the connection of the current account.
+	]]
+	self.getConnectionTime = function()
+		if this.connectionTime >= 0 then
+			return os.time() - this.connectionTime
+		end
+		return this.connectionTime
+	end
+	--[[@
+		@desc Gets the system enumerations.
+		@desc Smoother alias of `require "fromage/libs/enumerations"`.
+		@returns table The enumerations table
+	]]
+	self.enumerations = function()
+		return enumerations
+	end
+	--[[@
 		@desc Performs a POST request using the connection cookies.
 		@param uri<string> The URI code for the POST request. (Function)
 		@param postData?<table> The headers for the POST request.
@@ -630,18 +705,6 @@ return function()
 		end
 
 		return this.performAction(uri, postData, ajaxUri, file)
-	end
-	--[[@
-		@desc Performs a GET request using the connection cookies.
-		@param url<string> The URL for the GET request. The forum path is not necessary.
-		@returns string,nil Page HTML.
-		@returns nil,string Error message.
-	]]
-	self.getPage = function(url)
-		assertion("getPage", "string", 1, url)
-
-		url = string.gsub(url, forumLink, '')
-		return this.getPage(url)
 	end
 	--[[@
 		@desc Parses the URL data.
@@ -681,80 +744,11 @@ return function()
 		}
 	end
 	--[[@
-		@desc Gets the location of a section on the forums.
-		@param forum<int,string> The forum id. An enum from `enumerations.forum`. (index or value)
-		@param community<string,int> The community id. An enum from `enumerations.community`. (index or value)
-		@param section<string,int> The section id. An enum from `enumerations.section`. (index or value)
-		@returns table,nil The location.
-		@returns nil,string Error message.
-		@struct {
-			f = 0, -- The forum id.
-			s = 0 -- The section id.
-		}
-	]]
-	self.getLocation = function(forum, community, section)
-		assertion("getLocation", { "number", "string" }, 1, forum)
-		assertion("getLocation", { "string", "number" }, 2, community)
-		assertion("getLocation", { "string", "number" }, 3, section)
-
-		local err
-		forum, err = isEnum(forum, "forum", "#1")
-		if err then return nil, err end
-		community, err = isEnum(community, "community", "#2", true)
-		if err then return nil, err end
-		section, err = isEnum(section, "section", "#3", true, true)
-		if err then return nil, err end
-
-		local s = enumerations.location[community][enumerations.forum(forum)][section]
-		if not s then
-			return nil, errorString.enum_out_of_range .. " (section)"
-		end
-
-		return {
-			f = forum,
-			s = s
-		}
-	end
-	--[[@
 		@desc Checks whether the instance is connected to an account or not.
 		@returns boolean Whether there's already a connection or not.
 	]]
 	self.isConnected = function()
 		return this.isConnected
-	end
-	--[[@
-		@desc Gets the instance's account information.
-		@returns string,nil The username of the account.
-		@returns int,nil The ID of the account.
-		@returns int,nil the ID of the account's tribe.
-	]]
-	self.getUser = function()
-		return this.userName, this.userId, this.tribeId
-	end
-	--[[@
-		@desc Checks whether an account was validated by an e-mail code or not.
-		@returns boolean Whether the account is validated or not.
-	]]
-	self.isAccountValidated = function()
-		return this.hasCertificate
-	end
-	--[[
-		@desc Gets the total time since the last login performed in the instace.
-		@returns int Total time since the connection of the current account.
-	]]
-	self.getConnectionTime = function()
-		if this.connectionTime >= 0 then
-			return os.time() - this.connectionTime
-		end
-		return this.connectionTime
-	end
-	--[[@
-		@desc Gets the system enumerations.
-		@desc Smoother alias of `require "fromage/libs/enumerations"`.
-		@returns table The enumerations table
-	]]
-	self.enumerations = function()
-		return enumerations
 	end
 	--[[@
 		@desc Formats a nickname.
@@ -773,6 +767,37 @@ return function()
 		end
 
 		return nickname
+	end
+	--[[@
+		@desc Extracts the data of a nickname. (Name, Discriminator)
+		@param nickname<string> The nickname.
+		@returns table The nickname data.
+		@struct {
+			discriminator = "", -- The nickname's discriminator.
+			fullname = "", -- The full nickname. (Name and Discriminator)
+			name = "" -- The nickname without the discriminator.
+		}
+	]]
+	self.extractNicknameData = function(nickname)
+		assertion("extractNicknameData", "string", 1, nickname)
+
+		nickname = self.formatNickname(nickname)
+
+		local name = string.match(nickname, "%P+")
+		local discriminator = string.match(nickname, "#(%d+)$")
+
+		return {
+			discriminator = discriminator,
+			fullname = nickname,
+			name = name
+		}
+	end
+	--[[@
+		@desc Checks whether an account was validated by an e-mail code or not.
+		@returns boolean Whether the account is validated or not.
+	]]
+	self.isAccountValidated = function()
+		return this.hasCertificate
 	end
 
 	--[[ Methods ]]
@@ -955,8 +980,6 @@ return function()
 			avatarUrl = "", -- The profile picture url.
 			birthday = "", -- The birthday string field.
 			community = enumerations.community, -- The community of the user.
-			discriminator = "", -- The username discriminator.
-			fullname = "", -- The full username. (name and discriminator)
 			gender = enumerations.gender, -- The gender of the user.
 			highestRole = enumerations.role, -- The highest role of the account based on the discriminator number.
 			id = 0, -- The user ID.
@@ -1030,14 +1053,12 @@ return function()
 			avatarUrl = avatar,
 			birthday = birthday,
 			community = enumerations.community[community],
-			discriminator = discriminator,
-			fullname = name .. hashtag,
 			gender = enumerations.gender[gender],
 			highestRole = highestRole,
 			id = tonumber(id),
 			level = level,
 			location = location,
-			name = name,
+			name = name .. hashtag,
 			presentation = presentation,
 			registrationDate = registrationDate,
 			soulmate = soulmate,
@@ -2113,6 +2134,7 @@ return function()
 		@struct {
 			-- Structure if not 'getAllInfo'
 			[n] = {
+				author = "", -- The name of the topic author, without discriminator.
 				f = 0, -- The forum id.
 				s = 0, -- The section id.
 				t = 0, -- The topic id.
@@ -2137,7 +2159,7 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		return getList(pageNumber, forumUri.section .. "?f=" .. location.f .. "&s=" .. location.s, function(id, title, timestamp)
+		return getList(pageNumber, forumUri.section .. "?f=" .. location.f .. "&s=" .. location.s, function(id, title, author, timestamp)
 			id = tonumber(id)
 
 			if getAllInfo then
@@ -2149,6 +2171,7 @@ return function()
 				return tpc
 			else
 				return {
+					author = author,
 					f = location.f,
 					s = location.s,
 					t = id,
@@ -2156,7 +2179,7 @@ return function()
 					title = title
 				}
 			end
-		end, htmlChunk.section_topic .. ".- on .-" .. htmlChunk.ms_time)
+		end, htmlChunk.section_topic .. ".-" .. htmlChunk.sec_topic_author .. " on .-" .. htmlChunk.ms_time)
 	end
 	--[[@
 		@file Forum
@@ -3914,36 +3937,13 @@ return function()
 		local body = this.getPage(forumUri.favorite_topics)
 
 		local topics, counter = { }, 0
+		local navigation_bar, _, community
 
-		string.gsub(body, htmlChunk.favorite_topics .. ".-" .. string.format(htmlChunk.hidden_value, "fa") .. ".- on .-" .. htmlChunk.ms_time, function(navBar, favoriteId, timestamp)
-			local navigation_bar, community = { }
-			local _counter = 0
-
-			local err
-			string.gsub(navBar, htmlChunk.navigaton_bar_sections, function(href, code)
-				href, err = self.parseUrlData(href)
-				if err then
-					return nil, err
-				end
-
-				_counter = _counter + 1
-				local html, name = string.match(code, htmlChunk.navigaton_bar_sec_content)
-				if html then
-					navigation_bar[_counter] = {
-						location = href,
-						name = name
-					}
-
-					if not community then
-						community = string.match(html, htmlChunk.community)
-					end
-				else
-					navigation_bar[_counter] = {
-						location = href,
-						name = code
-					}
-				end
-			end)
+		string.gsub(body, htmlChunk.favorite_topics .. ".-" .. string.format(htmlChunk.hidden_value, forumUri.favorite_id) .. ".- on .-" .. htmlChunk.ms_time, function(navBar, favoriteId, timestamp)
+			navigation_bar, _, community = getNavbar(navBar, true)
+			if not navigation_bar then
+				return nil, err .. " (0x1)"
+			end
 
 			counter = counter + 1
 			topics[counter] = {
