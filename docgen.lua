@@ -183,7 +183,7 @@ local generate = function(content)
 		_DATA[file]._TREE[objName] = url(objName .. " (" .. string.gsub(objParam, ' ', '') .. ")")
 	end)
 
-	string.gsub(content, '%-%-%[%[@\n(.-)%]%]\n\t*(.-)(%b{})\n', function(data, object, info)
+	string.gsub(content, '%-%-%[%[@\n(.-)%]%]\n\t*(.-)(%b{})', function(data, object, info)
 		local objName = string.match(object, "%.(%S+)")
 		if not objName or _TREE[objName] then return end
 

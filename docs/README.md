@@ -48,6 +48,7 @@ With the three executables installed, run `lit install Lautenschlager-id/fromage
 	- [contentState](ENUMERATIONS.md#contentstate-string)
 	- [displayState](ENUMERATIONS.md#displaystate-int)
 	- [element](ENUMERATIONS.md#element-int)
+	- [forum](ENUMERATIONS.md#forum-int)
 	- [forumTitle](ENUMERATIONS.md#forumtitle-string)
 	- [gender](ENUMERATIONS.md#gender-int)
 	- [inboxLocale](ENUMERATIONS.md#inboxlocale-int)
