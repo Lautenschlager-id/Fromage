@@ -1,3 +1,17 @@
+# Changelogs v0.3.4
+### News
+- **getLastPosts** has now a third parameter, _extractNavbar_.
+
+### Changes
+- _getConversation_.invitedUsers is now a 'dictionary' and not an 'array'.
+- When an enum fails `enum(x) or x`, `x` will be appended to a `@`.
+- **deleteMicepixImage** was renamed to **deleteImage**.
+- **deleteImage** now accepts a table of images as parameter.
+
+### Fixes
+-  /!\\ **getCreatedTopics** and **getLastPosts** were not working when the player discriminator was different of `#0000`.
+-  /!\\ **uploadImage** was throwing an error related to the 10th position of the file table.
+
 # Changelogs v0.3.3
 
 ## Developer

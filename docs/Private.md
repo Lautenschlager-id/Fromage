@@ -26,11 +26,8 @@
 >	co = 0, -- The conversation id.
 >	firstMessage = getMessage, -- The message object of the first message of the conversation. (It's ignored when 'isPoll') 
 >	invitedUsers = {
->		[n] = {
->			name = "", -- Name of the user.
->			situation = "" -- Situation string field. (e.g: invited, gone, author)
->		}
->	}, -- The list of players that are in the conversation.
+>		[userName] = "", -- Situation string field. (e.g: invited, gone, author)
+>	}, -- The list of players that are listed in the conversation.
 >	isDiscussion = false, -- If the conversation is a discussion.
 >	isLocked = false, -- Whether the conversation is locked or not.
 >	isPoll = false, -- If the conversation is a poll.
@@ -122,7 +119,7 @@
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| inboxLocale | `string`, `int` | ✔ | Where the conversation will be located. An enum from `enumerations.inboxLocale`. (index or value) |
->| conversationId | `int`, `table` | ✕ | The ID(s) of the conversation(s) to be moved. Use `nil` for all. |
+>| conversationId | `int`, `table` | ✕ | The id(s) of the conversation(s) to be moved. Use `nil` for all. |
 >
 >Moves private conversations to the inbox or bin.
 >

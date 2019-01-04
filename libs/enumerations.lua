@@ -423,6 +423,16 @@ enum.gender = e {
 	male   = 2
 }
 --[[@
+	@desc The state of a member in a conversation.
+	@type string
+]]
+enum.memberState = e {
+	author = "author",
+	excluded = "excluded",
+	invited = "invited",
+	gone = "gone"
+}
+--[[@
 	@desc The recruitment state for tribes.
 	@type int
 ]]

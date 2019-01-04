@@ -65,10 +65,10 @@
 >| `nil`, `string` | Error message. |
 >
 ---
->### deleteMicepixImage ( imageId )
+>### deleteImage ( imageId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| imageId | `string` | ✔ | The image id. |
+>| imageId | `string`, `table` | ✔ | The image(s) id(s) to be deleted. |
 >
 >Deletes an image from the account's micepix gallery.
 >

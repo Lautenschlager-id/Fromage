@@ -47,8 +47,8 @@
 >| Type | Description |
 >| :-: | - |
 >| `string`, `nil` | The username of the account. |
->| `int`, `nil` | The ID of the account. |
->| `int`, `nil` | the ID of the account's tribe. |
+>| `int`, `nil` | The account id. |
+>| `int`, `nil` | the id of the account's tribe. |
 >
 ---
 >### enumerations (  )

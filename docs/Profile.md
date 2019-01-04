@@ -21,7 +21,7 @@
 >	community = enumerations.community, -- The community of the user.
 >	gender = enumerations.gender, -- The gender of the user.
 >	highestRole = enumerations.role, -- The highest role of the account based on the discriminator number.
->	id = 0, -- The user ID.
+>	id = 0, -- The user id.
 >	level = 0, -- The level of the user on forums.
 >	location = "", -- The location string field.
 >	name = "", -- The name of the user.

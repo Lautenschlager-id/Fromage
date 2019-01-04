@@ -58,7 +58,6 @@ local forumUri = {
 	images_gallery             = "gallery-images-ajax",
 	index                      = "index",
 	invite_discussion          = "invite-discussion",
-	invited                    = "invited",
 	kick_member                = "kick-discussion-member",
 	leave_discussion           = "quit-discussion",
 	like_message               = "like-message",
@@ -80,8 +79,8 @@ local forumUri = {
 	quote                      = "citer",
 	remove_avatar              = "remove-profile-avatar",
 	remove_blacklisted         = "remove-ignored",
+	remove_bulk_images         = "remove-user-own-images",
 	remove_favorite            = "remove-favourite",
-	remove_image               = "remove-user-image",
 	remove_logo                = "remove-tribe-logo",
 	reopen_discussion          = "reopen-discussion",
 	report                     = "report-element",
@@ -109,74 +108,75 @@ local forumUri = {
 	update_tribe_parameters    = "update-tribe-parameters",
 	upload_image               = "upload-user-image",
 	upload_logo                = "update-tribe-logo",
-	user_images                = "user-images-home",
+	user_images                = "user-images",
+	user_images_home           = "user-images-home",
 	user_images_grid           = "user-images-grid-ajax",
 	view_user_image            = "view-user-image"
 }
 
 local htmlChunk = {
-	admin_name                = 'cadre%-type%-auteur%-admin">(.-)</span>',
-	blacklist_name            = 'cadre%-ignore%-nom">(.-)</span>',
-	community                 = 'pays/(..)%.png',
-	conversation_icon         = 'cadre%-sujet%-titre">(.-)</span>%s+</td>%s+</tr>%s+</table>',
-	conversation_member_state = '<span class="cadre%-membre%-conversation.-> %((.-)%)',
-	conversation_members      = '<div class="cadre%-membre%-conversation">(.-)</div>%s+</div>%s+</div>',
-	created_topic_data        = 'href="(topic%?f=%d+&t=%d+).-".->%s+([^>]+)%s+</a>.-%2.-m(%d+)',
-	date                      = '(%d+/%d+/%d+)',
-	edition_timestamp         = 'cadre%-message%-dates.-(%d+)',
-	empty_section             = '<div class="aucun%-resultat">Empty</div>',
-	favorite_topics           = '<td rowspan="2">(.-)</td>%s+<td rowspan="2">',
-	greeting_message          = '<h4>Greeting message</h4> (.+)$',
-	hidden_value              = '<input type="hidden" name="%s" value="(%%d+)"/?>',
-	image_id                  = '?im=(%w+)"',
-	last_post                 = '<a href="(topic%?.-)".->%s+(.-)%s+</a></li>.-%1.-#m(%d+)">',
-	message                   = 'cadre_message_sujet_(%%d+)">%%s+<div id="m%d"(.-</div>%%s+</div>%%s+</div>)',
-	message_content           = '"%s_message_%d" .->(.-)<',
-	message_data              = 'class="coeur".-(%d+).-message_%d+">(.-)</div>%s+</div>',
-	message_history_log       = 'class="hidden"> (.-) </div>',
-	message_html              = 'Message</a></span> :%s+(.-)%s*</div>%s+</td>%s+</tr>',
-	message_id                = '<div id="message_(%d+)">',
-	message_post_id           = 'numero%-message".-#(%d+)',
-	moderated_message         = 'cadre%-message%-modere%-texte">.-by ([^,]+)[^:]*:?%s*(.*)%s*%]<',
-	ms_time                   = 'data%-afficher%-secondes.->(%d+)',
-	navigation_bar            = '"barre%-navigation.->(.-)</ul>',
+	admin_name                 = 'cadre%-type%-auteur%-admin">(.-)</span>',
+	blacklist_name             = 'cadre%-ignore%-nom">(.-)</span>',
+	community                  = 'pays/(..)%.png',
+	conversation_icon          = 'cadre%-sujet%-titre">(.-)</span>%s+</td>%s+</tr>%s+</table>',
+	conversation_member_state  = '<span class="cadre%-membre%-conversation.-> %((.-)%)',
+	conversation_members       = '<div class="cadre%-membre%-conversation">(.-)</div>%s+</div>%s+</div>',
+	created_topic_data         = 'href="(topic%?f=%d+&t=%d+).-".->%s+([^>]+)%s+</a>.-%2.-m(%d+)',
+	date                       = '(%d+/%d+/%d+)',
+	edition_timestamp          = 'cadre%-message%-dates.-(%d+)',
+	empty_section              = '<div class="aucun%-resultat">Empty</div>',
+	favorite_topics            = '<td rowspan="2">(.-)</td>%s+<td rowspan="2">',
+	greeting_message           = '<h4>Greeting message</h4> (.+)$',
+	hidden_value               = '<input type="hidden" name="%s" value="(%%d+)"/?>',
+	image_id                   = '?im=(%w+)"',
+	last_post                  = '("barre%-navigation  ltr .-<a href="(topic%?.-)".->%s+(.-)%s+</a></li>.-)%2.-#m(%d+)">',
+	message                    = 'cadre_message_sujet_(%%d+)">%%s+<div id="m%d"(.-</div>%%s+</div>%%s+</div>)',
+	message_content            = '"%s_message_%d" .->(.-)<',
+	message_data               = 'class="coeur".-(%d+).-message_%d+">(.-)</div>%s+</div>',
+	message_history_log        = 'class="hidden"> (.-) </div>',
+	message_html               = 'Message</a></span> :%s+(.-)%s*</div>%s+</td>%s+</tr>',
+	message_id                 = '<div id="message_(%d+)">',
+	message_post_id            = 'numero%-message".-#(%d+)',
+	moderated_message          = 'cadre%-message%-modere%-texte">.-by ([^,]+)[^:]*:?%s*(.*)%s*%]<',
+	ms_time                    = 'data%-afficher%-secondes.->(%d+)',
+	navigation_bar             = '"barre%-navigation.->(.-)</ul>',
 	navigation_bar_sec_content = '^<(.+)>%s*(.+)%s*$',
-	navigation_bar_sections   = '<a.-href="(.-)".->%s*(.-)%s*</a>',
-	nickname                  = '(%S+)<span class="nav%-header%-hashtag">(#(%d+))',
-	poll_content              = '<div>%s+(.-)%s+</div>%s+<br>',
-	poll_option               = '<label class="(.-) ">%s+<input type="%1" name="reponse_%d*" id="reponse_(%d+)" value="%2" .-/>%s+(.-)%s+</label>',
-	poll_percentage           = 'reponse%-sondage">.-%((%d+)%)</div>',
-	post                      = '<div id="m%d',
-	private_message           = '<div id="m%d" (.-</div>%%s+</div>%%s+</div>%%s+</td>%%s+</tr>)',
-	private_message_data      = '<.-id="message_(%d+)">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>',
-	profile_avatar            = '(http://avatars%.atelier801%.com/%d+/(%d+)%.%a+)',
-	profile_birthday          = 'Birthday :</span> ',
-	profile_data              = 'Messages: </span>(%-?%d+).-Prestige: </span>(%d+).-Level: </span>(%d+)',
-	profile_gender            = 'Gender :.- (%S+)%s+<br>',
-	profile_id                = 'profile%?pr=(.-)"',
-	profile_location          = 'Location :</span> (.-)  <br>',
-	profile_presentation      = 'cadre%-presentation">%s*(.-)%s*</div></div></div>',
-	profile_soulmate          = 'Soul mate :</span>.-',
-	profile_tribe             = 'cadre%-tribu%-nom">(.-)</span>.-tr=(%d+)',
-	recruitment               = 'Recruitment : (.-)<',
-	search_list               = '<a href="(topic%?.-)".->%s+(.-)%s+</a></li>',
-	sec_topic_author          = '>(%S+)</span>',
-	secret_keys               = '<input type="hidden" name="(.-)" value="(.-)">',
-	section_icon              = 'sections/(.-%.png)',
-	section_topic             = 'cadre%-sujet%-%titre.-href="topic%?.-&t=(%d+).-".->%s+([^>]+)%s+</a>',
-	subsection                = '"cadre%-section%-titre%-mini.-(section.-)".->%s+([^>]+)%s+</a>',
-	title                     = '<title>(.-)</title>',
-	topic_div                 = '<div class="row">',
-	total_entries             = '(%d+) entries',
-	total_pages               = '"input%-pagination".-max="(%d+)"',
-	tracker                   = '(.-)</div>%s+</div>',
-	tribe_list                = '<li class="nav%-header">(.-)</li>.-%?tr=(%d+)"',
-	tribe_log                 = '<td> (.-) </td>',
-	tribe_presentation        = 'cadre%-presentation"> (.-) </div>',
-	tribe_rank                = '<div class="rang%-tribu"> (.-) </div>',
-	tribe_rank_id             = '<tr id="(%d+)"> <td>(.-)</td>',
-	tribe_rank_list           = '<h4>Ranks</h4>(.-)</div>%s+</div>',
-	tribe_section_id          = '"section%?f=(%d+)&s=(%d+)".-/>%s*(.-)%s*</a>'
+	navigation_bar_sections    = '<a.-href="(.-)".->%s*(.-)%s*</a>',
+	nickname                   = '(%S+)<span class="nav%-header%-hashtag">(#(%d+))',
+	poll_content               = '<div>%s+(.-)%s+</div>%s+<br>',
+	poll_option                = '<label class="(.-) ">%s+<input type="%1" name="reponse_%d*" id="reponse_(%d+)" value="%2" .-/>%s+(.-)%s+</label>',
+	poll_percentage            = 'reponse%-sondage">.-%((%d+)%)</div>',
+	post                       = '<div id="m%d',
+	private_message            = '<div id="m%d" (.-</div>%%s+</div>%%s+</div>%%s+</td>%%s+</tr>)',
+	private_message_data       = '<.-id="message_(%d+)">(.-)</div>%s+</div>%s+</div>%s+</td>%s+</tr>',
+	profile_avatar             = '(http://avatars%.atelier801%.com/%d+/(%d+)%.%a+)',
+	profile_birthday           = 'Birthday :</span> ',
+	profile_data               = 'Messages: </span>(%-?%d+).-Prestige: </span>(%d+).-Level: </span>(%d+)',
+	profile_gender             = 'Gender :.- (%S+)%s+<br>',
+	profile_id                 = 'profile%?pr=(.-)"',
+	profile_location           = 'Location :</span> (.-)  <br>',
+	profile_presentation       = 'cadre%-presentation">%s*(.-)%s*</div></div></div>',
+	profile_soulmate           = 'Soul mate :</span>.-',
+	profile_tribe              = 'cadre%-tribu%-nom">(.-)</span>.-tr=(%d+)',
+	recruitment                = 'Recruitment : (.-)<',
+	search_list                = '<a href="(topic%?.-)".->%s+(.-)%s+</a></li>',
+	sec_topic_author           = '>(%S+)</span>',
+	secret_keys                = '<input type="hidden" name="(.-)" value="(.-)">',
+	section_icon               = 'sections/(.-%.png)',
+	section_topic              = 'cadre%-sujet%-%titre.-href="topic%?.-&t=(%d+).-".->%s+([^>]+)%s+</a>',
+	subsection                 = '"cadre%-section%-titre%-mini.-(section.-)".->%s+([^>]+)%s+</a>',
+	title                      = '<title>(.-)</title>',
+	topic_div                  = '<div class="row">',
+	total_entries              = '(%d+) entries',
+	total_pages                = '"input%-pagination".-max="(%d+)"',
+	tracker                    = '(.-)</div>%s+</div>',
+	tribe_list                 = '<li class="nav%-header">(.-)</li>.-%?tr=(%d+)"',
+	tribe_log                  = '<td> (.-) </td>',
+	tribe_presentation         = 'cadre%-presentation"> (.-) </div>',
+	tribe_rank                 = '<div class="rang%-tribu"> (.-) </div>',
+	tribe_rank_id              = '<tr id="(%d+)"> <td>(.-)</td>',
+	tribe_rank_list            = '<h4>Ranks</h4>(.-)</div>%s+</div>',
+	tribe_section_id           = '"section%?f=(%d+)&s=(%d+)".-/>%s*(.-)%s*</a>'
 }
 
 local errorString = {
@@ -657,8 +657,8 @@ return function()
 	--[[@
 		@desc Gets the instance's account information.
 		@returns string,nil The username of the account.
-		@returns int,nil The ID of the account.
-		@returns int,nil the ID of the account's tribe.
+		@returns int,nil The account id.
+		@returns int,nil the id of the account's tribe.
 	]]
 	self.getUser = function()
 		return this.userName, this.userId, this.tribeId
@@ -982,7 +982,7 @@ return function()
 			community = enumerations.community, -- The community of the user.
 			gender = enumerations.gender, -- The gender of the user.
 			highestRole = enumerations.role, -- The highest role of the account based on the discriminator number.
-			id = 0, -- The user ID.
+			id = 0, -- The user id.
 			level = 0, -- The level of the user on forums.
 			location = "", -- The location string field.
 			name = "", -- The name of the user.
@@ -1227,11 +1227,8 @@ return function()
 			co = 0, -- The conversation id.
 			firstMessage = getMessage, -- The message object of the first message of the conversation. (It's ignored when 'isPoll') 
 			invitedUsers = {
-				[n] = {
-					name = "", -- Name of the user.
-					situation = "" -- Situation string field. (e.g: invited, gone, author)
-				}
-			}, -- The list of players that are in the conversation.
+				[userName] = "", -- Situation string field. (e.g: invited, gone, author)
+			}, -- The list of players that are listed in the conversation.
 			isDiscussion = false, -- If the conversation is a discussion.
 			isLocked = false, -- Whether the conversation is locked or not.
 			isPoll = false, -- If the conversation is a poll.
@@ -1282,30 +1279,23 @@ return function()
 			isPrivateMessage = not isDiscussion
 		end
 
-		local counter, invitedUsers = 0
+		local invitedUsers
 		if not isPrivateMessage then
 			invitedUsers = { }
 			local invList = string.match(body, htmlChunk.conversation_members)
 
 			local foundSelf = false
 			string.gsub(invList, htmlChunk.conversation_member_state .. ".-" .. htmlChunk.nickname, function(situation, name, discriminator)
-				counter = counter + 1
-
 				name = name .. discriminator
-				invitedUsers[counter] = {
-					name = name,
-					situation = situation
-				}
+
+				invitedUsers[name] = enumerations.memberState(situation) or ("@" .. situation)
 
 				if not foundSelf then
 					foundSelf = name == this.userName
 				end
 			end)
 			if not foundSelf then
-				invitedUsers[counter + 1] = {
-					name = this.userName,
-					situation = forumUri.invited
-				}
+				invitedUsers[this.userName] = enumerations.memberState.invited
 			end
 		end
 
@@ -1317,7 +1307,7 @@ return function()
 		-- Get total of pages and total of messages
 		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
 
-		counter = 0
+		local counter = 0
 		local lastPage = this.getPage(forumUri.conversation .. path .. "&p=" .. totalPages)
 		string.gsub(lastPage, htmlChunk.post, function()
 			counter = counter + 1
@@ -1474,7 +1464,7 @@ return function()
 		@file Private
 		@desc Moves private conversations to the inbox or bin.
 		@param inboxLocale<string,int> Where the conversation will be located. An enum from `enumerations.inboxLocale`. (index or value)
-		@param conversationId?<int,table> The ID(s) of the conversation(s) to be moved. Use `nil` for all.
+		@param conversationId?<int,table> The id(s) of the conversation(s) to be moved. Use `nil` for all.
 		@returns string,nil Result string.
 		@returns nil,string Error message.
 	]]
@@ -1865,7 +1855,7 @@ return function()
 
 		local isPrivatePoll = not not location.co
 		if not isPrivatePoll and (not location.f or not location.t) then
-			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_required_fields_private, "'co'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_url_location_private, "'co'")
 		end
 
 		if not this.isConnected then
@@ -2378,7 +2368,7 @@ return function()
 
 		local isPrivatePoll = not not location.co
 		if not isPrivatePoll and (not location.f or not location.t) then
-			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_required_fields_private, "'co'")
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_url_location_private, "'co'")
 		end
 
 		if not this.isConnected then
@@ -3676,42 +3666,50 @@ return function()
 		end
 
 		local file = {
-			boundaries[2],
-			'Content-Disposition: form-data; name="/KEY1/"',
-			'',
-			"/KEY2/",
-			boundaries[2],
-			'Content-Disposition: form-data; name="fichier"; filename="Lautenschlager_id.' .. extension .. '"',
-			"Content-Type: image/" .. extension,
-			'',
-			image,
-			(isPublic and boundaries[2] or nil),
-			(isPublic and 'Content-Disposition: form-data; name="enGalerie"' or nil),
-			(isPublic and '' or nil),
-			(isPublic and "on" or nil),
-			boundaries[3]
+			[1] = boundaries[2],
+			[2] = 'Content-Disposition: form-data; name="/KEY1/"',
+			[3] = '',
+			[4] = "/KEY2/",
+			[5] = boundaries[2],
+			[6] = 'Content-Disposition: form-data; name="fichier"; filename="Lautenschlager_id.' .. extension .. '"',
+			[7] = "Content-Type: image/" .. extension,
+			[8] = '',
+			[9] = image
 		}
+		if isPublic then
+			file[10] = boundaries[2]
+			file[11] = 'Content-Disposition: form-data; name="enGalerie"'
+			file[12] = ''
+			file[13] = "on"
+			file[14] = boundaries[3]
+		else
+			file[10] = boundaries[3]
+		end
 
-		local result, err = this.performAction(forumUri.upload_image, nil, forumUri.user_images, table.concat(file, separator.file))
+		local result, err = this.performAction(forumUri.upload_image, nil, forumUri.user_images_home, table.concat(file, separator.file))
 		return redirect(result, err)
 	end
 	--[[@
 		@file Micepix
 		@desc Deletes an image from the account's micepix gallery.
-		@param imageId<string> The image id.
+		@param imageId<string,table> The image(s) id(s) to be deleted.
 		@returns string,nil Result string.
 		@returns nil,string Error message.
 	]]
-	self.deleteMicepixImage = function(imageId)
-		assertion("deleteMicepixImage", "string", 1, imageId)
+	self.deleteImage = function(imageId)
+		assertion("deleteImage", { "string", "table" }, 1, imageId)
 
 		if not this.isConnected then
 			return nil, errorString.not_connected
 		end
 
-		return this.performAction(forumUri.remove_image, {
-			{ "im", imageId }
-		}, forumUri.view_user_image .. "?im=" .. imageId)
+		if type(imageId) == "string" then
+			imageId = { imageId }
+		end
+		return this.performAction(forumUri.remove_bulk_images, {
+			{ "pr", this.userId },
+			{ "im", table.concat(imageId, separator.forum_data) }
+		}, forumUri.user_images .. "?pr=" .. this.userId)
 	end
 
 	-- > Miscellaneous
@@ -3848,7 +3846,7 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local body = this.getPage(forumUri.topics_started .. "?pr=" .. (userName or this.userId))
+		local body = this.getPage(forumUri.topics_started .. "?pr=" .. (userName and encodeUrl(userName) or this.userId))
 
 		local topics, counter = { }, 0
 		string.gsub(body, htmlChunk.topic_div .. ".-" .. htmlChunk.community .. ".-" .. htmlChunk.created_topic_data .. ".- on .-" .. htmlChunk.ms_time, function(community, topic, title, messages, timestamp)
@@ -3869,12 +3867,19 @@ return function()
 		@desc Gets the last posts of a user.
 		@param pageNumber?<int> The page number of the last posts list. @default 1
 		@param userName?<string,int> User name or id. @default Account's id
+		@param extractNavbar?<boolean> Whether the info should include the navigation bar or not. @default false
 		@returns table,nil The list of posts.
 		@returns nil,string Error message.
 		@struct {
 			[n] = {
 				contentHtml = "", -- The HTML of the message content.
 				location = parseUrlData, -- The location of the message.
+				navbar = {
+					[n] = {
+						location = parseUrlData, -- The parsed-url location object.
+						name = "" -- The name of the location.
+					}
+				}, -- A list of locations of the navigation bar. (If 'extractNavbar' is true)
 				post = "", -- The post id of the message.
 				timestamp = 0, -- The timestamp of when the message was created.
 				topicTitle = "" -- The title of the topic where the message was posted.
@@ -3882,26 +3887,28 @@ return function()
 			_pages = 0 -- The total pages of the "last posts" list.
 		}
 	]]
-	self.getLastPosts = function(pageNumber, userName)
+	self.getLastPosts = function(pageNumber, userName, extractNavbar)
 		assertion("getLastPosts", { "number", "nil" }, 1, pageNumber)
 		assertion("getLastPosts", { "string", "number", "nil" }, 2, userName)
+		assertion("getLastPosts", { "boolean", "nil" }, 3, extractNavbar)
 
 		if not this.isConnected then
 			return nil, errorString.not_connected
 		end
 
-		local body = this.getPage(forumUri.posts .. "?pr=" .. (userName or this.userId) .. "&p=" .. (pageNumber or 1))
+		local body = this.getPage(forumUri.posts .. "?pr=" .. (userName and encodeUrl(userName) or this.userId) .. "&p=" .. (pageNumber or 1))
 
 		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
 
 		local posts, counter = {
 			_pages = totalPages
 		}, 0
-		string.gsub(body, htmlChunk.last_post .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time, function(post, topicTitle, postId, contentHtml, timestamp)
+		string.gsub(body, htmlChunk.last_post .. htmlChunk.message_html .. ".-" .. htmlChunk.ms_time, function(navBar, post, topicTitle, postId, contentHtml, timestamp)
 			counter = counter + 1
 			posts[counter] = {
 				contentHtml = contentHtml,
 				location = self.parseUrlData(post),
+				navbar = (extractNavbar and getNavbar(navBar, true) or nil),
 				post = postId,
 				timestamp = tonumber(timestamp),
 				topicTitle = topicTitle

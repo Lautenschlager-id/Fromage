@@ -71,11 +71,12 @@
 >}
 >```
 ---
->### getLastPosts ( pageNumber, userName )
+>### getLastPosts ( pageNumber, userName, extractNavbar )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| pageNumber | `int` | ✕ | The page number of the last posts list. <sub>(default = 1)</sub> |
 >| userName | `string`, `int` | ✕ | User name or id. <sub>(default = Account's id)</sub> |
+>| extractNavbar | `boolean` | ✕ | Whether the info should include the navigation bar or not. <sub>(default = false)</sub> |
 >
 >Gets the last posts of a user.
 >
@@ -92,6 +93,12 @@
 >	[n] = {
 >		contentHtml = "", -- The HTML of the message content.
 >		location = parseUrlData, -- The location of the message.
+>		navbar = {
+>			[n] = {
+>				location = parseUrlData, -- The parsed-url location object.
+>				name = "" -- The name of the location.
+>			}
+>		}, -- A list of locations of the navigation bar. (If 'extractNavbar' is true)
 >		post = "", -- The post id of the message.
 >		timestamp = 0, -- The timestamp of when the message was created.
 >		topicTitle = "" -- The title of the topic where the message was posted.

@@ -218,6 +218,16 @@
 | male | 2 |
 
 ---
+### memberState <sub>\<string></sub>
+###### The state of a member in a conversation.
+| Index |
+| :-: |
+| author | 
+| excluded | 
+| invited | 
+| gone | 
+
+---
 ### recruitmentState <sub>\<int></sub>
 ###### The recruitment state for tribes.
 | Index | Value |
