@@ -20,6 +20,8 @@ Join the **_[Fifty Shades of Lua](https://discord.gg/quch83R)_** [discord](https
 - To install **Fromage**, run `lit install Lautenschlager-id/fromage`
 - Run your bot script using, for example, `luvit bot.lua`
 
+To update the API you need to delete the folder `deps` and reinstall it.
+
 ## Base example
 
 ```Lua
