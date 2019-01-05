@@ -756,7 +756,7 @@ return function()
 		@returns string Formated nickname.
 	]]
 	self.formatNickname = function(nickname)
-		assertion("normalizeNickname", "string", 1, nickname)
+		assertion("formatNickname", "string", 1, nickname)
 
 		nickname = string.lower(nickname)
 		nickname = string.gsub(nickname, "%%23", '#', 1)
@@ -2095,7 +2095,7 @@ return function()
 				end
 			else
 				post = (post - 20)
-				string.gsub(body, htmlChunk.ms_time .. ".-" .. htmlChunk.message_id, function(id, timestamp)
+				string.gsub(body, htmlChunk.ms_time .. ".-" .. htmlChunk.message_id, function(timestamp, id)
 					counter = counter + 1
 					messages[counter] = {
 						f = location.f,
