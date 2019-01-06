@@ -27,8 +27,8 @@ do
 						os.execute("luvit " .. table.concat(args, ' ')) -- Luvit's command
 						return os.exit()
 					end
-			end
 				end
+			end
 		end)()
 	end
 end
