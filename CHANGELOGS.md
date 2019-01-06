@@ -1,3 +1,11 @@
+# Changelogs v0.3.5
+### News
+- Added an autoupdater for the lib. All you need to do is to create a file named `autoupdate` in the bot path.
+
+### Fixes
+- /!\\ **getTopicMessages** had the fields _timestamp_ and _id_ switched.
+- Minor fixes with function error naming.
+
 # Changelogs v0.3.4
 ### News
 - **getLastPosts** has now a third parameter, _extractNavbar_.

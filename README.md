@@ -20,7 +20,12 @@ Join the **_[Fifty Shades of Lua](https://discord.gg/quch83R)_** [discord](https
 - To install **Fromage**, run `lit install Lautenschlager-id/fromage`
 - Run your bot script using, for example, `luvit bot.lua`
 
-To update the API you need to delete the folder `deps` and reinstall it.
+### API Update
+
+To update the API automatically all you need to do is to create a file named `autoupdate` in the bot's path.<br>
+You can create it running `type nul > autoupdate` (for Windows) or `touch autoupdate` (for Linux);
+
+The update will overwrite all the old files and dependencies.
 
 ## Base example
 
@@ -29,7 +34,7 @@ local api = require("fromage")
 local client = api()
 
 coroutine.wrap(function()
-	client.connect("Test#0000", "12345")
+	client.connect("Username#0000", "password")
 
 	if client.isConnected() then
 		-- TODO

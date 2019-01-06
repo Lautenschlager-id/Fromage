@@ -1,15 +1,15 @@
 return {
 	name = "Lautenschlager-id/fromage",
-	version = "0.3.4",
+	version = "0.3.5",
 	homepage = "https://github.com/Lautenschlager-id/Fromage",
 	dependencies = {
 		"creationix/coro-http@3.0.0",
 		"creationix/coro-websocket@3.1.0",
 		"luvit/secure-socket@1.2.0"
 	},
-	tags = { "atelier801", "forum", "transformice", "api" },
+	tags = { "transformice", "bot", "atelier801", "forum", "api", "lua", "luvit", "fromage" },
 	license = "MIT",
-	author = "Lautenschlager.id",
+	author = "Lautenschlager-id",
 	files = {
 		"init.lua",
 		"package.lua",

@@ -6,6 +6,33 @@ local base64 = require("base64")
 -- Necessary enumerations
 local enumerations = require("enumerations")
 
+--[[ autoupdate ]]--
+do
+	local autoupdate = io.open("autoupdate", 'r')
+	if autoupdate then
+		autoupdate:close()
+
+		coroutine.wrap(function()
+			local pkg = require("deps/fromage/package")
+			if pkg then
+				local version = pkg.version
+				local _, lastVersion = http.request("GET", "https://raw.githubusercontent.com/Lautenschlager-id/Fromage/master/package.lua")
+				if lastVersion then
+					lastVersion = string.match(lastVersion, "version = \"(.-)\"")
+					if version ~= lastVersion then
+						for i = 1, #pkg.files do
+							os.remove("deps/fromage/" .. pkg.files[i])
+						end
+						os.execute("lit install Lautenschlager-id/fromage") -- Installs the new lib
+						os.execute("luvit " .. table.concat(args, ' ')) -- Luvit's command
+						return os.exit()
+					end
+			end
+				end
+		end)()
+	end
+end
+
 --[[ Private Enumerations ]]--
 local cookieState = {
 	login       = 0, -- Get all cookies
