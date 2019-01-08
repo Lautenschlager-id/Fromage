@@ -20,10 +20,12 @@ Join the **_[Fifty Shades of Lua](https://discord.gg/quch83R)_** [discord](https
 - To install **Fromage**, run `lit install Lautenschlager-id/fromage`
 - Run your bot script using, for example, `luvit bot.lua`
 
+###### If you are new and can't follow these steps, please consider using the _MyFirstBot.zip_ that comes with the executables and API already.<br>_(4MB)_ [Windows](https://github.com/Lautenschlager-id/fromage-newbie-release/raw/master/MyFirstBot%20(Windows).zip) | [Linux](https://github.com/Lautenschlager-id/fromage-newbie-release/raw/master/MyFirstBot%20(Linux).zip)
+
 ### API Update
 
 To update the API automatically all you need to do is to create a file named `autoupdate` in the bot's path.<br>
-You can create it running `type nul > autoupdate` (for Windows) or `touch autoupdate` (for Linux);
+You can create it running `echo >> autoupdate` (for Windows) or `touch autoupdate` (for Linux);
 
 The update will overwrite all the old files and dependencies.
 

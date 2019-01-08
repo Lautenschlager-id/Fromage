@@ -1,3 +1,12 @@
+# Changelogs v0.3.6
+### News
+- **getAllMessages** can now list the private conversation messages.
+- **getTopicMessages** is now an alias for **getAllMessages**.
+- **deleteMicepixImage** is now an alias for **deleteImage**.
+
+### Changes
+- **getTopicMessages** was renamed to **getAllMessages**.
+
 # Changelogs v0.3.5
 ### News
 - Added an autoupdater for the lib. All you need to do is to create a file named `autoupdate` in the bot path.

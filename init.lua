@@ -1629,9 +1629,9 @@ return function()
 		@param postId<int,string> The post id. (note: not the message id, but the #mID)
 		@param location<table> The post topic or conversation location.
 		@paramstruct location {
-			f?<int> The forum id. (needed for forum message)
-			t?<int> The topic id. (needed for forum message)
-			co?<int> The private conversation id. (needed for private conversation message)
+			f<int> The forum id. (needed for forum message)
+			t<int> The topic id. (needed for forum message)
+			co<int> The private conversation id. (needed for private conversation message)
 		}
 		@returns table,nil The message data.
 		@returns nil,string Error message.
@@ -1768,7 +1768,7 @@ return function()
 			poll = getPoll, -- The poll object if 'isPoll'.
 			t = 0, -- The topic id.
 			title = "", -- The name of the topic.
-			totalMessages = 0, -- The total of messages in the topic.
+			totalMessages = 0 -- The total of messages in the topic.
 		}
 	]]
 	self.getTopic = function(location, ignoreFirstMessage)
@@ -1851,9 +1851,9 @@ return function()
 		@desc Gets the data of a poll.
 		@param location<table> The poll location.
 		@paramstruct location {
-			f?<int> The forum id. (needed for forum topic)
-			t?<int> The topic id. (needed for forum topic)
-			co?<int> The private conversation id. (needed for private conversation)
+			f<int> The forum id. (needed for forum topic)
+			t<int> The topic id. (needed for forum topic)
+			co<int> The private conversation id. (needed for private conversation)
 		}
 		@returns table,nil The poll data.
 		@returns nil,string Error message.
@@ -2070,45 +2070,49 @@ return function()
 	end
 	--[[@
 		@file Forum
-		@desc Gets the messages of a topic.
-		@param location<table> The topic location.
-		@param getAllInfo?<boolean> Whether the message data should be simple (ids only) or complete (getMessage). @default true
+		@desc Gets the messages of a topic or conversation.
+		@param location<table> The topic or conversation location.
+		@param getAllInfo?<boolean> Whether the message data should be simple (see return structure) or complete (getMessage). @default true
 		@param pageNumber?<int> The topic page. To list ALL messages, use `0`. @default 1
 		@paramstruct location {
-			f<int> The forum id.
-			t<int> The topic id.
+			f<int> The forum id. (needed for topic)
+			t<int> The topic id. (needed for topic)
+			co<int> The private conversation id. (needed for private conversation)
 		}
 		@returns table,nil The list of message datas.
 		@returns nil,string Error Message.
 		@struct {
 			-- Structure if not 'getAllInfo'
 			[n] = {
+				co = 0, -- The private conversation id.
 				f = 0, -- The forum id.
 				id = 0, -- The message id.
 				p = 0, -- The page where the message is located.
 				post = "", -- The post id.
 				t = 0, -- The topic id.
 				timestamp = 0 -- The timestamp of when the message was created.
-			}
+			},
+			_pages = 0 -- The total pages of the topic or conversation.
 		}
 	]]
-	self.getTopicMessages = function(location, getAllInfo, pageNumber)
-		assertion("getTopicMessages", "table", 1, location)
-		assertion("getTopicMessages", { "boolean", "nil" }, 2, getAllInfo)
-		assertion("getTopicMessages", { "number", "nil" }, 3, pageNumber)
+	self.getAllMessages = function(location, getAllInfo, pageNumber)
+		assertion("getAllMessages", "table", 1, location)
+		assertion("getAllMessages", { "boolean", "nil" }, 2, getAllInfo)
+		assertion("getAllMessages", { "number", "nil" }, 3, pageNumber)
 
 		getAllInfo = (getAllInfo == nil and true or getAllInfo)
 		pageNumber = pageNumber or 1
 
-		if not location.f or not location.t then
-			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
+		local isPrivatePoll = not not location.co
+		if not isPrivatePoll and (not location.f or not location.t) then
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_url_location_private, "'co'")
 		end
 
 		if not this.isConnected then
 			return nil, errorString.not_connected
 		end
 
-		return getBigList(pageNumber, forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t, function(messages, body, pageNumber, totalPages)
+		return getBigList(pageNumber, (isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)), function(messages, body, pageNumber, totalPages)
 			local post = math.max(1, pageNumber) * 20
 			local counter = 0
 			if getAllInfo then
@@ -2125,6 +2129,7 @@ return function()
 				string.gsub(body, htmlChunk.ms_time .. ".-" .. htmlChunk.message_id, function(timestamp, id)
 					counter = counter + 1
 					messages[counter] = {
+						co = location.co,
 						f = location.f,
 						id = tonumber(id),
 						p = pageNumber,
@@ -2157,7 +2162,8 @@ return function()
 				t = 0, -- The topic id.
 				timestamp = 0, -- The timestamp of when the topic was created.
 				title = "" -- The name of the topic.
-			}
+			},
+			_pages = 0 -- The total pages of the section.
 		}
 	]]
 	self.getSectionTopics = function(location, getAllInfo, pageNumber)
@@ -2381,9 +2387,9 @@ return function()
 		@param location<table> The location where the poll answer should be recorded.
 		@param pollId?<int> The poll id. It's obtained automatically if no value is given.
 		@paramstruct location {
-			f?<int> The forum id. (needed for forum poll)
-			t?<int> The topic id. (needed for forum poll)
-			co?<int> The private conversation id. (needed for private poll)
+			f<int> The forum id. (needed for forum poll)
+			t<int> The topic id. (needed for forum poll)
+			co<int> The private conversation id. (needed for private poll)
 		}
 		@returns string,nil Result string.
 		@returns nil,string Error message.
@@ -2617,9 +2623,9 @@ return function()
 		@param reason<string> The report reason.
 		@param location?<table> The location of the report.
 		@paramstruct location {
-			f?<int> The forum id. (needed for forum element)
-			t?<int> The topic id. (needed for forum element)
-			co?<int> The private conversation id. (needed for private element)
+			f<int> The forum id. (needed for forum element)
+			t<int> The topic id. (needed for forum element)
+			co<int> The private conversation id. (needed for private element)
 		}
 		@returns string,nil Result string.
 		@returns nil,string Error message.
@@ -4275,6 +4281,10 @@ return function()
 
 		return data
 	end
+
+	-- Compatibility Aliases
+	self.deleteMicepixImage = self.deleteImage
+	self.getTopicMessages = self.getAllMessages
 
 	return self
 end
