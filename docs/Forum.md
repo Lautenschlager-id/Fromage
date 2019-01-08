@@ -9,9 +9,9 @@
 >
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| 	f | `int` | ✕ | The forum id. (needed for forum message) |
->| 	t | `int` | ✕ | The topic id. (needed for forum message) |
->| 	co | `int` | ✕ | The private conversation id. (needed for private conversation message) |
+>| 	f | `int` | ✔ | The forum id. (needed for forum message) |
+>| 	t | `int` | ✔ | The topic id. (needed for forum message) |
+>| 	co | `int` | ✔ | The private conversation id. (needed for private conversation message) |
 >
 >Gets the data of a message.
 >
@@ -90,7 +90,7 @@
 >	poll = getPoll, -- The poll object if 'isPoll'.
 >	t = 0, -- The topic id.
 >	title = "", -- The name of the topic.
->	totalMessages = 0, -- The total of messages in the topic.
+>	totalMessages = 0 -- The total of messages in the topic.
 >}
 >```
 ---
@@ -103,9 +103,9 @@
 >
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| 	f | `int` | ✕ | The forum id. (needed for forum topic) |
->| 	t | `int` | ✕ | The topic id. (needed for forum topic) |
->| 	co | `int` | ✕ | The private conversation id. (needed for private conversation) |
+>| 	f | `int` | ✔ | The forum id. (needed for forum topic) |
+>| 	t | `int` | ✔ | The topic id. (needed for forum topic) |
+>| 	co | `int` | ✔ | The private conversation id. (needed for private conversation) |
 >
 >Gets the data of a poll.
 >
@@ -193,21 +193,22 @@
 >}
 >```
 ---
->### getTopicMessages ( location, getAllInfo, pageNumber )
+>### getAllMessages ( location, getAllInfo, pageNumber )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| location | `table` | ✔ | The topic location. |
->| getAllInfo | `boolean` | ✕ | Whether the message data should be simple (ids only) or complete (getMessage). <sub>(default = true)</sub> |
+>| location | `table` | ✔ | The topic or conversation location. |
+>| getAllInfo | `boolean` | ✕ | Whether the message data should be simple (see return structure) or complete (getMessage). <sub>(default = true)</sub> |
 >| pageNumber | `int` | ✕ | The topic page. To list ALL messages, use `0`. <sub>(default = 1)</sub> |
 >
 >**@`location` parameter's structure**:
 >
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| 	f | `int` | ✔ | The forum id. |
->| 	t | `int` | ✔ | The topic id. |
+>| 	f | `int` | ✔ | The forum id. (needed for topic) |
+>| 	t | `int` | ✔ | The topic id. (needed for topic) |
+>| 	co | `int` | ✔ | The private conversation id. (needed for private conversation) |
 >
->Gets the messages of a topic.
+>Gets the messages of a topic or conversation.
 >
 >**Returns**:
 >
@@ -221,13 +222,15 @@
 >{
 >	-- Structure if not 'getAllInfo'
 >	[n] = {
+>		co = 0, -- The private conversation id.
 >		f = 0, -- The forum id.
 >		id = 0, -- The message id.
 >		p = 0, -- The page where the message is located.
 >		post = "", -- The post id.
 >		t = 0, -- The topic id.
 >		timestamp = 0 -- The timestamp of when the message was created.
->	}
+>	},
+>	_pages = 0 -- The total pages of the topic or conversation.
 >}
 >```
 ---
@@ -265,7 +268,8 @@
 >		t = 0, -- The topic id.
 >		timestamp = 0, -- The timestamp of when the topic was created.
 >		title = "" -- The name of the topic.
->	}
+>	},
+>	_pages = 0 -- The total pages of the section.
 >}
 >```
 ---
@@ -384,9 +388,9 @@
 >
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| 	f | `int` | ✕ | The forum id. (needed for forum poll) |
->| 	t | `int` | ✕ | The topic id. (needed for forum poll) |
->| 	co | `int` | ✕ | The private conversation id. (needed for private poll) |
+>| 	f | `int` | ✔ | The forum id. (needed for forum poll) |
+>| 	t | `int` | ✔ | The topic id. (needed for forum poll) |
+>| 	co | `int` | ✔ | The private conversation id. (needed for private poll) |
 >
 >Answers a poll.
 >

@@ -75,9 +75,9 @@
 >
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| 	f | `int` | ✕ | The forum id. (needed for forum element) |
->| 	t | `int` | ✕ | The topic id. (needed for forum element) |
->| 	co | `int` | ✕ | The private conversation id. (needed for private element) |
+>| 	f | `int` | ✔ | The forum id. (needed for forum element) |
+>| 	t | `int` | ✔ | The topic id. (needed for forum element) |
+>| 	co | `int` | ✔ | The private conversation id. (needed for private element) |
 >
 >Reports an element. (e.g: message, profile)
 >
