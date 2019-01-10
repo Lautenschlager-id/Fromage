@@ -614,9 +614,9 @@ return function()
 	--[[@
 		@file Api
 		@desc Gets the location of a section on the forums.
-		@param forum<int,string> The forum id. An enum from `enumerations.forum`. (index or value)
-		@param community<string,int> The community id. An enum from `enumerations.community`. (index or value)
-		@param section<string,int> The section id. An enum from `enumerations.section`. (index or value)
+		@param forum<int,string> The forum id. An enum from @see forum. (index or value)
+		@param community<string,int> The community id. An enum from @see community. (index or value)
+		@param section<string,int> The section id. An enum from @see section. (index or value)
 		@returns table,nil The location.
 		@returns nil,string Error message.
 		@struct {
@@ -1127,10 +1127,10 @@ return function()
 		@desc Updates the account's profile.
 		@param data?<table> The data.
 		@paramstruct data {
-			community?<string,int> User's community. An enum from `enumerations.community`. (index or value) @default xx
+			community?<string,int> User's community. An enum from @see community. (index or value) @default xx
 			birthday?<string> The birthday string field. (dd/mm/yyyy)
 			location?<string> The location string field.
-			gender?<string,int> User's gender. An enum from `enumerations.gender`. (index or value)
+			gender?<string,int> User's gender. An enum from @see gender. (index or value)
 			presentation?<string> Profile's presentation string field.
 		}
 		@returns string,nil Result string.
@@ -1474,7 +1474,7 @@ return function()
 	--[[@
 		@file Inbox
 		@desc Moves private conversations to the inbox or bin.
-		@param inboxLocale<string,int> Where the conversation will be located. An enum from `enumerations.inboxLocale`. (index or value)
+		@param inboxLocale<string,int> Where the conversation will be located. An enum from @see inboxLocale. (index or value)
 		@param conversationId?<int,table> The id(s) of the conversation(s) to be moved. Use `nil` for all.
 		@returns string,nil Result string.
 		@returns nil,string Error message.
@@ -1511,7 +1511,7 @@ return function()
 	--[[@
 		@file Inbox
 		@desc Changes the conversation state (open, closed).
-		@param displayState<string,int> The conversation display state. An enum from `enumerations.displayState`. (index or value)
+		@param displayState<string,int> The conversation display state. An enum from @see displayState. (index or value)
 		@param conversationId<int,string> The conversation id.
 		@returns string,nil Result string.
 		@returns nil,string Error message.
@@ -2057,7 +2057,7 @@ return function()
 		@desc Gets the messages of a topic or conversation.
 		@desc /!\ This function may take several minutes to return the values depending on the total of pages of the topic.
 		@param location<table> The topic or conversation location.
-		@param getAllInfo?<boolean> Whether the message data should be simple (see return structure) or complete (getMessage). @default true
+		@param getAllInfo?<boolean> Whether the message data should be simple (see return structure) or complete (@see getMessage). @default true
 		@param pageNumber?<int> The topic page. To list ALL messages, use `0`. @default 1
 		@paramstruct location {
 			f<int> The forum id. (needed for topic)
@@ -2130,7 +2130,7 @@ return function()
 		@file Forum
 		@desc Gets the topics of a section.
 		@param location<table> The section location.
-		@param getAllInfo?<boolean> Whether the topic data should be simple (ids only) or complete (getTopic). @default true
+		@param getAllInfo?<boolean> Whether the topic data should be simple (ids only) or complete (@see getTopic). @default true
 		@param pageNumber?<int> The section page. To list ALL topics, use `0`. @default 1
 		@paramstruct location {
 			f<int> The forum id.
@@ -2603,7 +2603,7 @@ return function()
 	--[[@
 		@file Moderation
 		@desc Reports an element. (e.g: message, profile)
-		@param element<string,int> The element type. An enum from `enumerations.element`. (index or value)
+		@param element<string,int> The element type. An enum from @see element. (index or value)
 		@param elementId<int,string> The element id.
 		@param reason<string> The report reason.
 		@param location?<table> The location of the report.
@@ -2703,7 +2703,7 @@ return function()
 		@file Moderation
 		@desc Changes the state of a message. (e.g: active, moderated)
 		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message ids, use a table with `ints` or `strings`.
-		@param messageState<string,int> The message state. An enum from `enumerations.messageState`. (index or value)
+		@param messageState<string,int> The message state. An enum from @see messageState. (index or value)
 		@param location<table> The message location.
 		@paramstruct location {
 			f<int> The forum id.
@@ -2763,7 +2763,7 @@ return function()
 		@file Moderation
 		@desc Changes the restriction state of a message.
 		@param messageId<int,table,string> The message id. Use `string` if it's the post number. For multiple message ids, use a table with `ints` or `strings`.
-		@param contentState<string> An enum from `enumerations.contentState` (index or value)
+		@param contentState<string> An enum from @see contentState (index or value)
 		@param location<table> The topic location.
 		@paramstruct location {
 			f<int> The forum id.
@@ -3210,8 +3210,8 @@ return function()
 		@desc Updates the account's tribe's profile.
 		@param data<table> The data
 		@paramstruct data {
-			community?<string,int> Tribe's community. An enum from `enumerations.community`. (index or value) @default xx
-			recruitment?<string,int> Tribe's recruitment state. An enum from `enumerations.recruitmentState`. (index or value)
+			community?<string,int> Tribe's community. An enum from @see community. (index or value) @default xx
+			recruitment?<string,int> Tribe's recruitment state. An enum from @see recruitmentState. (index or value)
 			presentation?<string> Tribe's profile's presentation string field.
 		}
 		@returns string,nil Result string.
@@ -3326,7 +3326,7 @@ return function()
 		@param location?<table> The location where the section will be created.
 		@paramstruct data {
 			name<string> Section's name.
-			icon<string> Section's icon. An enum from `enumerations.sectionIcon`. (index or value)
+			icon<string> Section's icon. An enum from @see sectionIcon. (index or value)
 			description?<string> Section's description. @default Section name
 			min_characters?<int> Minimum characters needed to send a message in the section. @default 4
 		}
@@ -3427,10 +3427,10 @@ return function()
 		@param location<table> The section location. Fields 'f' and 's' are needed.
 		@paramstruct data {
 			name<string> The name of the section.
-			icon<string> The icon of the section. An enum from `enumerations.sectionIcon`. (index or value)
+			icon<string> The icon of the section. An enum from @see sectionIcon. (index or value)
 			description<string> The section's description string field.
 			min_characters<int> Minimum characters needed for a message in the new section
-			state<string,int> The section's state (e.g.: open, closed). An enum from `enumerations.displayState`. (index or value)
+			state<string,int> The section's state (e.g.: open, closed). An enum from @see displayState. (index or value)
 			parent<int> The parent section if the updated section is a sub-section. @default 0
 		}
 		@paramstruct location {
@@ -3738,16 +3738,16 @@ return function()
 		@file Miscellaneous
 		@desc Performs a deep search on forums.
 		@desc /!\ This function may take several minutes to return the values depending on the settings.
-		@param searchType<string,int> The type of the search (e.g.: player, message). An enum from `enumerations.searchType`. (index or value)
+		@param searchType<string,int> The type of the search (e.g.: player, message). An enum from @see searchType. (index or value)
 		@param search<string> The value to be searched.
 		@param pageNumber?<int> The page number of the search results. To list ALL the matches, use `0`. @default 1
 		@param data?<table> Additional data to be used in the `message_topic` search type.
 		@paramstruct data {
 			author?<string> The name of the message or topic author that the search system needs to look for.
-			community?<string,int> The community to perform the search. An enum from `enumerations.community`. (index or value)
+			community?<string,int> The community to perform the search. An enum from @see community. (index or value)
 			f<int> The forum id.
 			s?<int> The section id.
-			searchLocation<string,int > The specific search location. An enum from `enumerations.searchLocation`. (index or value)
+			searchLocation<string,int > The specific search location. An enum from @see searchLocation. (index or value)
 		}
 		@returns table,nil The search matches. Total pages at `_pages`.
 		@returns nil,string Error message.
@@ -4179,7 +4179,7 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Favorites an element. (e.g: topic, tribe)
-		@param element<string,int> The element type. An enum from `enumerations.element`. (index or value)
+		@param element<string,int> The element type. An enum from @see element. (index or value)
 		@param elementId<int> The element id.
 		@param location?<table> The location of the element. (if `element` is `topic`)
 		@paramstruct location {
@@ -4263,7 +4263,7 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Lists the members of a specific role.
-		@param role<string,int<> The role id. An enum from `enumerations.listRole`. (index or value)
+		@param role<string,int<> The role id. An enum from @see listRole. (index or value)
 		@returns table,nil The list of users.
 		@returns nil,string Error message.
 	]]

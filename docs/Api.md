@@ -18,9 +18,9 @@ Useful functions to make the use of the API easier and to handle some return val
 >### getLocation ( forum, community, section )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| forum | `int`, `string` | ✔ | The forum id. An enum from `enumerations.forum`. (index or value) |
->| community | `string`, `int` | ✔ | The community id. An enum from `enumerations.community`. (index or value) |
->| section | `string`, `int` | ✔ | The section id. An enum from `enumerations.section`. (index or value) |
+>| forum | `int`, `string` | ✔ | The forum id. An enum from [forum](Enumerations.md#forum-int). (index or value) |
+>| community | `string`, `int` | ✔ | The community id. An enum from [community](Enumerations.md#community-int). (index or value) |
+>| section | `string`, `int` | ✔ | The section id. An enum from [section](Enumerations.md#section-string). (index or value) |
 >
 >Gets the location of a section on the forums.
 >

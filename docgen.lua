@@ -33,6 +33,7 @@
 ]]
 
 -- /!\ will always be replaced to a warning image
+-- @see Name will make a link.
 
 string.split = function(str, pat, f)
 	local out = {}
@@ -276,7 +277,7 @@ local generate = function(content, fileName)
 	end)
 end
 
-local write = function(file, data)
+local write = function(file, data, tree) -- tree = @see
 	local str = { }
 	
 	if data._DESC and data._DESC.long then
@@ -299,6 +300,11 @@ local write = function(file, data)
 	str = table.concat(str, "\n")
 
 	str = string.gsub(str, "/!\\", "![/!\\\\](http://images.atelier801.com/168395f0cbc.png)")
+	
+	str = string.gsub(str, "@see (%w+)", function(name)
+		local link = string.match(tree, "%[" .. name .. "%]%((.-)%)") or nil
+		return link and ("[" .. name .. "](" .. link .. ")") or name
+	end)
 
 	file:write(str)
 	file:flush()
@@ -312,7 +318,7 @@ local toArr = function(tbl)
 		out[counter] = { k = k, v = v }
 	end
 	return out
-end 
+end
 
 local list = {
 	"init.lua",
@@ -334,9 +340,10 @@ for file = 1, #list do
 	f:close()
 end
 
+local dataFile = { }
 _TREE, counter = { }, 0
 for k, v in next, _DATA do
-	write("docs/" .. k .. ".md", v)
+	dataFile[k] = v
 	v._TREE = toArr(v._TREE)
 	table.sort(v._TREE, function(a, b) return a.k < b.k end)
 	counter = counter + 1
@@ -359,12 +366,18 @@ for f = 1, #_TREE do
 	_TREE[f] = table.concat(data, "\n")
 end
 
+local tree = table.concat(_TREE, "\n")
+
 local file = io.open("docs/README.md", 'r')
 local readme = file:read("*a")
 file:close()
 readme = string.match(readme, "^(.-## Topics\n\n)")
 
 file = io.open("docs/README.md", "w+")
-file:write(readme .. table.concat(fileDescData, "\n") .. "\n\n## Tree\n\n" .. table.concat(_TREE, "\n"))
+file:write(readme .. table.concat(fileDescData, "\n") .. "\n\n## Tree\n\n" .. tree)
 file:flush()
 file:close()
+
+for k, v in next, dataFile do
+	write("docs/" .. k .. ".md", v, tree)
+end

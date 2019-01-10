@@ -119,7 +119,7 @@ Account's inbox data and management.
 >### moveConversation ( inboxLocale, conversationId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| inboxLocale | `string`, `int` | ✔ | Where the conversation will be located. An enum from `enumerations.inboxLocale`. (index or value) |
+>| inboxLocale | `string`, `int` | ✔ | Where the conversation will be located. An enum from [inboxLocale](Enumerations.md#inboxlocale-int). (index or value) |
 >| conversationId | `int`, `table` | ✕ | The id(s) of the conversation(s) to be moved. Use `nil` for all. |
 >
 >Moves private conversations to the inbox or bin.
@@ -135,7 +135,7 @@ Account's inbox data and management.
 >### changeConversationState ( displayState, conversationId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| displayState | `string`, `int` | ✔ | The conversation display state. An enum from `enumerations.displayState`. (index or value) |
+>| displayState | `string`, `int` | ✔ | The conversation display state. An enum from [displayState](Enumerations.md#displaystate-int). (index or value) |
 >| conversationId | `int`, `string` | ✔ | The conversation id. |
 >
 >Changes the conversation state (open, closed).

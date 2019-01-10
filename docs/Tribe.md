@@ -200,8 +200,8 @@ Tribe data and management.
 >
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| 	community | `string`, `int` | ✕ | Tribe's community. An enum from `enumerations.community`. (index or value) <sub>(default = xx)</sub> |
->| 	recruitment | `string`, `int` | ✕ | Tribe's recruitment state. An enum from `enumerations.recruitmentState`. (index or value) |
+>| 	community | `string`, `int` | ✕ | Tribe's community. An enum from [community](Enumerations.md#community-int). (index or value) <sub>(default = xx)</sub> |
+>| 	recruitment | `string`, `int` | ✕ | Tribe's recruitment state. An enum from [recruitmentState](Enumerations.md#recruitmentstate-int). (index or value) |
 >| 	presentation | `string` | ✕ | Tribe's profile's presentation string field. |
 >
 >Updates the account's tribe's profile.
@@ -252,7 +252,7 @@ Tribe data and management.
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| 	name | `string` | ✔ | Section's name. |
->| 	icon | `string` | ✔ | Section's icon. An enum from `enumerations.sectionIcon`. (index or value) |
+>| 	icon | `string` | ✔ | Section's icon. An enum from [sectionIcon](Enumerations.md#sectionicon-string). (index or value) |
 >| 	description | `string` | ✕ | Section's description. <sub>(default = Section name)</sub> |
 >| 	min_characters | `int` | ✕ | Minimum characters needed to send a message in the section. <sub>(default = 4)</sub> |
 >
@@ -291,10 +291,10 @@ Tribe data and management.
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| 	name | `string` | ✔ | The name of the section. |
->| 	icon | `string` | ✔ | The icon of the section. An enum from `enumerations.sectionIcon`. (index or value) |
+>| 	icon | `string` | ✔ | The icon of the section. An enum from [sectionIcon](Enumerations.md#sectionicon-string). (index or value) |
 >| 	description | `string` | ✔ | The section's description string field. |
 >| 	min_characters | `int` | ✔ | Minimum characters needed for a message in the new section |
->| 	state | `string`, `int` | ✔ | The section's state (e.g.: open, closed). An enum from `enumerations.displayState`. (index or value) |
+>| 	state | `string`, `int` | ✔ | The section's state (e.g.: open, closed). An enum from [displayState](Enumerations.md#displaystate-int). (index or value) |
 >| 	parent | `int` | ✔ | The parent section if the updated section is a sub-section. <sub>(default = 0)</sub> |
 >
 >**@`location` parameter's structure**:

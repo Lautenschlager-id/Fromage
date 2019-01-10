@@ -67,7 +67,7 @@ Report and elements management.
 >### reportElement ( element, elementId, reason, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| element | `string`, `int` | ✔ | The element type. An enum from `enumerations.element`. (index or value) |
+>| element | `string`, `int` | ✔ | The element type. An enum from [element](Enumerations.md#element-int). (index or value) |
 >| elementId | `int`, `string` | ✔ | The element id. |
 >| reason | `string` | ✔ | The report reason. |
 >| location | `table` | ✕ | The location of the report. |
@@ -94,7 +94,7 @@ Report and elements management.
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| messageId | `int`, `table`, `string` | ✔ | The message id. Use `string` if it's the post number. For multiple message ids, use a table with `ints` or `strings`. |
->| messageState | `string`, `int` | ✔ | The message state. An enum from `enumerations.messageState`. (index or value) |
+>| messageState | `string`, `int` | ✔ | The message state. An enum from [messageState](Enumerations.md#messagestate-int). (index or value) |
 >| location | `table` | ✔ | The message location. |
 >| reason | `string` | ✕ | The state change reason. |
 >
@@ -119,7 +119,7 @@ Report and elements management.
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| messageId | `int`, `table`, `string` | ✔ | The message id. Use `string` if it's the post number. For multiple message ids, use a table with `ints` or `strings`. |
->| contentState | `string` | ✔ | An enum from `enumerations.contentState` (index or value) |
+>| contentState | `string` | ✔ | An enum from [contentState](Enumerations.md#contentstate-string) (index or value) |
 >| location | `table` | ✔ | The topic location. |
 >
 >**@`location` parameter's structure**:

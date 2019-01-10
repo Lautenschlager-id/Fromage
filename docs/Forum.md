@@ -198,7 +198,7 @@ Base functions of the public forums, from messages to topics.
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| location | `table` | ✔ | The topic or conversation location. |
->| getAllInfo | `boolean` | ✕ | Whether the message data should be simple (see return structure) or complete (getMessage). <sub>(default = true)</sub> |
+>| getAllInfo | `boolean` | ✕ | Whether the message data should be simple (see return structure) or complete ([getMessage](Forum.md#getmessage--postid-location-)). <sub>(default = true)</sub> |
 >| pageNumber | `int` | ✕ | The topic page. To list ALL messages, use `0`. <sub>(default = 1)</sub> |
 >
 >**@`location` parameter's structure**:
@@ -240,7 +240,7 @@ Base functions of the public forums, from messages to topics.
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| location | `table` | ✔ | The section location. |
->| getAllInfo | `boolean` | ✕ | Whether the topic data should be simple (ids only) or complete (getTopic). <sub>(default = true)</sub> |
+>| getAllInfo | `boolean` | ✕ | Whether the topic data should be simple (ids only) or complete ([getTopic](Forum.md#gettopic--location-ignorefirstmessage-)). <sub>(default = true)</sub> |
 >| pageNumber | `int` | ✕ | The section page. To list ALL topics, use `0`. <sub>(default = 1)</sub> |
 >
 >**@`location` parameter's structure**:

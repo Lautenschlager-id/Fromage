@@ -3,7 +3,7 @@ Random functions.
 >### search ( searchType, search, pageNumber, data )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| searchType | `string`, `int` | ✔ | The type of the search (e.g.: player, message). An enum from `enumerations.searchType`. (index or value) |
+>| searchType | `string`, `int` | ✔ | The type of the search (e.g.: player, message). An enum from [searchType](Enumerations.md#searchtype-int). (index or value) |
 >| search | `string` | ✔ | The value to be searched. |
 >| pageNumber | `int` | ✕ | The page number of the search results. To list ALL the matches, use `0`. <sub>(default = 1)</sub> |
 >| data | `table` | ✕ | Additional data to be used in the `message_topic` search type. |
@@ -13,10 +13,10 @@ Random functions.
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
 >| 	author | `string` | ✕ | The name of the message or topic author that the search system needs to look for. |
->| 	community | `string`, `int` | ✕ | The community to perform the search. An enum from `enumerations.community`. (index or value) |
+>| 	community | `string`, `int` | ✕ | The community to perform the search. An enum from [community](Enumerations.md#community-int). (index or value) |
 >| 	f | `int` | ✔ | The forum id. |
 >| 	s | `int` | ✕ | The section id. |
->| 	searchLocation | `string`, `int ` | ✔ | The specific search location. An enum from `enumerations.searchLocation`. (index or value) |
+>| 	searchLocation | `string`, `int ` | ✔ | The specific search location. An enum from [searchLocation](Enumerations.md#searchlocation-int). (index or value) |
 >
 >Performs a deep search on forums.<br>
 >![/!\\](http://images.atelier801.com/168395f0cbc.png) This function may take several minutes to return the values depending on the settings.
@@ -259,7 +259,7 @@ Random functions.
 >### favoriteElement ( element, elementId, location )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| element | `string`, `int` | ✔ | The element type. An enum from `enumerations.element`. (index or value) |
+>| element | `string`, `int` | ✔ | The element type. An enum from [element](Enumerations.md#element-int). (index or value) |
 >| elementId | `int` | ✔ | The element id. |
 >| location | `table` | ✕ | The location of the element. (if `element` is `topic`) |
 >
@@ -299,7 +299,7 @@ Random functions.
 >### getStaffList ( role )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| role | `string`, `int<` | ✔ | The role id. An enum from `enumerations.listRole`. (index or value) |
+>| role | `string`, `int<` | ✔ | The role id. An enum from [listRole](Enumerations.md#listrole-int). (index or value) |
 >
 >Lists the members of a specific role.
 >

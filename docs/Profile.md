@@ -61,10 +61,10 @@ Player profile data and management.
 >
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| 	community | `string`, `int` | ✕ | User's community. An enum from `enumerations.community`. (index or value) <sub>(default = xx)</sub> |
+>| 	community | `string`, `int` | ✕ | User's community. An enum from [community](Enumerations.md#community-int). (index or value) <sub>(default = xx)</sub> |
 >| 	birthday | `string` | ✕ | The birthday string field. (dd/mm/yyyy) |
 >| 	location | `string` | ✕ | The location string field. |
->| 	gender | `string`, `int` | ✕ | User's gender. An enum from `enumerations.gender`. (index or value) |
+>| 	gender | `string`, `int` | ✕ | User's gender. An enum from [gender](Enumerations.md#gender-int). (index or value) |
 >| 	presentation | `string` | ✕ | Profile's presentation string field. |
 >
 >Updates the account's profile.
