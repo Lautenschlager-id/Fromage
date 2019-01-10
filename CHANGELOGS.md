@@ -15,7 +15,7 @@
 ### Fixes
 - **getTribe** was setting the field **greetingMessage** as **presentation** when the tribe greeting message was an empty string.
 - **getTribeMembers** was failing when there was more than one page in the list.
-- **search** was not working properly when 'searchLocation' was tribe.
+- **search** was not working properly when `searchLocation` was _tribe_.
 
 # Changelogs v0.3.6
 ### News

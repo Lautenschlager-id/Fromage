@@ -73,7 +73,10 @@ local getTableLine = function(line)
 end
 
 local url = function(str)
-	return (string.gsub(string.lower(str), "[ %(%),]", '-'))
+	str = string.lower(str)
+	str = string.gsub(str, "[ %(%),]", '-')
+	str = string.gsub(str, "%.", '')
+	return str
 end
 
 local _DATA = { } -- [file] = { _METHODS = { [n] = data }, _ENUMS = { [n] = data }, _TREE = { [n] = true } }
