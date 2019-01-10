@@ -1,3 +1,4 @@
+Random functions. 
 # Methods
 >### search ( searchType, search, pageNumber, data )
 >| Parameter | Type | Required | Description |

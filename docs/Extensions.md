@@ -1,3 +1,4 @@
+Extension functions to make the use of the API easier with functions that may be useful at some point, such as bbcode to markdown.
 # Methods
 >### os.readFile ( file )
 >| Parameter | Type | Required | Description |

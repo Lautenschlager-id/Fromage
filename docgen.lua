@@ -24,6 +24,14 @@
 	@tree ...
 ]]
 
+-- > File
+--[[@
+	@file FileName
+	@desc Long description
+	@desc ...
+	@shortdesc Short description
+]]
+
 -- /!\ will always be replaced to a warning image
 
 string.split = function(str, pat, f)
@@ -82,7 +90,17 @@ end
 local _DATA = { } -- [file] = { _METHODS = { [n] = data }, _ENUMS = { [n] = data }, _TREE = { [n] = true } }
 local _TREE = { }
 
+local createFile = function(file)
+	if not _DATA[file] then
+		_DATA[file] = { }
+	end
+	if not _DATA[file]._TREE then
+		_DATA[file]._TREE = { }
+	end
+end
+
 local generate = function(content, fileName)
+	-- Method / Function. Matches [x.]y = function(z)
 	string.gsub(content, '%-%-%[%[@\n(.-)%]%]\n\t*(.-)\n', function(data, object)
 		local objSrc, objName, objParam = string.match(object, "([^%.%s]-)%.?([^%.%s]+) *=.-%((.-)%)")
 		if objName and objSrc ~= '' and objSrc ~= "self" then
@@ -178,19 +196,14 @@ local generate = function(content, fileName)
 			str[len + 4] = ">```"
 		end
 
-		if not _DATA[file] then
-			_DATA[file] = { }
-		end
+		createFile(file)
 		if not _DATA[file]._METHODS then
 			_DATA[file]._METHODS = { }
-		end
-		if not _DATA[file]._TREE then
-			_DATA[file]._TREE = { }
 		end
 		_DATA[file]._METHODS[#_DATA[file]._METHODS + 1] = table.concat(str, "\n")
 		_DATA[file]._TREE[objName] = url(objName .. " (" .. string.gsub(objParam, ' ', '') .. ")")
 	end)
-
+	-- Enums / Tables. Matches x = [e(]{ y }[)]
 	string.gsub(content, '%-%-%[%[@\n(.-)%]%]\n\t*([^\n]+)(%b{})', function(data, object, info)
 		local objName = string.match(object, "%.(%S+)")
 		if not objName or _TREE[objName] then return end
@@ -232,28 +245,51 @@ local generate = function(content, fileName)
 		str[2] = description
 		str[3] = tree or info
 
-		if not _DATA[file] then
-			_DATA[file] = { }
-		end
+		createFile(file)
 		if not _DATA[file]._ENUMS then
 			_DATA[file]._ENUMS = { }
 		end
-		if not _DATA[file]._TREE then
-			_DATA[file]._TREE = { }
-		end
 		_DATA[file]._ENUMS[#_DATA[file]._ENUMS + 1] = table.concat(str, "\n")
 		_DATA[file]._TREE[objName] = url(objName .. "-" .. etype)
+	end)
+	-- File description
+	string.gsub(content, "%-%-%[%[@\n(.-)%]%]\n+", function(data)
+		local file = getList(data, "file", nil, 1)
+		if not file then return end
+		file = file[1]
+
+		local description = getList(data, "desc")
+		if not description then return end
+		description = table.concat(description, "<br>\n")
+
+		local shortDesc = getList(data, "shortdesc", nil, 1)
+		shortDesc = shortDesc and shortDesc[1] or nil
+		if shortDesc == '↑' then
+			shortDesc = description
+		end
+
+		createFile(file)
+		_DATA[file]._DESC = {
+			long = description,
+			short = shortDesc
+		}
 	end)
 end
 
 local write = function(file, data)
 	local str = { }
-	if data._METHODS then
-		str[1] = "# Methods"
-		str[2] = table.concat(data._METHODS, "\n---\n")
+	
+	if data._DESC and data._DESC.long then
+		str[1] = data._DESC.long
 	end
 
 	local len = #str
+	if data._METHODS then
+		str[len + 1] = "# Methods"
+		str[len + 2] = table.concat(data._METHODS, "\n---\n")
+	end
+
+	len = #str
 	if data._ENUMS then
 		str[len + 1] = "# Enums"
 		str[len + 2] = table.concat(data._ENUMS, "\n---\n")
@@ -283,7 +319,8 @@ local list = {
 	"package.lua",
 	"libs/enum.lua",
 	"libs/enumerations.lua",
-	"libs/extensions.lua"
+	"libs/extensions.lua",
+	"docfiles.lua"
 }
 for file = 1, #list do
 	local f = io.open(list[file], 'r')
@@ -303,14 +340,19 @@ for k, v in next, _DATA do
 	v._TREE = toArr(v._TREE)
 	table.sort(v._TREE, function(a, b) return a.k < b.k end)
 	counter = counter + 1
-	_TREE[counter] = { k = k, v = v._TREE }
+	_TREE[counter] = { k = k, v = v._TREE, d = v._DESC }
 end
 table.sort(_TREE, function(a, b) return a.k < b.k end)
 
-local data
+counter = 0
+local fileDescData, data = { }
 for f = 1, #_TREE do
 	data = { }
 	data[1] = "- [" .. _TREE[f].k .. "](" .. _TREE[f].k .. ".md)"
+
+	counter = counter + 1
+	fileDescData[counter] = data[1] .. ((_TREE[f].d and _TREE[f].d.short) and (" → " .. _TREE[f].d.short) or "")
+
 	for l = 1, #_TREE[f].v do
 		data[l + 1] = "\t- [" .. _TREE[f].v[l].k .. "](" .. _TREE[f].k .. ".md#" .. _TREE[f].v[l].v .. ")"
 	end
@@ -320,9 +362,9 @@ end
 local file = io.open("docs/README.md", 'r')
 local readme = file:read("*a")
 file:close()
-readme = string.match(readme, "^(.-## Tree\n\n)")
+readme = string.match(readme, "^(.-## Topics\n\n)")
 
 file = io.open("docs/README.md", "w+")
-file:write(readme .. table.concat(_TREE, "\n"))
+file:write(readme .. table.concat(fileDescData, "\n") .. "\n\n## Tree\n\n" .. table.concat(_TREE, "\n"))
 file:flush()
 file:close()

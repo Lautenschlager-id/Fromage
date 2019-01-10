@@ -1,3 +1,4 @@
+Image host and galleries.
 # Methods
 >### getAccountImages ( pageNumber )
 >| Parameter | Type | Required | Description |

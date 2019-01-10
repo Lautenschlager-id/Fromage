@@ -1,3 +1,4 @@
+Report and elements management.
 # Methods
 >### getMessageHistory ( messageId, location )
 >| Parameter | Type | Required | Description |

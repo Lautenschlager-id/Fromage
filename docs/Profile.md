@@ -1,3 +1,4 @@
+Player profile data and management.
 # Methods
 >### getProfile ( userName )
 >| Parameter | Type | Required | Description |

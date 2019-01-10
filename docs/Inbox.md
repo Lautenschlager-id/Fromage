@@ -1,3 +1,4 @@
+Account's inbox data and management.
 # Methods
 >### getConversation ( location, ignoreFirstMessage )
 >| Parameter | Type | Required | Description |

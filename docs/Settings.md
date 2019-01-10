@@ -1,3 +1,4 @@
+Account's settings and configurations.
 # Methods
 >### connect ( userName, userPassword )
 >| Parameter | Type | Required | Description |

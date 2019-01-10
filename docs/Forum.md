@@ -1,3 +1,4 @@
+Base functions of the public forums, from messages to topics.
 # Methods
 >### getMessage ( postId, location )
 >| Parameter | Type | Required | Description |

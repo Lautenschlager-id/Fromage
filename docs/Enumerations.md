@@ -1,3 +1,4 @@
+Useful enumerations to use in the API.
 # Enums
 ### element <sub>\<int></sub>
 ###### The ID of each forum element.

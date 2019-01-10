@@ -1225,7 +1225,7 @@ return function()
 
 	-- > Private
 	--[[@
-		@file Private
+		@file Inbox
 		@desc Gets the data of a conversation (private message).
 		@param location<table> The conversation location.
 		@param ignoreFirstMessage?<boolean> Whether the data of the first message should be ignored or not. If the conversation is a poll, it will ignore the poll data if `true`. @default false
@@ -1351,7 +1351,7 @@ return function()
 		}
 	end
 	--[[@
-		@file Private
+		@file Inbox
 		@desc Creates a new private message.
 		@param destinatary<string> The user who is going to receive the private message.
 		@param subject<string> The subject of the private message.
@@ -1376,7 +1376,7 @@ return function()
 		return redirect(result, err)
 	end
 	--[[@
-		@file Private
+		@file Inbox
 		@desc Creates a new private discussion.
 		@param destinataries<table> The users who are going to be invited to the private discussion.
 		@param subject<string> The subject of the private discussion.
@@ -1401,7 +1401,7 @@ return function()
 		return redirect(result, err)
 	end
 	--[[@
-		@file Private
+		@file Inbox
 		@desc Creates a new private poll.
 		@param destinataries<table> The users who are going to be invited to the private poll.
 		@param subject<string> The subject of the private poll.
@@ -1450,7 +1450,7 @@ return function()
 		return redirect(result, err)
 	end
 	--[[@
-		@file Private
+		@file Inbox
 		@desc Answers a conversation.
 		@param conversationId<int,string> The conversation id.
 		@param answer<string> The answer message content.
@@ -1472,7 +1472,7 @@ return function()
 		return redirect(result, err)
 	end
 	--[[@
-		@file Private
+		@file Inbox
 		@desc Moves private conversations to the inbox or bin.
 		@param inboxLocale<string,int> Where the conversation will be located. An enum from `enumerations.inboxLocale`. (index or value)
 		@param conversationId?<int,table> The id(s) of the conversation(s) to be moved. Use `nil` for all.
@@ -1509,7 +1509,7 @@ return function()
 		} or nil), forumUri.conversations .. "?location=" .. inboxLocale)
 	end
 	--[[@
-		@file Private
+		@file Inbox
 		@desc Changes the conversation state (open, closed).
 		@param displayState<string,int> The conversation display state. An enum from `enumerations.displayState`. (index or value)
 		@param conversationId<int,string> The conversation id.
@@ -1537,7 +1537,7 @@ return function()
 		}, forumUri.conversation .. "?co=" .. conversationId)
 	end
 	--[[@
-		@file Private
+		@file Inbox
 		@desc Leaves a private conversation.
 		@param conversationId<int,string> The conversation id.
 		@returns string,nil Result string.
@@ -1555,7 +1555,7 @@ return function()
 		}, forumUri.conversation .. "?co=" .. conversationId)
 	end
 	--[[@
-		@file Private
+		@file Inbox
 		@desc Invites an user to a private conversation.
 		@param conversationId<int,string> The conversation id.
 		@param userName<string> The name of the user to be invited.
@@ -1576,7 +1576,7 @@ return function()
 		}, forumUri.conversation .. "?co=" .. conversationId)
 	end
 	--[[@
-		@file Private
+		@file Inbox
 		@desc Removes a user from a conversation.
 		@param conversationId<int,string> The conversation id.
 		@param userId<int,string> User name or user id.

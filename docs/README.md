@@ -19,16 +19,17 @@ With the three executables installed, run `lit install Lautenschlager-id/fromage
 
 ## Topics
 
-- [API](API.md) → Auxiliar functions to make the use of the API easier
-- [ENUMERATIONS](ENUMERATIONS.md) → Useful enumerations to use in the API
-- [Settings](Settings.md) → Account's settings and configurations
-- [Profile](Profile.md) → Player profiles
-- [Private](Private.md) → Account's inbox
-- [Forum](Forum.md) → General
-- [Moderation](Moderation.md) → Report and element management
-- [Tribe](Tribe.md) → Player tribes
-- [Micepix](Micepix.md) → Image host and galleries
-- [Miscellaneous](Miscellaneous.md)
+- [Api](Api.md) → Useful functions to make the use of the API easier and to handle some return values.
+- [Enumerations](Enumerations.md) → Useful enumerations to use in the API.
+- [Extensions](Extensions.md) → Extension functions to make the use of the API easier.
+- [Forum](Forum.md) → Base functions of the public forums, from messages to topics.
+- [Inbox](Inbox.md) → Account's inbox data and management.
+- [Micepix](Micepix.md) → Image host and galleries.
+- [Miscellaneous](Miscellaneous.md) → Random functions. 
+- [Moderation](Moderation.md) → Report and elements management.
+- [Profile](Profile.md) → Player profile data and management.
+- [Settings](Settings.md) → Account's settings and configurations.
+- [Tribe](Tribe.md) → Tribe data and management.
 
 ## Tree
 
@@ -86,6 +87,17 @@ With the three executables installed, run `lit install Lautenschlager-id/fromage
 	- [getSectionTopics](Forum.md#getsectiontopics--location-getallinfo-pagenumber-)
 	- [getTopic](Forum.md#gettopic--location-ignorefirstmessage-)
 	- [likeMessage](Forum.md#likemessage--messageid-location-)
+- [Inbox](Inbox.md)
+	- [answerConversation](Inbox.md#answerconversation--conversationid-answer-)
+	- [changeConversationState](Inbox.md#changeconversationstate--displaystate-conversationid-)
+	- [conversationInvite](Inbox.md#conversationinvite--conversationid-username-)
+	- [createPrivateDiscussion](Inbox.md#createprivatediscussion--destinataries-subject-message-)
+	- [createPrivateMessage](Inbox.md#createprivatemessage--destinatary-subject-message-)
+	- [createPrivatePoll](Inbox.md#createprivatepoll--destinataries-subject-message-pollresponses-settings-)
+	- [getConversation](Inbox.md#getconversation--location-ignorefirstmessage-)
+	- [kickConversationMember](Inbox.md#kickconversationmember--conversationid-userid-)
+	- [leaveConversation](Inbox.md#leaveconversation--conversationid-)
+	- [moveConversation](Inbox.md#moveconversation--inboxlocale-conversationid-)
 - [Micepix](Micepix.md)
 	- [deleteImage](Micepix.md#deleteimage--imageid-)
 	- [getAccountImages](Micepix.md#getaccountimages--pagenumber-)
@@ -112,17 +124,6 @@ With the three executables installed, run `lit install Lautenschlager-id/fromage
 	- [getMessageHistory](Moderation.md#getmessagehistory--messageid-location-)
 	- [reportElement](Moderation.md#reportelement--element-elementid-reason-location-)
 	- [updateTopic](Moderation.md#updatetopic--location-data-)
-- [Private](Private.md)
-	- [answerConversation](Private.md#answerconversation--conversationid-answer-)
-	- [changeConversationState](Private.md#changeconversationstate--displaystate-conversationid-)
-	- [conversationInvite](Private.md#conversationinvite--conversationid-username-)
-	- [createPrivateDiscussion](Private.md#createprivatediscussion--destinataries-subject-message-)
-	- [createPrivateMessage](Private.md#createprivatemessage--destinatary-subject-message-)
-	- [createPrivatePoll](Private.md#createprivatepoll--destinataries-subject-message-pollresponses-settings-)
-	- [getConversation](Private.md#getconversation--location-ignorefirstmessage-)
-	- [kickConversationMember](Private.md#kickconversationmember--conversationid-userid-)
-	- [leaveConversation](Private.md#leaveconversation--conversationid-)
-	- [moveConversation](Private.md#moveconversation--inboxlocale-conversationid-)
 - [Profile](Profile.md)
 	- [changeAvatar](Profile.md#changeavatar--image-)
 	- [getProfile](Profile.md#getprofile--username-)

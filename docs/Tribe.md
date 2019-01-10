@@ -1,3 +1,4 @@
+Tribe data and management.
 # Methods
 >### getTribe ( tribeId )
 >| Parameter | Type | Required | Description |

@@ -1,3 +1,4 @@
+Useful functions to make the use of the API easier and to handle some return values.
 # Methods
 >### getPage ( url )
 >| Parameter | Type | Required | Description |
