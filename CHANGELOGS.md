@@ -1,3 +1,22 @@
+# Changelogs v0.3.7
+
+## Developer
+### Changes
+- Improved `docgen.lua`.
+- The file **autoupdate** can now be both a non-extension or **txt** file.
+- **getList** and **getBigList** now have a parameter `inif` that executes an initial function with the head and the body before everything else.
+
+## Class
+### News
+- Transformice Adventures location added. (`xx.transformice_adventures`)
+- **extensions**.
+- Added the extension file `extensions.lua` that provides a bunch of interesting functions and is open for pull requests!
+
+### Fixes
+- **getTribe** was setting the field **greetingMessage** as **presentation** when the tribe greeting message was an empty string.
+- **getTribeMembers** was failing when there was more than one page in the list.
+- **search** was not working properly when 'searchLocation' was tribe.
+
 # Changelogs v0.3.6
 ### News
 - **getAllMessages** can now list the private conversation messages.

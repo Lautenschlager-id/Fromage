@@ -28,7 +28,7 @@ coroutine.wrap(function()
 
 			print("Getting all topic messages:")
 			local messages
-			messages, err = client.getTopicMessages(topic.data, false, 1) -- Gets all the messages of the first page with simple info only
+			messages, err = client.getAllMessages(topic.data, false, 1) -- Gets all the messages of the first page with simple info only
 			if messages then
 				p(messages)
 			else

@@ -11,7 +11,7 @@
 >| Type | Description |
 >| :-: | - |
 >| `string`, `nil` | Page HTML. |
->| `nil`, `string` | Error message. |
+>| `table`, `string` | Page headers or Error message. |
 >
 ---
 >### getLocation ( forum, community, section )
@@ -51,16 +51,39 @@
 >| `int`, `nil` | the id of the account's tribe. |
 >
 ---
+>### getConnectionTime (  )
+>
+>Gets the total time since the last login performed in the instace.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `int` | Total time since the connection of the current account. |
+>
+---
 >### enumerations (  )
 >
 >Gets the system enumerations.<br>
->Smoother alias of `require "fromage/libs/enumerations"`.
+>Smoother alias for `require "fromage/libs/enumerations"`.
 >
 >**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
 >| `table` | The enumerations table |
+>
+---
+>### extensions (  )
+>
+>Gets the extension functions of the API.<br>
+>Smoother alias for `require "fromage/libs/extensions"`.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `table` | The extension functions. |
 >
 ---
 >### performAction ( uri, postData, ajaxUri, file )

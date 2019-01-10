@@ -17,7 +17,8 @@
 >| 	s | `int` | ✕ | The section id. |
 >| 	searchLocation | `string`, `int ` | ✔ | The specific search location. An enum from `enumerations.searchLocation`. (index or value) |
 >
->Performs a deep search on forums.
+>Performs a deep search on forums.<br>
+>![/!\\](http://images.atelier801.com/168395f0cbc.png) This function may take several minutes to return the values depending on the settings.
 >
 >**Returns**:
 >

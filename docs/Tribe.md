@@ -17,7 +17,7 @@
 >```Lua
 >{
 >	community = enumerations.community, -- The tribe community.
->	creationDate = "", -- The timestamp of the tribe creation.
+>	creationDate = "", -- The date of the tribe creation.
 >	favoriteId = 0, -- The favorite id of the tribe, if 'isFavorited'.
 >	greetingMessage = "", -- The tribe greeting messages string field.
 >	id = 0, -- The tribe id.

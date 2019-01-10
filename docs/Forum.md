@@ -208,7 +208,8 @@
 >| 	t | `int` | ✔ | The topic id. (needed for topic) |
 >| 	co | `int` | ✔ | The private conversation id. (needed for private conversation) |
 >
->Gets the messages of a topic or conversation.
+>Gets the messages of a topic or conversation.<br>
+>![/!\\](http://images.atelier801.com/168395f0cbc.png) This function may take several minutes to return the values depending on the total of pages of the topic.
 >
 >**Returns**:
 >

@@ -30,7 +30,7 @@ coroutine.wrap(function()
 			while os.time() < time do end
 
 			print("Deleting image:")
-			print(client.deleteMicepixImage(image.data.im)) -- Deletes the hosted image
+			print(client.deleteImage(image.data.im)) -- Deletes the hosted image
 		else
 			print(err)
 		end

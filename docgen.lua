@@ -24,6 +24,8 @@
 	@tree ...
 ]]
 
+-- /!\ will always be replaced to a warning image
+
 string.split = function(str, pat, f)
 	local out = {}
 
@@ -77,9 +79,12 @@ end
 local _DATA = { } -- [file] = { _METHODS = { [n] = data }, _ENUMS = { [n] = data }, _TREE = { [n] = true } }
 local _TREE = { }
 
-local generate = function(content)
+local generate = function(content, fileName)
 	string.gsub(content, '%-%-%[%[@\n(.-)%]%]\n\t*(.-)\n', function(data, object)
-		local objName, objParam = string.match(object, "%.(%S+).-%((.-)%)")
+		local objSrc, objName, objParam = string.match(object, "([^%.%s]-)%.?([^%.%s]+) *=.-%((.-)%)")
+		if objName and objSrc ~= '' and objSrc ~= "self" then
+			objName = objSrc .. "." .. objName
+		end
 		if not objName or _TREE[objName] then return end
 		objParam = (objParam == ' ' and '' or objParam)
 		object = ">### " .. objName .. " ( " .. objParam .. " )"
@@ -91,7 +96,7 @@ local generate = function(content)
 		description = ">" .. table.concat(description, "<br>\n>")
 
 		local file = getList(data, "file", nil, 1)
-		file = file and file[1] or "API"
+		file = file and file[1] or fileName
 
 		local param = getList(data, "param")
 		if param then
@@ -183,7 +188,7 @@ local generate = function(content)
 		_DATA[file]._TREE[objName] = url(objName .. " (" .. string.gsub(objParam, ' ', '') .. ")")
 	end)
 
-	string.gsub(content, '%-%-%[%[@\n(.-)%]%]\n\t*(.-)(%b{})', function(data, object, info)
+	string.gsub(content, '%-%-%[%[@\n(.-)%]%]\n\t*([^\n]+)(%b{})', function(data, object, info)
 		local objName = string.match(object, "%.(%S+)")
 		if not objName or _TREE[objName] then return end
 
@@ -198,7 +203,7 @@ local generate = function(content)
 		local description = getList(data, "desc")
 		description = "###### " .. table.concat(description, "<br>") -- No safe way to make it \n instead of \n\n
 
-		local file = "ENUMERATIONS"
+		local file = fileName
 
 		local tree = getList(data, "tree")
 		if tree then
@@ -252,7 +257,11 @@ local write = function(file, data)
 	end
 
 	local file = io.open(file, "w+")
-	file:write(table.concat(str, "\n"))
+	str = table.concat(str, "\n")
+
+	str = string.gsub(str, "/!\\", "![/!\\\\](http://images.atelier801.com/168395f0cbc.png)")
+
+	file:write(str)
 	file:flush()
 	file:close()
 end
@@ -270,11 +279,18 @@ local list = {
 	"init.lua",
 	"package.lua",
 	"libs/enum.lua",
-	"libs/enumerations.lua"
+	"libs/enumerations.lua",
+	"libs/extensions.lua"
 }
 for file = 1, #list do
 	local f = io.open(list[file], 'r')
-	generate(f:read("*a"))
+	local fileName = string.match(list[file], "([^/]+)%.lua$")
+	if fileName then
+		fileName = string.gsub(fileName, "%a", string.upper, 1) -- 1st char should be cap as std
+	else
+		fileName = "Unknown"
+	end
+	generate(f:read("*a"), fileName)
 	f:close()
 end
 

@@ -5,10 +5,12 @@ local http = require("coro-http")
 local base64 = require("base64")
 -- Necessary enumerations
 local enumerations = require("enumerations")
+-- Utilities
+local extensions = require("extensions")
 
 --[[ autoupdate ]]--
 do
-	local autoupdate = io.open("autoupdate", 'r')
+	local autoupdate = io.open("autoupdate", 'r') or io.open("autoupdate.txt", 'r')
 	if autoupdate then
 		autoupdate:close()
 
@@ -153,7 +155,7 @@ local htmlChunk = {
 	edition_timestamp          = 'cadre%-message%-dates.-(%d+)',
 	empty_section              = '<div class="aucun%-resultat">Empty</div>',
 	favorite_topics            = '<td rowspan="2">(.-)</td>%s+<td rowspan="2">',
-	greeting_message           = '<h4>Greeting message</h4> (.+)$',
+	greeting_message           = '<h4>Greeting message</h4> (.*)$',
 	hidden_value               = '<input type="hidden" name="%s" value="(%%d+)"/?>',
 	image_id                   = '?im=(%w+)"',
 	last_post                  = '("barre%-navigation  ltr .-<a href="(topic%?.-)".->%s+(.-)%s+</a></li>.-)%2.-#m(%d+)">',
@@ -194,10 +196,10 @@ local htmlChunk = {
 	subsection                 = '"cadre%-section%-titre%-mini.-(section.-)".->%s+([^>]+)%s+</a>',
 	title                      = '<title>(.-)</title>',
 	topic_div                  = '<div class="row">',
-	total_entries              = '(%d+) entries',
+	total_members              = 'table%-cadre%-cellule%-principale',
 	total_pages                = '"input%-pagination".-max="(%d+)"',
 	tracker                    = '(.-)</div>%s+</div>',
-	tribe_list                 = '<li class="nav%-header">(.-)</li>.-%?tr=(%d+)"',
+	tribe_list                 = '<li class="nav%-header">([^<]+)</li> <li><a class="element%-menu%-contextuel" href="tribe%?tr=(%d+)">',
 	tribe_log                  = '<td> (.-) </td>',
 	tribe_presentation         = 'cadre%-presentation"> (.-) </div>',
 	tribe_rank                 = '<div class="rang%-tribu"> (.-) </div>',
@@ -262,50 +264,6 @@ do
 	end
 
 	saltBytes = table.concat(chars)
-end
-
-os.readFile = function(file)
-	local file = io.open(file, 'r')
-	if not file then return end
-	local content = file:read("*a")
-	file:close()
-	return content
-end
-table.add = function(src, list)
-	local len = #src
-	for i = 1, #list do
-		src[len + i] = list[i]
-	end
-end
-table.createSet = function(tbl, index)
-	local out = { }
-
-	local j = true
-	for k, v in next, tbl do
-		local i
-		if index then
-			i = v[index]
-			j = v
-		else
-			i = v
-		end
-
-		out[i] = j
-	end
-	return out
-end
-table.search = function(tbl, value, index)
-	local found = false
-	for k, v in next, tbl do
-		if index and type(v) == "table" then
-			found = (v[index] == value)
-		else
-			found = (v == value)
-		end
-		if found then
-			return k
-		end
-	end
 end
 
 local assertion = function(name, etype, id, value)
@@ -543,8 +501,8 @@ return function()
 
 	-- Gets a page using the headers of the account
 	this.getPage = function(url)
-		local _, body = http.request("GET", forumLink .. url, this.getHeaders())
-		return body
+		local head, body = http.request("GET", forumLink .. url, this.getHeaders())
+		return body, head
 	end
 
 	--> Private function
@@ -586,8 +544,14 @@ return function()
 	end
 
 	local getList, getBigList
-	getBigList = function(pageNumber, uri, f, getTotalPages, _totalPages)
-		local body = this.getPage(uri .. "&p=" .. math.max(1, pageNumber))
+	getBigList = function(pageNumber, uri, f, getTotalPages, _totalPages, inif)
+		local body, head = this.getPage(uri .. "&p=" .. math.max(1, pageNumber))
+		if inif then
+			local out = inif(head, body)
+			if out then
+				return out
+			end
+		end
 
 		if getTotalPages then
 			_totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
@@ -599,7 +563,7 @@ return function()
 		if pageNumber == 0 then
 			local tmp, err
 			for i = 1, _totalPages do
-				tmp, err = getBigList(i, uri, f, false, _totalPages)
+				tmp, err = getBigList(i, uri, f, false, _totalPages, inif)
 				if err then
 					return nil, err
 				end
@@ -612,14 +576,14 @@ return function()
 		f(out, body, pageNumber, _totalPages)
 		return out
 	end
-	getList = function(pageNumber, uri, f, html)
+	getList = function(pageNumber, uri, f, html, inif)
 		return getBigList(pageNumber, uri, function(list, body)
 			local counter = 0
 			string.gsub(body, html, function(...)
 				counter = counter + 1
 				list[counter] = f(...)
 			end)
-		end, true)
+		end, true, nil, inif)
 	end
 
 	local redirect = function(data, err)
@@ -635,10 +599,11 @@ return function()
 
 	-- > Tool
 	--[[@
+		@file Api
 		@desc Performs a GET request using the connection cookies.
 		@param url<string> The URL for the GET request. The forum path is not necessary.
 		@returns string,nil Page HTML.
-		@returns nil,string Error message.
+		@returns table,string Page headers or Error message.
 	]]
 	self.getPage = function(url)
 		assertion("getPage", "string", 1, url)
@@ -647,6 +612,7 @@ return function()
 		return this.getPage(url)
 	end
 	--[[@
+		@file Api
 		@desc Gets the location of a section on the forums.
 		@param forum<int,string> The forum id. An enum from `enumerations.forum`. (index or value)
 		@param community<string,int> The community id. An enum from `enumerations.community`. (index or value)
@@ -682,6 +648,7 @@ return function()
 		}
 	end
 	--[[@
+		@file Api
 		@desc Gets the instance's account information.
 		@returns string,nil The username of the account.
 		@returns int,nil The account id.
@@ -690,7 +657,8 @@ return function()
 	self.getUser = function()
 		return this.userName, this.userId, this.tribeId
 	end
-	--[[
+	--[[@
+		@file Api
 		@desc Gets the total time since the last login performed in the instace.
 		@returns int Total time since the connection of the current account.
 	]]
@@ -701,14 +669,25 @@ return function()
 		return this.connectionTime
 	end
 	--[[@
+		@file Api
 		@desc Gets the system enumerations.
-		@desc Smoother alias of `require "fromage/libs/enumerations"`.
+		@desc Smoother alias for `require "fromage/libs/enumerations"`.
 		@returns table The enumerations table
 	]]
 	self.enumerations = function()
 		return enumerations
 	end
 	--[[@
+		@file Api
+		@desc Gets the extension functions of the API.
+		@desc Smoother alias for `require "fromage/libs/extensions"`.
+		@returns table The extension functions.
+	]]
+	self.extensions = function()
+		return extensions
+	end
+	--[[@
+		@file Api
 		@desc Performs a POST request using the connection cookies.
 		@param uri<string> The URI code for the POST request. (Function)
 		@param postData?<table> The headers for the POST request.
@@ -734,6 +713,7 @@ return function()
 		return this.performAction(uri, postData, ajaxUri, file)
 	end
 	--[[@
+		@file Api
 		@desc Parses the URL data.
 		@param href<string> The URI and data to be parsed.
 		@returns table,nil Parsed data.
@@ -771,6 +751,7 @@ return function()
 		}
 	end
 	--[[@
+		@file Api
 		@desc Checks whether the instance is connected to an account or not.
 		@returns boolean Whether there's already a connection or not.
 	]]
@@ -778,6 +759,7 @@ return function()
 		return this.isConnected
 	end
 	--[[@
+		@file Api
 		@desc Formats a nickname.
 		@param nickname<string> The nickname.
 		@returns string Formated nickname.
@@ -796,6 +778,7 @@ return function()
 		return nickname
 	end
 	--[[@
+		@file Api
 		@desc Extracts the data of a nickname. (Name, Discriminator)
 		@param nickname<string> The nickname.
 		@returns table The nickname data.
@@ -820,6 +803,7 @@ return function()
 		}
 	end
 	--[[@
+		@file Api
 		@desc Checks whether an account was validated by an e-mail code or not.
 		@returns boolean Whether the account is validated or not.
 	]]
@@ -2071,6 +2055,7 @@ return function()
 	--[[@
 		@file Forum
 		@desc Gets the messages of a topic or conversation.
+		@desc /!\ This function may take several minutes to return the values depending on the total of pages of the topic.
 		@param location<table> The topic or conversation location.
 		@param getAllInfo?<boolean> Whether the message data should be simple (see return structure) or complete (getMessage). @default true
 		@param pageNumber?<int> The topic page. To list ALL messages, use `0`. @default 1
@@ -2841,7 +2826,7 @@ return function()
 		@returns nil,string Error message.
 		@struct {
 			community = enumerations.community, -- The tribe community.
-			creationDate = "", -- The timestamp of the tribe creation.
+			creationDate = "", -- The date of the tribe creation.
 			favoriteId = 0, -- The favorite id of the tribe, if 'isFavorited'.
 			greetingMessage = "", -- The tribe greeting messages string field.
 			id = 0, -- The tribe id.
@@ -2995,9 +2980,12 @@ return function()
 
 		-- Get total of members
 		if not lastPageQuantity then
+			lastPageQuantity = 0
 			local body = this.getPage(uri .. "&p=" .. totalPages)
-			lastPageQuantity = tonumber(string.match(body, htmlChunk.total_entries))
-			if not lastPageQuantity then
+			string.gsub(body, htmlChunk.total_members, function()
+				lastPageQuantity = lastPageQuantity + 1
+			end)
+			if lastPageQuantity == 0 then
 				return nil, errorString.internal
 			end
 		end
@@ -3749,6 +3737,7 @@ return function()
 	--[[@
 		@file Miscellaneous
 		@desc Performs a deep search on forums.
+		@desc /!\ This function may take several minutes to return the values depending on the settings.
 		@param searchType<string,int> The type of the search (e.g.: player, message). An enum from `enumerations.searchType`. (index or value)
 		@param search<string> The value to be searched.
 		@param pageNumber?<int> The page number of the search results. To list ALL the matches, use `0`. @default 1
@@ -3796,7 +3785,7 @@ return function()
 			return nil, errorString.not_connected
 		end
 
-		local d, html, f = ''
+		local d, html, f, inif = ''
 		if searchType == enumerations.searchType.message_topic then
 			assertion("search", "table", 3, data)
 
@@ -3843,6 +3832,19 @@ return function()
 						name = name
 					}
 				end
+				inif = function(head, body)
+					for i = 1, #head do
+						if head[i][1] == "Location" then
+							return {
+								[1] = {
+									id = tonumber(string.match(head[i][2], "(%d+)$")),
+									name = search -- Assuming that's the name of the tribe
+								},
+								_page = 0
+							}
+						end
+					end
+				end
 			else
 				html = htmlChunk.community .. ".-" .. htmlChunk.nickname
 				f = function(community, name, discriminator)
@@ -3854,7 +3856,7 @@ return function()
 			end
 		end
 
-		return getList(pageNumber, forumUri.search .. "?te=" .. searchType .. "&se=" .. encodeUrl(search) .. d, f, html)
+		return getList(pageNumber, forumUri.search .. "?te=" .. searchType .. "&se=" .. encodeUrl(search) .. d, f, html, inif)
 	end
 	--[[@
 		@file Miscellaneous

@@ -63,11 +63,12 @@ end)
 	@type int
 ]]
 enum.forum = e {
-	atelier801   = 000005,
-	transformice = 000006,
-	bouboum      = 000007,
-	fortoresse   = 000008,
-	nekodancer   = 508574
+	atelier801              = 000005,
+	transformice            = 000006,
+	bouboum                 = 000007,
+	fortoresse              = 000008,
+	nekodancer              = 508574,
+	transformice_adventures = 841223
 }
 --[[@
 	@desc The names of the official sections.
@@ -284,6 +285,11 @@ enum.location.xx = e {
 	},
 	transformice = e {
 		map_submissions = 102
+	},
+	transformice_adventures = e {
+		announcements = 1,
+		discussions   = 2,
+		bugs          = 3
 	}
 }
 enum.location = e(enum.location)
