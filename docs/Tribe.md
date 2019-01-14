@@ -59,13 +59,12 @@ Tribe data and management.
 >}
 >```
 ---
->### getTribeRanks ( tribeId, location )
+>### getTribeRanks ( tribeId )
 >| Parameter | Type | Required | Description |
 >| :-: | :-: | :-: | - |
->| tribeId | `int` | ✕ | The tribe id. <sub>(default = Account's tribe id)</sub> |
->| location | `table` | ✕ | The location where the ranks should be taken. Use `nil` if you don't need the role ids. |
+>| tribeId | `int`, `table` | ✕ | The tribe id. If the rank ids are necessary, send a location table from any forum in your own tribe instead (if it's from another tribe it will not affect the behavior of this function). <sub>(default = Account's tribe id)</sub> |
 >
->**@`location` parameter's structure**:
+>**@`tribeId` parameter's structure**:
 >
 >| Index | Type | Required | Description |
 >| :-: | :-: | :-: | - |
@@ -84,7 +83,7 @@ Tribe data and management.
 >**Table structure**:
 >```Lua
 >{
->	-- If not 'location', the struct is a string array.
+>	-- If 'tribeId' is not a location table, the struct is a string array.
 >	[n] = {
 >		id = 0, -- The role id.
 >		name = "" -- The role name.

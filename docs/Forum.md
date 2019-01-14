@@ -250,7 +250,8 @@ Base functions of the public forums, from messages to topics.
 >| 	f | `int` | ✔ | The forum id. |
 >| 	s | `int` | ✔ | The section id. |
 >
->Gets the topics of a section.
+>Gets the topics of a section.<br>
+>![/!\\](http://images.atelier801.com/168395f0cbc.png) This function may take several minutes to return the values depending on the total of pages of the section.
 >
 >**Returns**:
 >

@@ -576,13 +576,24 @@ return function()
 		f(out, body, pageNumber, _totalPages)
 		return out
 	end
-	getList = function(pageNumber, uri, f, html, inif)
+	getList = function(pageNumber, uri, f, html, inif, usesCoro)
 		return getBigList(pageNumber, uri, function(list, body)
 			local counter = 0
-			string.gsub(body, html, function(...)
-				counter = counter + 1
-				list[counter] = f(...)
-			end)
+			if usesCoro then
+				-- Using string.gsub would create another environment and break the API because of http requests
+				local iterator = string.gmatch(body, html)
+				while true do
+					local result = { iterator() }
+					if #result == 0 then break end
+					counter = counter + 1
+					list[counter] = f(table.unpack(result))
+				end
+			else
+				string.gsub(body, html, function(...)
+					counter = counter + 1
+					list[counter] = f(...)
+				end)
+			end
 		end, true, nil, inif)
 	end
 
@@ -1643,10 +1654,6 @@ return function()
 		assertion("getMessage", { "number", "string" }, 1, postId)
 		assertion("getMessage", "table", 2, location)
 
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
-
 		local pageNumber = math.ceil(tonumber(postId) / 20)
 
 		local body = this.getPage((location.co and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)) .. "&p=" .. pageNumber)
@@ -1763,10 +1770,6 @@ return function()
 			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'")
 		end
 
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
-
 		local path = "?f=" .. location.f .. "&t=" .. location.t
 		local body = this.getPage(forumUri.topic .. path)
 
@@ -1869,10 +1872,6 @@ return function()
 			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_url_location_private, "'co'")
 		end
 
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
-
 		local body = this.getPage((isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)))
 
 		local timestamp, nickname, discriminator, _, id, contentHtml = string.match(body, htmlChunk.ms_time .. ".-" .. htmlChunk.nickname .. ".-" .. string.format(htmlChunk.hidden_value, forumUri.poll_id) .. ".-" .. htmlChunk.poll_content)
@@ -1973,10 +1972,6 @@ return function()
 			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
-
 		local path = "?f=" .. location.f .. "&s=" .. location.s
 		local body = this.getPage(forumUri.section .. path)
 
@@ -1995,21 +1990,9 @@ return function()
 		end
 
 		local totalPages = tonumber(string.match(body, htmlChunk.total_pages)) or 1
+		local lastPage = this.getPage(forumUri.section .. path .. "&p=" .. totalPages)
 
-		local counter, totalTopics = 0
-		lastPage = this.getPage(forumUri.section .. path .. "&p=" .. totalPages)
-		if string.find(lastPage, htmlChunk.empty_section) then
-			totalTopics = 0
-		else
-			string.gsub(lastPage, htmlChunk.topic_div, function()
-				counter = counter + 1
-			end)
-
-			totalTopics = ((totalPages - 1) * 30) + (counter - (totalSubsections and 1 or 0))
-
-			counter = 0
-		end
-
+		local counter = 0
 		local subsections, totalSubsections, err = { }, 0
 		string.gsub(lastPage, htmlChunk.subsection, function(href, name)
 			counter = counter + 1
@@ -2029,6 +2012,18 @@ return function()
 			totalSubsections = counter
 		end
 		local isSubsection = #navigation_bar > 3
+
+		counter = 0
+		local totalTopics
+		if string.find(lastPage, htmlChunk.empty_section) then
+			totalTopics = 0
+		else
+			string.gsub(lastPage, htmlChunk.topic_div, function()
+				counter = counter + 1
+			end)
+
+			totalTopics = ((totalPages - 1) * 30) + (counter - (totalSubsections and 1 or 0))
+		end
 
 		local totalFixedTopics = 0
 		string.gsub(body, enumerations.topicIcon.postit, function()
@@ -2093,10 +2088,6 @@ return function()
 			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 't'") .. " " .. errorString.no_url_location .. " " .. string.format(errorString.no_url_location_private, "'co'")
 		end
 
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
-
 		return getBigList(pageNumber, (isPrivatePoll and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)), function(messages, body, pageNumber, totalPages)
 			local post = math.max(1, pageNumber) * 20
 			local counter = 0
@@ -2129,6 +2120,7 @@ return function()
 	--[[@
 		@file Forum
 		@desc Gets the topics of a section.
+		@desc /!\ This function may take several minutes to return the values depending on the total of pages of the section.
 		@param location<table> The section location.
 		@param getAllInfo?<boolean> Whether the topic data should be simple (ids only) or complete (@see getTopic). @default true
 		@param pageNumber?<int> The section page. To list ALL topics, use `0`. @default 1
@@ -2163,10 +2155,6 @@ return function()
 			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
-
 		return getList(pageNumber, forumUri.section .. "?f=" .. location.f .. "&s=" .. location.s, function(id, title, author, timestamp)
 			id = tonumber(id)
 
@@ -2175,7 +2163,6 @@ return function()
 				if not tpc then
 					return nil, err
 				end
-
 				return tpc
 			else
 				return {
@@ -2187,7 +2174,7 @@ return function()
 					title = title
 				}
 			end
-		end, htmlChunk.section_topic .. ".-" .. htmlChunk.sec_topic_author .. " on .-" .. htmlChunk.ms_time)
+		end, htmlChunk.section_topic .. ".-" .. htmlChunk.sec_topic_author .. " on .-" .. htmlChunk.ms_time, nil, true)
 	end
 	--[[@
 		@file Forum
@@ -2840,11 +2827,11 @@ return function()
 	self.getTribe = function(tribeId)
 		assertion("getTribe", { "number", "nil" }, 1, tribeId)
 
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
-
 		if not tribeId then
+			if not this.isConnected then
+				return nil, errorString.not_connected
+			end
+
 			if not this.tribeId then
 				return nil, errorString.no_tribe
 			end
@@ -2921,11 +2908,11 @@ return function()
 
 		pageNumber = pageNumber or 1
 
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
-
 		if not tribeId then
+			if not this.isConnected then
+				return nil, errorString.not_connected
+			end
+
 			if not this.tribeId then
 				return nil, errorString.no_tribe
 			end
@@ -2996,27 +2983,35 @@ return function()
 	--[[@
 		@file Tribe
 		@desc Gets the ranks of a tribe.
-		@param tribeId?<int> The tribe id. @default Account's tribe id
-		@param location?<table> The location where the ranks should be taken. Use `nil` if you don't need the role ids.
-		@paramstruct location {
+		@param tribeId?<int,table> The tribe id. If the rank ids are necessary, send a location table from any forum in your own tribe instead (if it's from another tribe it will not affect the behavior of this function). @default Account's tribe id
+		@paramstruct tribeId {
 			f<int> The forum id.
 			s<int> The section id.
 		}
 		@returns table,nil The names of the tribe ranks
 		@returns nil,string Error message.
 		@struct {
-			-- If not 'location', the struct is a string array.
+			-- If 'tribeId' is not a location table, the struct is a string array.
 			[n] = {
 				id = 0, -- The role id.
 				name = "" -- The role name.
 			}
 		}
 	]]
-	self.getTribeRanks = function(tribeId, location)
-		assertion("getTribeRanks", { "number", "nil" }, 1, tribeId)
-		assertion("getTribeRanks", { "table", "nil" }, 2, location)
+	self.getTribeRanks = function(tribeId)
+		assertion("getTribeRanks", { "number", "table", "nil" }, 1, tribeId)
 
-		if not this.isConnected then
+		local location
+		if type(tribeId) == "table" then
+			location = tribeId
+			tribeId = this.tribeId
+		end
+
+		if location and (not location.f or not location.s) then
+			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+		end
+
+		if not this.isConnected and (not tribeId or location) then
 			return nil, errorString.not_connected
 		end
 
@@ -3027,8 +3022,8 @@ return function()
 			tribeId = this.tribeId
 		end
 
-		if location and (not location.f or not location.s) then
-			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
+		if location and tribeId ~= this.tribeId then
+			location = nil
 		end
 
 		local body = this.getPage((location and (forumUri.edit_section_permissions .. "?f=" .. location.f .. "&s=" .. location.s) or (forumUri.tribe_members .. "?tr=" .. tribeId)))
@@ -3078,11 +3073,11 @@ return function()
 
 		pageNumber = pageNumber or 1
 
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
-
 		if not tribeId then
+			if not this.isConnected then
+				return nil, errorString.not_connected
+			end
+
 			if not this.tribeId then
 				return nil, errorString.no_tribe
 			end
@@ -3630,10 +3625,6 @@ return function()
 		assertion("getLatestImages", { "number", "nil" }, 1, quantity)
 
 		quantity = quantity or 16
-
-		if not this.isConnected then
-			return nil, errorString.not_connected
-		end
 
 		local r = quantity % 16
 		if r > 0 then

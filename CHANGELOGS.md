@@ -1,3 +1,20 @@
+# Changelogs v0.3.8
+## Developer
+### News
+- **getList** now have a parameter `usesCoro` that executes the functions diferently to avoid the problem below ↓.
+
+### Fixes
+- **getList** wouldn't work if the callback function had http requests or any function that needed to be coroutine.
+
+## Api
+### Changes
+- /!\\ **getTribeRanks** doesn't have the parameter `location` anymore. (can cause incompatibility) Send the location table in the first parameter instead, since the only acceptable value is your own tribe id.
+- Now you can use **getMessage**, **getTopic**, **getPoll**, **getSection**, **getAllMessages**, **getSectionTopics**, **getTribe**, **getTribeMembers**, **getTribeRanks** and **getLatestImages** without the need to be connected to an account.
+
+### Fixes
+- **getSectionTopics** was not working when `getAllInfo` was true.
+- _getSection_.**totalTopics** could have returned a wrong value when the section had subsections.
+
 # Changelogs v0.3.7
 
 ## Developer
@@ -6,7 +23,7 @@
 - The file **autoupdate** can now be both a non-extension or **txt** file.
 - **getList** and **getBigList** now have a parameter `inif` that executes an initial function with the head and the body before everything else.
 
-## Class
+## Api
 ### News
 - Transformice Adventures location added. (`xx.transformice_adventures`)
 - **extensions**.
@@ -54,7 +71,7 @@
 ### Changes
 - **getNavbar** has now a second parameter `isNavbar` to ignore the first match when content = navbar.
 
-## Class
+## Api
 ### News
 - _getSectionTopics_.**author**. (when `getAllInfo` is false)
 - **extractNicknameData**.
@@ -89,7 +106,7 @@
 - Documentation remade entirely.
 - Navigation bars now with a better performance.
 
-## Class
+## Api
 ### News
 - **getUser**.
 - **isAccountValidated**.

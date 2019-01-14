@@ -17,6 +17,8 @@ With the three executables installed, run `lit install Lautenschlager-id/fromage
 
 # Documentation
 
+![/!\\](http://images.atelier801.com/168395f0cbc.png) Some fields listed in the return structs may not exist if you are not connected to an account.
+
 ## Topics
 
 - [Api](Api.md) → Useful functions to make the use of the API easier and to handle some return values.
@@ -144,7 +146,7 @@ With the three executables installed, run `lit install Lautenschlager-id/fromage
 	- [getTribeForum](Tribe.md#gettribeforum--location-)
 	- [getTribeHistory](Tribe.md#gettribehistory--tribeid-pagenumber-)
 	- [getTribeMembers](Tribe.md#gettribemembers--tribeid-pagenumber-)
-	- [getTribeRanks](Tribe.md#gettriberanks--tribeid-location-)
+	- [getTribeRanks](Tribe.md#gettriberanks--tribeid-)
 	- [removeTribeLogo](Tribe.md#removetribelogo---)
 	- [setTribeSectionPermissions](Tribe.md#settribesectionpermissions--permissions-location-)
 	- [updateSection](Tribe.md#updatesection--data-location-)
