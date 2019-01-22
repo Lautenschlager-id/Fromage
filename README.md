@@ -1,6 +1,6 @@
 [![Donate](https://img.shields.io/badge/Donate-PayPal-yellow.svg)](https://www.paypal.com/cgi-bin/webscr?cmd=_s-xclick&hosted_button_id=TSTEG3PXK4HJ4&source=url)
 
-![Logo](http://img.atelier801.com/3f24f22d.png)
+<p align='center'><a href='https://atelier801.com/topic?f=5&t=917024'><img src="http://img.atelier801.com/3f24f22d.png" title="Fromage"></a></p>
 
 **Atelier801's Forum API written in Lua (5.1▲) using the Luvit runtime environment**
 
