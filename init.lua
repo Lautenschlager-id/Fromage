@@ -154,6 +154,7 @@ local htmlChunk = {
 	date                       = '(%d+/%d+/%d+)',
 	edition_timestamp          = 'cadre%-message%-dates.-(%d+)',
 	empty_section              = '<div class="aucun%-resultat">Empty</div>',
+	error_503                  = "^<html>\r?\n<head><title>503 Service Temporarily Unavailable</title></head>",
 	favorite_topics            = '<td rowspan="2">(.-)</td>%s+<td rowspan="2">',
 	greeting_message           = '<h4>Greeting message</h4> (.*)$',
 	hidden_value               = '<input type="hidden" name="%s" value="(%%d+)"/?>',
@@ -172,6 +173,7 @@ local htmlChunk = {
 	navigation_bar_sec_content = '^<(.+)>%s*(.+)%s*$',
 	navigation_bar_sections    = '<a.-href="(.-)".->%s*(.-)%s*</a>',
 	nickname                   = '(%S+)<span class="nav%-header%-hashtag">(#(%d+))',
+	not_connected              = '<p> +You must be connected to do this%. +</p>',
 	poll_content               = '<div>%s+(.-)%s+</div>%s+<br>',
 	poll_option                = '<label class="(.-) ">%s+<input type="%1" name="reponse_%d*" id="reponse_(%d+)" value="%2" .-/>%s+(.-)%s+</label>',
 	poll_percentage            = 'reponse%-sondage">.-%((%d+)%)</div>',
@@ -403,21 +405,7 @@ end
 --[[ Class ]]--
 return function()
 	-- Internal
-	local this = {
-		-- Whether the account is connected or not
-		isConnected = false,
-		-- The nickname of the account, if it's connected.
-		userName = nil,
-		userId = nil,
-		tribeId = nil,
-		cookieState = cookieState.login,
-		-- Account cookies
-		cookies = { },
-		-- Whether the account has validated its account with a code
-		hasCertificate = false,
-		-- Current time since the last login
-		connectionTime = -1
-	}
+	local this = { }
 	-- External
 	local self = { }
 
@@ -506,6 +494,23 @@ return function()
 	end
 
 	--> Private function
+	local newThis = function()
+		-- Whether the account is connected or not
+		this.isConnected = false
+		-- The nickname of the account, if it's connected.
+		this.userName = nil
+		this.userId = nil
+		this.tribeId = nil
+		this.cookieState = cookieState.login
+		-- Account cookies
+		this.cookies = { }
+		-- Whether the account has validated its account with a code
+		this.hasCertificate = false
+		-- Current time since the last login
+		this.connectionTime = -1
+	end
+	newThis()
+
 	local getNavbar = function(content, isNavbar)
 		local navBar = (isNavbar and content or string.match(content, htmlChunk.navigation_bar))
 		if not navBar then
@@ -763,11 +768,33 @@ return function()
 	end
 	--[[@
 		@file Api
-		@desc Checks whether the instance is connected to an account or not.
+		@desc Checks whether the instance is supposed to be connected to an account or not.
+		@desc Note that this function does not perform any request to confirm the existence of the connection and is fully based on @see connect and @see disconnect.
+		@desc See @see isConnectionAlive to confirm that the connection is still active.
 		@returns boolean Whether there's already a connection or not.
 	]]
 	self.isConnected = function()
 		return this.isConnected
+	end
+	--[[@
+		@file Api
+		@desc Checks whether the instance connection is alive or not.
+		@desc /!\ Calling this function several times uninterruptedly may disconnect the account unexpectedly due to the forum delay.
+		@desc See @see isConnected to check whether the connection should exist or not.
+		@returns boolean Whether the connection is alive or not.
+	]]
+	self.isConnectionAlive = function()
+		if not this.isConnected then
+			return false
+		end
+
+		local body = this.getPage(forumUri.conversations)
+		local isAlive = not (string.find(body, htmlChunk.error_503) or string.find(body, htmlChunk.not_connected))
+		if not isAlive then
+			newThis()
+		end
+
+		return isAlive
 	end
 	--[[@
 		@file Api
@@ -886,14 +913,7 @@ return function()
 		end
 
 		if string.sub(result, 2, 15) == '"supprime":"*"' then
-			this.isConnected = false
-			this.userName = nil
-			this.cookieState = cookieState.login
-			this.cookies = { }
-			this.userId = nil
-			this.tribeId = nil
-			this.hasCertificate = false
-			this.connectionTime = -1
+			newThis()
 			return true, result
 		end
 		return false, result

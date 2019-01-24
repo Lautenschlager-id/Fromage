@@ -46,6 +46,7 @@ With the three executables installed, run `lit install Lautenschlager-id/fromage
 	- [getUser](Api.md#getuser---)
 	- [isAccountValidated](Api.md#isaccountvalidated---)
 	- [isConnected](Api.md#isconnected---)
+	- [isConnectionAlive](Api.md#isconnectionalive---)
 	- [parseUrlData](Api.md#parseurldata--href-)
 	- [performAction](Api.md#performaction--uri-postdata-ajaxuri-file-)
 - [Enumerations](Enumerations.md)

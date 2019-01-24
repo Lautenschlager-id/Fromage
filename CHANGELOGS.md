@@ -1,3 +1,12 @@
+# Changelogs v0.3.9
+## Developer
+### News
+- **newThis** resets all the `this` variables.
+
+## Api
+### News
+- **isConnectionAlive**
+
 # Changelogs v0.3.8
 ## Developer
 ### News

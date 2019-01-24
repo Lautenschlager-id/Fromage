@@ -1,6 +1,6 @@
 return {
 	name = "Lautenschlager-id/fromage",
-	version = "0.3.8",
+	version = "0.3.9",
 	homepage = "https://github.com/Lautenschlager-id/Fromage",
 	dependencies = {
 		"creationix/coro-http@3.0.0",

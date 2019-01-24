@@ -132,13 +132,28 @@ Useful functions to make the use of the API easier and to handle some return val
 ---
 >### isConnected (  )
 >
->Checks whether the instance is connected to an account or not.
+>Checks whether the instance is supposed to be connected to an account or not.<br>
+>Note that this function does not perform any request to confirm the existence of the connection and is fully based on [connect](Settings.md#connect--username-userpassword-) and [disconnect](Settings.md#disconnect---).<br>
+>See [isConnectionAlive](Api.md#isconnectionalive---) to confirm that the connection is still active.
 >
 >**Returns**:
 >
 >| Type | Description |
 >| :-: | - |
 >| `boolean` | Whether there's already a connection or not. |
+>
+---
+>### isConnectionAlive (  )
+>
+>Checks whether the instance connection is alive or not.<br>
+>![/!\\](http://images.atelier801.com/168395f0cbc.png) Calling this function several times uninterruptedly may disconnect the account unexpectedly due to the forum delay.<br>
+>See [isConnected](Api.md#isconnected---) to check whether the connection should exist or not.
+>
+>**Returns**:
+>
+>| Type | Description |
+>| :-: | - |
+>| `boolean` | Whether the connection is alive or not. |
 >
 ---
 >### formatNickname ( nickname )
