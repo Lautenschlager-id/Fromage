@@ -12,7 +12,7 @@ The [Atelier801's Forum](https://atelier801.com/forums) is a forum created by th
 
 **Fromage API** is a [documented RESTful API](docs) that allows developers to make bots for the mentioned forum.
 
-Join the **_[Fifty Shades of Lua](https://discord.gg/quch83R)_** [discord](https://discordapp.com/) to discuss about this library and to have a special support.
+Join the **_[Fifty Shades of Lua](https://discord.gg/quch83R)_** [discord](https://discordapp.com/) to discuss about this API and to have special support.
 
 ## Installation
 
