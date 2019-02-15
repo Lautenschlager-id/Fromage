@@ -14,7 +14,7 @@ The [Atelier801's Forum](https://atelier801.com/forums) is a forum created by th
 
 Join the **_[Fifty Shades of Lua](https://discord.gg/quch83R)_** [discord](https://discordapp.com/) to discuss about this API and to have special support.
 
-See also the [**TransFromage API**](https://github.com/Lautenschlager-id/Transfromage) for the game Transformice.
+See also the **[TransFromage API](https://github.com/Lautenschlager-id/Transfromage)** for the game Transformice.
 
 ## Installation
 
