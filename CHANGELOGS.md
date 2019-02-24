@@ -1,3 +1,7 @@
+# Changelogs v0.3.10
+### News
+- Added a new update system: `semiautoupdate`, that asks for permission before updating the API.
+
 # Changelogs v0.3.9
 ## Developer
 ### News

@@ -32,6 +32,8 @@ You can create it running `echo >> autoupdate` (for Windows) or `touch autoupdat
 
 The update will overwrite all the old files and dependencies.
 
+For semi-automatic updates (asks permission before updating), create the file `semiautoupdate` instead.
+
 ## Base example
 
 ```Lua
