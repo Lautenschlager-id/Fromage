@@ -299,7 +299,7 @@ local write = function(file, data, tree) -- tree = @see
 	local file = io.open(file, "w+")
 	str = table.concat(str, "\n")
 
-	str = string.gsub(str, "/!\\", "![/!\\\\](http://images.atelier801.com/168395f0cbc.png)")
+	str = string.gsub(str, "/!\\", "![/!\\\\](https://i.imgur.com/HQ188PK.png)")
 	
 	str = string.gsub(str, "@see (%w+)", function(name)
 		local link = string.match(tree, "%[" .. name .. "%]%((.-)%)") or nil

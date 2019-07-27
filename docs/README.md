@@ -17,7 +17,7 @@ With the three executables installed, run `lit install Lautenschlager-id/fromage
 
 # Documentation
 
-![/!\\](http://images.atelier801.com/168395f0cbc.png) Some fields listed in the return structs may not exist if you are not connected to an account.
+![/!\\](https://i.imgur.com/HQ188PK.png) Some fields listed in the return structs may not exist if you are not connected to an account.
 
 ## Topics
 

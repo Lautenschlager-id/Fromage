@@ -19,7 +19,7 @@ Random functions.
 >| 	searchLocation | `string`, `int ` | ✔ | The specific search location. An enum from [searchLocation](Enumerations.md#searchlocation-int). (index or value) |
 >
 >Performs a deep search on forums.<br>
->![/!\\](http://images.atelier801.com/168395f0cbc.png) This function may take several minutes to return the values depending on the settings.
+>![/!\\](https://i.imgur.com/HQ188PK.png) This function may take several minutes to return the values depending on the settings.
 >
 >**Returns**:
 >

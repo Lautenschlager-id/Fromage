@@ -146,7 +146,7 @@ Useful functions to make the use of the API easier and to handle some return val
 >### isConnectionAlive (  )
 >
 >Checks whether the instance connection is alive or not.<br>
->![/!\\](http://images.atelier801.com/168395f0cbc.png) Calling this function several times uninterruptedly may disconnect the account unexpectedly due to the forum delay.<br>
+>![/!\\](https://i.imgur.com/HQ188PK.png) Calling this function several times uninterruptedly may disconnect the account unexpectedly due to the forum delay.<br>
 >See [isConnected](Api.md#isconnected---) to check whether the connection should exist or not.
 >
 >**Returns**:

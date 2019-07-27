@@ -69,7 +69,7 @@ Extension functions to make the use of the API easier with functions that may be
 >| bbcode | `string` | ✔ | The bbcode to be converted. |
 >
 >Converts a BBCode into Markdown. (e.g.: [b] -> **)<br>
->![/!\\](http://images.atelier801.com/168395f0cbc.png) This function is currently in tests and bugs may occur.
+>![/!\\](https://i.imgur.com/HQ188PK.png) This function is currently in tests and bugs may occur.
 >
 >**Returns**:
 >

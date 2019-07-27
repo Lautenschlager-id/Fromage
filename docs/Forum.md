@@ -210,7 +210,7 @@ Base functions of the public forums, from messages to topics.
 >| 	co | `int` | ✔ | The private conversation id. (needed for private conversation) |
 >
 >Gets the messages of a topic or conversation.<br>
->![/!\\](http://images.atelier801.com/168395f0cbc.png) This function may take several minutes to return the values depending on the total of pages of the topic.
+>![/!\\](https://i.imgur.com/HQ188PK.png) This function may take several minutes to return the values depending on the total of pages of the topic.
 >
 >**Returns**:
 >
@@ -251,7 +251,7 @@ Base functions of the public forums, from messages to topics.
 >| 	s | `int` | ✔ | The section id. |
 >
 >Gets the topics of a section.<br>
->![/!\\](http://images.atelier801.com/168395f0cbc.png) This function may take several minutes to return the values depending on the total of pages of the section.
+>![/!\\](https://i.imgur.com/HQ188PK.png) This function may take several minutes to return the values depending on the total of pages of the section.
 >
 >**Returns**:
 >
