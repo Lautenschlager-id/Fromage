@@ -3614,6 +3614,7 @@ return function()
 		}, forumUri.edit_section_permissions .. "?f=" .. location.f .. "&s=" .. location.s)
 	end
 
+	--[========================================================================================[ DEPRECATED
 	-- > Micepix
 	--[[@
 		@file Micepix
@@ -3761,7 +3762,7 @@ return function()
 			{ "im", table.concat(imageId, separator.forum_data) }
 		}, forumUri.user_images .. "?pr=" .. this.userId)
 	end
-
+	]========================================================================================]
 	-- > Miscellaneous
 	--[[@
 		@file Miscellaneous

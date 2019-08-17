@@ -1,3 +1,5 @@
+**All the functions below have been discontinued in the platform and will not work anymore.**
+
 Image host and galleries.
 # Methods
 >### getAccountImages ( pageNumber )
