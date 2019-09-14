@@ -1,0 +1,28 @@
+{
+  "projectName": "Fromage",
+  "projectOwner": "Lautenschlager-id",
+  "repoType": "github",
+  "repoHost": "https://github.com",
+  "files": [
+    "README.md"
+  ],
+  "imageSize": 100,
+  "commit": false,
+  "commitConvention": "none",
+  "contributors": [
+    {
+      "login": "Lautenschlager-id",
+      "name": "Lautenschlager",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/26045253?v=4",
+      "profile": "http://bit.ly/laut-id",
+      "contributions": [
+        "code",
+        "doc",
+        "bug",
+        "test",
+        "example"
+      ]
+    }
+  ],
+  "contributorsPerLine": 5
+}

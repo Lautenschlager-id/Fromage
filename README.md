@@ -51,3 +51,16 @@ coroutine.wrap(function()
 	os.execute("pause >nul")
 end)()
 ```
+
+## Contributors
+
+###### This project follows the [all-contributors](https://allcontributors.org/docs/en/emoji-key) specification.
+
+<!-- ALL-CONTRIBUTORS-LIST:START -->
+<table>
+  <tr>
+    <td align="center"><a href="http://bit.ly/laut-id"><img src="https://avatars2.githubusercontent.com/u/26045253?v=4" width="100px;" alt="Lautenschlager"/><br /><sub><b>Lautenschlager</b></sub></a><br /><a href="https://github.com/Lautenschlager-id/Fromage/commits?author=Lautenschlager-id" title="Code">💻</a> <a href="https://github.com/Lautenschlager-id/Fromage/commits?author=Lautenschlager-id" title="Documentation">📖</a> <a href="https://github.com/Lautenschlager-id/Fromage/issues?q=author%3ALautenschlager-id" title="Bug reports">🐛</a> <a href="https://github.com/Lautenschlager-id/Fromage/commits?author=Lautenschlager-id" title="Tests">⚠️</a> <a href="#example-Lautenschlager-id" title="Examples">💡</a></td>
+  </tr>
+</table>
+<!-- ALL-CONTRIBUTORS-LIST:END -->
+
