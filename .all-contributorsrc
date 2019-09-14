@@ -20,7 +20,9 @@
         "doc",
         "bug",
         "test",
-        "example"
+        "example",
+        "ideas",
+        "design"
       ]
     }
   ],
