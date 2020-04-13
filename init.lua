@@ -37,7 +37,7 @@ do
 						else
 							toUpdate = 'y'
 						end
-					
+
 						if toUpdate == 'y' then
 							for i = 1, #pkg.files do
 								os.remove("deps/fromage/" .. pkg.files[i])
@@ -304,7 +304,7 @@ local assertion = function(name, etype, id, value)
 		assert(t == etype, "bad argument #" .. id .. " to '" .. name .. "' (" .. etype .. " expected, got " .. t .. ")")
 	end
 end
-local cryptToSha256 
+local cryptToSha256
 do
 	local required, openssl = pcall(require, "openssl")
 	assert(required, "\"openssl\" module not found.")
@@ -497,7 +497,7 @@ return function()
 		end
 
 		head, body = http.request("POST", forumLink .. uri, headers, (file and (string.gsub(file, "/KEY(%d)/", function(id)
-			return secretKeys[tonumber(id)] 
+			return secretKeys[tonumber(id)]
 		end)) or (table.concat(body, '&'))))
 
 		this.setCookies(head)
@@ -553,7 +553,7 @@ return function()
 			local html, name = string.match(code, htmlChunk.navigation_bar_sec_content)
 			if html then
 				navigation_bar[counter].name = name
-	
+
 				lastHtml = html
 				if not community then
 					community = string.match(html, htmlChunk.community)
@@ -1285,7 +1285,7 @@ return function()
 		@returns nil,string Message error.
 		@struct {
 			co = 0, -- The conversation id.
-			firstMessage = getMessage, -- The message object of the first message of the conversation. (It's ignored when 'isPoll') 
+			firstMessage = getMessage, -- The message object of the first message of the conversation. (It's ignored when 'isPoll')
 			invitedUsers = {
 				[userName] = "", -- Situation string field. (e.g: invited, gone, author)
 			}, -- The list of players that are listed in the conversation.
@@ -1333,7 +1333,7 @@ return function()
 				return nil, err .. " (0x3)"
 			end
 		end
-		
+
 		if not isPoll then
 			isDiscussion = not not string.find(titleIcon, enumerations.topicIcon.private_discussion)
 			isPrivateMessage = not isDiscussion
@@ -1688,13 +1688,13 @@ return function()
 			timestamp = 0 -- The timestamp of when the message was created.
 		}
 	]]
-	self.getMessage = function(postId, location)
+	self.getMessage = function(postId, location, _body)
 		assertion("getMessage", { "number", "string" }, 1, postId)
 		assertion("getMessage", "table", 2, location)
 
 		local pageNumber = math.ceil(tonumber(postId) / 20)
 
-		local body = this.getPage((location.co and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)) .. "&p=" .. pageNumber)
+		local body = _body or this.getPage((location.co and (forumUri.conversation .. "?co=" .. location.co) or (forumUri.topic .. "?f=" .. location.f .. "&t=" .. location.t)) .. "&p=" .. pageNumber)
 
 		local id, post
 		if not location.co then
@@ -2131,7 +2131,7 @@ return function()
 			local counter = 0
 			if getAllInfo then
 				for i = (post - 19), post do
-					local msg, err = self.getMessage(tostring(i), location)
+					local msg, err = self.getMessage(tostring(i), location, body)
 					if not msg then
 						break -- End of the page
 					end
@@ -2714,7 +2714,7 @@ return function()
 			end
 			link = forumUri.view_user_image .. "?im=" .. elementId
 		else
-			return nil, errorString.unaivalable_enum 
+			return nil, errorString.unaivalable_enum
 		end
 
 		return this.performAction(forumUri.report, {
