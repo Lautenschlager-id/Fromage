@@ -608,13 +608,18 @@ return function()
 				while true do
 					local result = { iterator() }
 					if #result == 0 then break end
+					result[#result + 1] = body
+
 					counter = counter + 1
 					list[counter] = f(table.unpack(result))
 				end
 			else
 				string.gsub(body, html, function(...)
+					local result = { ... }
+					result[#result + 1] = body
+
 					counter = counter + 1
-					list[counter] = f(...)
+					list[counter] = f(table.unpack(result))
 				end)
 			end
 		end, true, nil, inif)
@@ -1800,7 +1805,7 @@ return function()
 			totalMessages = 0 -- The total of messages in the topic.
 		}
 	]]
-	self.getTopic = function(location, ignoreFirstMessage)
+	self.getTopic = function(location, ignoreFirstMessage, _body)
 		assertion("getTopic", "table", 1, location)
 		assertion("getTopic", { "boolean", "nil" }, 2, ignoreFirstMessage)
 
@@ -1809,7 +1814,7 @@ return function()
 		end
 
 		local path = "?f=" .. location.f .. "&t=" .. location.t
-		local body = this.getPage(forumUri.topic .. path)
+		local body = _body or this.getPage(forumUri.topic .. path)
 
 		local isPoll, poll = not not string.find(body, string.format(htmlChunk.hidden_value, forumUri.poll_id)) -- Whether it's a poll or not
 		if isPoll and not ignoreFirstMessage then
@@ -2132,7 +2137,7 @@ return function()
 			if getAllInfo then
 				for i = (post - 19), post do
 					local msg, err = self.getMessage(tostring(i), location, body)
-					if not msg then
+					if msg then
 						break -- End of the page
 					end
 					counter = counter + 1
@@ -2193,11 +2198,11 @@ return function()
 			return nil, errorString.no_url_location .. " " .. string.format(errorString.no_required_fields, "'f', 's'")
 		end
 
-		return getList(pageNumber, forumUri.section .. "?f=" .. location.f .. "&s=" .. location.s, function(id, title, author, timestamp)
+		return getList(pageNumber, forumUri.section .. "?f=" .. location.f .. "&s=" .. location.s, function(id, title, author, timestamp, _body)
 			id = tonumber(id)
 
 			if getAllInfo then
-				local tpc, err = self.getTopic({ f = location.f, t = id }, true)
+				local tpc, err = self.getTopic({ f = location.f, t = id }, true, _body)
 				if not tpc then
 					return nil, err
 				end
