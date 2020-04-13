@@ -2137,7 +2137,7 @@ return function()
 			if getAllInfo then
 				for i = (post - 19), post do
 					local msg, err = self.getMessage(tostring(i), location, body)
-					if msg then
+					if not msg then
 						break -- End of the page
 					end
 					counter = counter + 1

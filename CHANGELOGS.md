@@ -4,6 +4,11 @@
 
 # Changelogs v0.3.9
 ## Developer
+### Fixes
+- Improved significantly the performance of 'getAll' methods.
+
+# Changelogs v0.3.9
+## Developer
 ### News
 - **newThis** resets all the `this` variables.
 
